@@ -308,490 +308,673 @@
 
 {% block content %}
 <div class="admin-dashboard">
-    <!-- Dashboard de Estadísticas en Tiempo Real -->
-    <div id="stats-dashboard">
-        <div class="loading">Cargando estadísticas</div>
+    <!-- Dashboard Container -->
+    <div id="stats-dashboard" class="dashboard-container">
+        <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Cargando métricas en tiempo real...</p>
+        </div>
     </div>
 </div>
 
-<script>
-    // Dashboard de Estadísticas en Tiempo Real
-    let dashboardUpdateInterval;
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    function formatCurrency(value) {
+<script>
+    // Configuración Global
+    const META_VENTA_DEFAULT = 2000000; // $2.000.000
+    let dashboardUpdateInterval;
+    let salesChart = null;
+
+    // Utilidades de Formato
+    const formatCurrency = (value) => {
         if (value === null || value === undefined || isNaN(value)) return '$0';
         return '$' + Math.round(value).toLocaleString('es-CL');
-    }
+    };
 
-    function formatNumber(value) {
+    const formatNumber = (value) => {
         if (value === null || value === undefined || isNaN(value)) return '0';
         return Math.round(value).toLocaleString('es-CL');
+    };
+
+    // Renderizado del Dashboard
+    function renderDashboard(data) {
+        const container = document.getElementById('stats-dashboard');
+
+        if (!data.success) {
+            container.innerHTML = `
+            <div class="error-state">
+                <div class="icon">⚠️</div>
+                <h2>Error de Conexión</h2>
+                <p>${data.error || 'No se pudieron cargar los datos'}</p>
+                <button onclick="updateStatsDashboard()" class="btn-retry">Reintentar</button>
+            </div>
+        `;
+            return;
+        }
+
+        if (!data.shift_open) {
+            container.innerHTML = `
+            <div class="empty-state">
+                <div class="icon">🌙</div>
+                <h2>Turno Cerrado</h2>
+                <p>Abre un turno para ver las métricas en tiempo real</p>
+                <a href="/admin/turnos" class="btn-primary">Gestionar Turnos</a>
+            </div>
+        `;
+            return;
+        }
+
+        // Cálculos de Meta
+        const metaVenta = META_VENTA_DEFAULT;
+        const porcentajeMeta = Math.min(100, (data.financial.total_recaudado / metaVenta) * 100);
+        const faltaParaMeta = Math.max(0, metaVenta - data.financial.total_recaudado);
+
+        // HTML Structure
+        container.innerHTML = `
+        <!-- Header & Meta -->
+        <header class="dashboard-header">
+            <div class="header-content">
+                <div>
+                    <h1>Dashboard de Ventas</h1>
+                    <div class="status-badge">
+                        <span class="dot"></span> En Vivo
+                    </div>
+                </div>
+                <div class="meta-container">
+                    <div class="meta-info">
+                        <span class="label">Meta Diaria</span>
+                        <span class="value">${formatCurrency(metaVenta)}</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" style="width: ${porcentajeMeta}%"></div>
+                    </div>
+                    <div class="meta-details">
+                        <span class="current">${porcentajeMeta.toFixed(1)}% Completado</span>
+                        <span class="remaining">Faltan ${formatCurrency(faltaParaMeta)}</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Grid -->
+        <div class="dashboard-grid">
+            <!-- Hero Card: Total Recaudado -->
+            <div class="card hero-card">
+                <div class="card-content">
+                    <span class="card-label">Total Recaudado</span>
+                    <div class="hero-value">${formatCurrency(data.financial.total_recaudado)}</div>
+                    <div class="hero-subvalues">
+                        <div class="subvalue">
+                            <span class="icon">💵</span>
+                            <span>${formatCurrency(data.financial.efectivo)}</span>
+                        </div>
+                        <div class="subvalue">
+                            <span class="icon">💳</span>
+                            <span>${formatCurrency(data.financial.debito + data.financial.credito)}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-chart-bg">
+                    <!-- Sparkline background placeholder -->
+                </div>
+            </div>
+
+            <!-- KPI Cards -->
+            <div class="kpi-grid">
+                <div class="card kpi-card">
+                    <div class="kpi-icon">🎫</div>
+                    <div class="kpi-value">${formatNumber(data.financial.total_ventas)}</div>
+                    <div class="kpi-label">Ventas Totales</div>
+                </div>
+                <div class="card kpi-card">
+                    <div class="kpi-icon">📊</div>
+                    <div class="kpi-value">${formatCurrency(data.financial.ticket_promedio)}</div>
+                    <div class="kpi-label">Ticket Promedio</div>
+                </div>
+                <div class="card kpi-card">
+                    <div class="kpi-icon">⚡</div>
+                    <div class="kpi-value">${data.kpis.entregas_por_hora}</div>
+                    <div class="kpi-label">Entregas / Hora</div>
+                </div>
+                <div class="card kpi-card">
+                    <div class="kpi-icon">👥</div>
+                    <div class="kpi-value">${formatCurrency(data.kpis.por_persona)}</div>
+                    <div class="kpi-label">Por Persona</div>
+                </div>
+            </div>
+
+            <!-- Chart Section -->
+            <div class="card chart-card">
+                <div class="card-header">
+                    <h3>Tendencia de Ventas (Últimas Horas)</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="salesChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Top Lists -->
+            <div class="lists-grid">
+                <!-- Top Productos -->
+                <div class="card list-card">
+                    <div class="card-header">
+                        <h3>🔥 Top Productos</h3>
+                    </div>
+                    <div class="list-content">
+                        ${renderTopList(data.tops.productos)}
+                    </div>
+                </div>
+
+                <!-- Top Bartenders -->
+                <div class="card list-card">
+                    <div class="card-header">
+                        <h3>🏆 Top Bartenders</h3>
+                    </div>
+                    <div class="list-content">
+                        ${renderTopList(data.tops.bartenders)}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+        // Initialize Chart
+        initChart();
     }
 
-    function formatDecimal(value, decimals = 1) {
-        if (value === null || value === undefined || isNaN(value)) return '0.0';
-        return parseFloat(value).toFixed(decimals);
+    function renderTopList(items) {
+        if (!items || items.length === 0) {
+            return '<div class="empty-list">Sin datos aún</div>';
+        }
+
+        const maxVal = Math.max(...items.map(i => i.qty));
+
+        return items.map((item, index) => `
+        <div class="list-item">
+            <div class="rank">${index + 1}</div>
+            <div class="item-details">
+                <div class="item-name">${item.name}</div>
+                <div class="item-bar-bg">
+                    <div class="item-bar" style="width: ${(item.qty / maxVal) * 100}%"></div>
+                </div>
+            </div>
+            <div class="item-value">${item.qty}</div>
+        </div>
+    `).join('');
+    }
+
+    function initChart() {
+        const ctx = document.getElementById('salesChart');
+        if (!ctx) return;
+
+        // Datos simulados para el gráfico (idealmente vendrían del backend)
+        // En una implementación real, data.chart_data debería proveer esto
+        const labels = ['22:00', '23:00', '00:00', '01:00', '02:00', '03:00'];
+        const dataPoints = [150000, 300000, 450000, 600000, 400000, 200000]; // Placeholder
+
+        salesChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Ventas ($)',
+                    data: dataPoints,
+                    borderColor: '#00ff88',
+                    backgroundColor: 'rgba(0, 255, 136, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: true,
+                    pointBackgroundColor: '#00ff88'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            label: function (context) {
+                                return formatCurrency(context.raw);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#888', callback: (val) => '$' + val / 1000 + 'k' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#888' }
+                    }
+                }
+            }
+        });
     }
 
     function updateStatsDashboard() {
         fetch('/api/dashboard/stats')
             .then(response => response.json())
-            .then(data => {
-                if (!data.success) {
-                    document.getElementById('stats-dashboard').innerHTML = `
-                    <div class="no-shift-message">
-                        <h2>⚠️ Error</h2>
-                        <p>${data.error || 'No se pudieron cargar las estadísticas'}</p>
-                    </div>
-                `;
-                    return;
-                }
-
-                if (!data.shift_open) {
-                    document.getElementById('stats-dashboard').innerHTML = `
-                    <div class="no-shift-message">
-                        <h2>📊 No hay turno abierto</h2>
-                        <p>Las estadísticas se mostrarán cuando se abra un turno</p>
-                    </div>
-                `;
-                    return;
-                }
-
-                // Meta de venta (Hardcoded por ahora, idealmente configurable)
-                const META_VENTA = 2000000; // $2.000.000
-                const porcentajeMeta = Math.min(100, (data.financial.total_recaudado / META_VENTA) * 100);
-
-                // Construir HTML del dashboard
-                const html = `
-                <div style="width: 100%; height: 100%; display: flex; flex-direction: column; gap: 0; overflow: hidden;">
-                    <!-- Header del Dashboard -->
-                    <div class="dashboard-header-full">
-                        <div style="display: flex; align-items: center; gap: 15px;">
-                            <h1 style="color: var(--text-primary); font-size: 1.1rem; margin: 0;">📊 Dashboard BIMBA</h1>
-                            <!-- Barra de Meta -->
-                            <div style="display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.2); padding: 4px 10px; border-radius: 20px;">
-                                <span style="font-size: 0.75rem; color: var(--text-secondary);">Meta: ${formatCurrency(META_VENTA)}</span>
-                                <div style="width: 100px; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
-                                    <div style="width: ${porcentajeMeta}%; height: 100%; background: linear-gradient(90deg, var(--primary) 0%, #00ff88 100%); transition: width 1s ease;"></div>
-                                </div>
-                                <span style="font-size: 0.75rem; color: var(--primary); font-weight: bold;">${porcentajeMeta.toFixed(1)}%</span>
-                            </div>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 0.8rem;">
-                            <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 10px var(--success);"></span>
-                            <span>Turno Abierto</span>
-                        </div>
-                    </div>
-                    
-                    <!-- Contenedor para el contenido -->
-                    <div style="flex: 1; overflow: hidden; display: grid; grid-template-rows: auto auto auto 1fr auto; gap: var(--space-2); min-height: 0; padding: 0 var(--space-2); box-sizing: border-box;">
-                        <!-- Resumen Financiero - Grid 2x3 -->
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); gap: var(--space-2); margin-bottom: var(--space-2); margin-top: var(--space-2);">
-                        <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: var(--space-2); text-align: center;">
-                            <div style="color: var(--text-secondary); font-size: 0.7rem; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Total Recaudado</div>
-                            <div style="color: var(--primary); font-size: 1.4rem; font-weight: 700; line-height: 1.2; text-shadow: 0 0 10px rgba(0,255,0,0.2);">${formatCurrency(data.financial.total_recaudado)}</div>
-                        </div>
-                        <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: var(--space-2); text-align: center;">
-                            <div style="color: var(--text-secondary); font-size: 0.7rem; margin-bottom: 4px; text-transform: uppercase;">Efectivo</div>
-                            <div style="color: var(--text-primary); font-size: 1.2rem; font-weight: 600; line-height: 1.2;">${formatCurrency(data.financial.efectivo)}</div>
-                        </div>
-                        <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: var(--space-2); text-align: center;">
-                            <div style="color: var(--text-secondary); font-size: 0.7rem; margin-bottom: 4px; text-transform: uppercase;">Débito</div>
-                            <div style="color: var(--text-primary); font-size: 1.2rem; font-weight: 600; line-height: 1.2;">${formatCurrency(data.financial.debito)}</div>
-                        </div>
-                        <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: var(--space-2); text-align: center;">
-                            <div style="color: var(--text-secondary); font-size: 0.7rem; margin-bottom: 4px; text-transform: uppercase;">Crédito</div>
-                            <div style="color: var(--text-primary); font-size: 1.2rem; font-weight: 600; line-height: 1.2;">${formatCurrency(data.financial.credito)}</div>
-                        </div>
-                        <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: var(--space-2); text-align: center;">
-                            <div style="color: var(--text-secondary); font-size: 0.7rem; margin-bottom: 4px; text-transform: uppercase;">Total Ventas</div>
-                            <div style="color: var(--text-primary); font-size: 1.2rem; font-weight: 600; line-height: 1.2;">${formatNumber(data.financial.total_ventas)}</div>
-                        </div>
-                        <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: var(--space-2); text-align: center;">
-                            <div style="color: var(--text-secondary); font-size: 0.7rem; margin-bottom: 4px; text-transform: uppercase;">Ticket Promedio</div>
-                            <div style="color: var(--info); font-size: 1.2rem; font-weight: 600; line-height: 1.2;">${formatCurrency(data.financial.ticket_promedio)}</div>
-                        </div>
-                    </div>
-                    
-                    <!-- KPIs -->
-                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-2); margin-bottom: var(--space-2);">
-                        <div style="background: var(--bg-surface); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: var(--radius-md); padding: var(--space-2); text-align: center; display: flex; flex-direction: column; align-items: center;">
-                            <div style="font-size: 1.2rem; margin-bottom: 2px;">👤</div>
-                            <div style="color: var(--text-primary); font-size: 0.9rem; font-weight: bold; margin-bottom: 2px;">${formatCurrency(data.kpis.por_persona)}</div>
-                            <div style="color: var(--text-secondary); font-size: 0.6rem;">Por Persona</div>
-                        </div>
-                        <div style="background: var(--bg-surface); border: 1px solid rgba(33, 150, 243, 0.3); border-radius: var(--radius-md); padding: var(--space-2); text-align: center; display: flex; flex-direction: column; align-items: center;">
-                            <div style="font-size: 1.2rem; margin-bottom: 2px;">📈</div>
-                            <div style="color: var(--text-primary); font-size: 0.9rem; font-weight: bold; margin-bottom: 2px;">${formatCurrency(data.kpis.proyeccion)}</div>
-                            <div style="color: var(--text-secondary); font-size: 0.6rem;">Proyección</div>
-                        </div>
-                        <div style="background: var(--bg-surface); border: 1px solid rgba(255, 152, 0, 0.3); border-radius: var(--radius-md); padding: var(--space-2); text-align: center; display: flex; flex-direction: column; align-items: center;">
-                            <div style="font-size: 1.2rem; margin-bottom: 2px;">⚡</div>
-                            <div style="color: var(--text-primary); font-size: 0.9rem; font-weight: bold; margin-bottom: 2px;">${formatDecimal(data.kpis.entregas_por_hora)}</div>
-                            <div style="color: var(--text-secondary); font-size: 0.6rem;">Entregas/Hr</div>
-                        </div>
-                        <div style="background: var(--bg-surface); border: 1px solid rgba(33, 150, 243, 0.3); border-radius: var(--radius-md); padding: var(--space-2); text-align: center; display: flex; flex-direction: column; align-items: center;">
-                            <div style="font-size: 1.2rem; margin-bottom: 2px;">📊</div>
-                            <div style="color: var(--text-primary); font-size: 0.9rem; font-weight: bold; margin-bottom: 2px;">${formatDecimal(data.kpis.ventas_por_hora)}</div>
-                            <div style="color: var(--text-secondary); font-size: 0.6rem;">Ventas/Hr</div>
-                        </div>
-                    </div>
-                    
-                    <!-- Métricas de Rendimiento y Tops en grid 2x3 -->
-                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); gap: var(--space-2); margin-bottom: var(--space-2);">
-                        <!-- Fila 1: Últimos Tickets Escaneados -->
-                        <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: var(--space-2); overflow: hidden; min-height: 0;">
-                            <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 5px; border-bottom: 1px solid var(--border-color); padding-bottom: 4px;">
-                                <span style="font-size: 0.9rem;">🎫</span>
-                                <span style="color: var(--text-primary); font-size: 0.7rem; font-weight: bold;">ÚLTIMOS TICKETS</span>
-                            </div>
-                            <div style="color: var(--text-secondary); font-size: 0.7rem; line-height: 1.3; max-height: 100px; overflow-y: auto;">
-                                ${data.recent_tickets && data.recent_tickets.length > 0 ? data.recent_tickets.map(ticket => `
-                                    <div style="display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
-                                        <div style="flex: 1; min-width: 0;">
-                                            <div style="color: var(--info); font-weight: 600; font-size: 0.65rem;">${ticket.sale_id}</div>
-                                            <div style="color: var(--text-muted); font-size: 0.6rem;">${ticket.scanned_at}</div>
-                                        </div>
-                                        <div style="text-align: right; margin-left: 5px;">
-                                            <div style="color: var(--success); font-weight: 600; font-size: 0.65rem;">${ticket.total_items} items</div>
-                                            <div style="color: var(--text-muted); font-size: 0.6rem;">${ticket.caja}</div>
-                                        </div>
-                                    </div>
-                                `).join('') : '<div style="color: var(--text-muted); padding: 8px; text-align: center; font-size: 0.65rem;">Sin tickets escaneados</div>'}
-                            </div>
-                        </div>
-                        <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: var(--space-2); overflow: hidden; min-height: 0;">
-                            <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 5px; border-bottom: 1px solid var(--border-color); padding-bottom: 4px;">
-                                <span style="font-size: 0.9rem;">${data.performance.tendencia.direccion === 'up' ? '↑' : data.performance.tendencia.direccion === 'down' ? '↓' : '→'}</span>
-                                <span style="color: var(--text-primary); font-size: 0.7rem; font-weight: bold;">TENDENCIA</span>
-                            </div>
-                            <div style="color: var(--text-secondary); font-size: 0.7rem; line-height: 1.3;">
-                                ${data.performance.tendencia.texto}<br>
-                                <span style="font-size: 1.2rem; font-weight: bold; color: ${data.performance.tendencia.porcentaje > 0 ? 'var(--success)' : 'var(--danger)'};">
-                                    ${data.performance.tendencia.porcentaje !== 0 ? `${data.performance.tendencia.porcentaje > 0 ? '+' : ''}${formatDecimal(data.performance.tendencia.porcentaje)}%` : '--'}
-                                </span>
-                            </div>
-                        </div>
-                        <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: var(--space-2); overflow: hidden; min-height: 0;">
-                            <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 5px; border-bottom: 1px solid var(--border-color); padding-bottom: 4px;">
-                                <span style="font-size: 0.9rem;">⚡</span>
-                                <span style="color: var(--text-primary); font-size: 0.7rem; font-weight: bold;">VELOCIDAD</span>
-                            </div>
-                            <div style="color: var(--text-secondary); font-size: 0.7rem; line-height: 1.3;">
-                                <span style="color: var(--text-primary); font-weight: bold; font-size: 1.1rem;">${data.performance.velocidad.entregas_15min}</span> entregas<br>
-                                <span style="color: var(--text-muted); font-size: 0.6rem;">(últimos 15 min)</span>
-                            </div>
-                        </div>
-                        
-                        <!-- Fila 2: Top Cards -->
-                        <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: var(--space-2); min-height: 0; overflow: hidden;">
-                            <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 5px; border-bottom: 1px solid var(--border-color); padding-bottom: 4px;">
-                                <span style="font-size: 0.9rem;">🔥</span>
-                                <span style="color: var(--text-primary); font-size: 0.7rem; font-weight: bold;">TOP PRODUCTOS</span>
-                            </div>
-                            <div style="color: var(--text-secondary); font-size: 0.7rem; overflow-y: auto; max-height: 100px;">
-                                ${data.tops.productos.length > 0 ? data.tops.productos.map((item, index) => `
-                                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 3px 0; margin-bottom: 2px;">
-                                        <div style="flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 5px;">
-                                            <span style="color: ${index === 0 ? 'var(--primary)' : 'var(--text-primary)'}; font-weight: ${index === 0 ? 'bold' : 'normal'};">${index + 1}. ${item.name}</span>
-                                        </div>
-                                        <span style="background: rgba(255,255,255,0.1); padding: 1px 5px; border-radius: 4px; font-size: 0.65rem; color: var(--text-primary);">${item.qty}</span>
-                                    </div>
-                                `).join('') : '<div style="color: var(--text-muted); padding: 8px; text-align: center; font-size: 0.65rem;">Sin datos recientes</div>'}
-                            </div>
-                        </div>
-                        <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: var(--space-2); min-height: 0; overflow: hidden;">
-                            <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 5px; border-bottom: 1px solid var(--border-color); padding-bottom: 4px;">
-                                <span style="font-size: 0.9rem;">👥</span>
-                                <span style="color: var(--text-primary); font-size: 0.7rem; font-weight: bold;">TOP BARTENDERS</span>
-                            </div>
-                            <div style="color: var(--text-secondary); font-size: 0.7rem; overflow-y: auto; max-height: 100px;">
-                                ${data.tops.bartenders.length > 0 ? data.tops.bartenders.map((item, index) => `
-                                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 3px 0; margin-bottom: 2px;">
-                                        <div style="flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 5px;">
-                                            <span style="color: var(--text-primary);">${index + 1}. ${item.name}</span>
-                                        </div>
-                                        <span style="background: rgba(255,255,255,0.1); padding: 1px 5px; border-radius: 4px; font-size: 0.65rem; color: var(--text-primary);">${item.qty}</span>
-                                    </div>
-                                `).join('') : '<div style="color: var(--text-muted); padding: 8px; text-align: center; font-size: 0.65rem;">Sin datos recientes</div>'}
-                            </div>
-                        </div>
-                        <div style="background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: var(--space-2); min-height: 0; overflow: hidden;">
-                            <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 5px; border-bottom: 1px solid var(--border-color); padding-bottom: 4px;">
-                                <span style="font-size: 0.9rem;">📍</span>
-                                <span style="color: var(--text-primary); font-size: 0.7rem; font-weight: bold;">BARRA ACTIVA</span>
-                            </div>
-                            <div style="color: var(--text-secondary); font-size: 0.7rem; display: flex; align-items: center; justify-content: center; height: 80px;">
-                                ${data.tops.barra_activa ? `
-                                    <div style="text-align: center;">
-                                        <div style="font-size: 1.5rem; color: var(--primary); font-weight: bold; margin-bottom: 4px; text-shadow: 0 0 10px rgba(0,255,0,0.2);">${data.tops.barra_activa.qty}</div>
-                                        <div style="color: var(--text-primary); font-size: 0.8rem;">${data.tops.barra_activa.name}</div>
-                                        <div style="color: var(--text-muted); font-size: 0.6rem; margin-top: 2px;">entregas</div>
-                                    </div>
-                                ` : '<div style="color: var(--text-muted); padding: 8px; text-align: center; font-size: 0.65rem;">Sin datos</div>'}
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Footer del Turno -->
-                    <div class="dashboard-footer-full">
-                        <div style="display: flex; align-items: center; gap: 15px;">
-                            <div>
-                                <span style="color: var(--text-secondary); font-size: 0.7rem;">Tiempo:</span>
-                                <span style="color: var(--text-primary); font-size: 0.75rem; font-weight: bold; margin-left: 5px;">${data.shift.tiempo_transcurrido}</span>
-                            </div>
-                            <div>
-                                <span style="color: var(--text-secondary); font-size: 0.7rem;">Entregas:</span>
-                                <span style="color: var(--text-primary); font-size: 0.75rem; font-weight: bold; margin-left: 5px;">${data.shift.total_entregas}</span>
-                            </div>
-                            <div>
-                                <span style="color: var(--text-secondary); font-size: 0.7rem;">Entradas:</span>
-                                <span style="color: var(--text-primary); font-size: 0.75rem; font-weight: bold; margin-left: 5px;">${data.shift.total_entradas}</span>
-                            </div>
-                        </div>
-                        <div style="color: var(--text-muted); font-size: 0.7rem;">
-                            <span id="current-time-admin">${new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-                        </div>
-                    </div>
-                    </div>
-                </div>
-            `;
-
-                const dashboardContainer = document.getElementById('stats-dashboard');
-                dashboardContainer.innerHTML = html;
-
-                // Asegurar que el contenedor use todo el espacio disponible
-                dashboardContainer.style.display = 'flex';
-                dashboardContainer.style.flexDirection = 'column';
-                dashboardContainer.style.height = '100%';
-                dashboardContainer.style.overflow = 'hidden';
-
-                // Actualizar hora actual
-                function updateTime() {
-                    const now = new Date();
-                    const timeStr = now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                    const timeElement = document.getElementById('current-time-admin');
-                    if (timeElement) {
-                        timeElement.textContent = timeStr;
-                    }
-                }
-                updateTime();
-                setInterval(updateTime, 1000);
-            })
-            .catch(error => {
-                console.error('Error al cargar estadísticas:', error);
-                document.getElementById('stats-dashboard').innerHTML = `
-                <div style="text-align: center; padding: 40px; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 15px; border: 2px solid rgba(244, 67, 54, 0.3);">
-                    <h3 style="color: #f44336; margin-bottom: 10px;">⚠️ Error</h3>
-                    <p style="color: #aaa;">No se pudieron cargar las estadísticas. Intenta recargar la página.</p>
-                </div>
-            `;
-            });
+            .then(data => renderDashboard(data))
+            .catch(err => console.error('Error fetching stats:', err));
     }
 
-    // Cargar dashboard al inicio
-    updateStatsDashboard();
-
-    // Actualizar cada 5 segundos
-    dashboardUpdateInterval = setInterval(updateStatsDashboard, 5000);
-
-    // Limpiar intervalo al salir de la página
-    window.addEventListener('beforeunload', () => {
-        if (dashboardUpdateInterval) {
-            clearInterval(dashboardUpdateInterval);
-        }
+    // Iniciar
+    document.addEventListener('DOMContentLoaded', () => {
+        updateStatsDashboard();
+        dashboardUpdateInterval = setInterval(updateStatsDashboard, 10000); // Actualizar cada 10s
     });
 
-    // Función para actualizar estado de servicios
-    function refreshServicesStatus() {
-        const btn = event.target;
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '⏳ Actualizando...';
-        btn.disabled = true;
-
-        // Llamar a la API para obtener el estado actualizado
-        fetch('/api/services/status')
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'ok') {
-                    updateServicesStatus(data.services);
-                    btn.innerHTML = '✅ Actualizado';
-                    setTimeout(() => {
-                        btn.innerHTML = originalText;
-                        btn.disabled = false;
-                    }, 2000);
-                } else {
-                    console.error('Error al obtener estado:', data.message);
-                    btn.innerHTML = '❌ Error';
-                    setTimeout(() => {
-                        btn.innerHTML = originalText;
-                        btn.disabled = false;
-                    }, 2000);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                btn.innerHTML = '❌ Error';
-                setTimeout(() => {
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                }, 2000);
-            });
-    }
-
-    // Función para actualizar el estado de los servicios en la UI
-    function updateServicesStatus(services) {
-        // Actualizar API (los otros servicios se eliminaron del panel)
-        if (services.api) {
-            updateServiceCard('api', services.api);
-        }
-    }
-
-    // Función para actualizar una tarjeta de servicio
-    function updateServiceCard(serviceName, serviceData) {
-        const card = document.querySelector(`[data-service="${serviceName}"]`);
-        if (!card) {
-            console.warn(`Tarjeta no encontrada para servicio: ${serviceName}`);
-            return;
-        }
-
-        // Determinar si está activo (running para servicios del sistema, online para API)
-        const isRunning = serviceData.running !== undefined ? serviceData.running : (serviceData.online !== undefined ? serviceData.online : false);
-
-        // Buscar elementos dentro de la tarjeta
-        const statusParagraph = card.querySelector('p');
-        const statusSpan = statusParagraph ? statusParagraph.querySelector('span') : null;
-        const messageParagraph = statusParagraph ? statusParagraph.nextElementSibling : null;
-
-        // Actualizar color del borde
-        if (isRunning) {
-            card.style.borderColor = 'rgba(76, 175, 80, 0.5)';
-            if (statusSpan) {
-                statusSpan.style.color = '#4caf50';
-                // Texto diferente para API vs servicios del sistema
-                if (serviceName === 'api') {
-                    statusSpan.textContent = '✅ Conectada';
-                } else {
-                    statusSpan.textContent = '✅ Activo';
-                }
-            }
-        } else {
-            card.style.borderColor = 'rgba(244, 67, 54, 0.5)';
-            if (statusSpan) {
-                statusSpan.style.color = '#f44336';
-                // Texto diferente para API vs servicios del sistema
-                if (serviceName === 'api') {
-                    statusSpan.textContent = '❌ Desconectada';
-                } else {
-                    statusSpan.textContent = '❌ Inactivo';
-                }
-            }
-        }
-
-        // Actualizar mensaje
-        if (messageParagraph && serviceData.message) {
-            // Para API, mostrar tiempo de respuesta si está online
-            if (serviceName === 'api' && serviceData.online && serviceData.response_time_ms !== undefined) {
-                messageParagraph.textContent = `Tiempo de respuesta: ${Math.round(serviceData.response_time_ms)}ms`;
-            } else {
-                messageParagraph.textContent = serviceData.message || 'Estado desconocido';
-            }
-        }
-
-        // Actualizar fecha de última actualización
-        const lastUpdatedSpan = card.querySelector(`.last-updated[data-service="${serviceName}"]`);
-        if (lastUpdatedSpan && serviceData.last_updated) {
-            const date = new Date(serviceData.last_updated);
-            const formattedDate = date.toLocaleString('es-ES', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-            });
-            lastUpdatedSpan.textContent = formattedDate;
-        }
-
-        // Actualizar badge si existe
-        const badge = card.querySelector('.badge');
-        if (badge) {
-            if (serviceName === 'api') {
-                if (isRunning) {
-                    badge.textContent = 'Online';
-                    badge.style.background = 'rgba(76, 175, 80, 0.3)';
-                    badge.style.color = '#4caf50';
-                } else {
-                    badge.textContent = 'Offline';
-                    badge.style.background = 'rgba(244, 67, 54, 0.3)';
-                    badge.style.color = '#f44336';
-                }
-            }
-        }
-
-        // Mostrar/ocultar botón de reinicio (solo para servicios del sistema, no API)
-        if (serviceName !== 'api') {
-            let restartButton = card.querySelector('.btn-restart-service');
-            if (!isRunning) {
-                // Servicio caído: mostrar botón de reinicio si no existe
-                if (!restartButton) {
-                    const buttonDiv = document.createElement('div');
-                    buttonDiv.style.marginTop = '15px';
-                    buttonDiv.innerHTML = `
-                    <button onclick="restartService('${serviceName}')" class="btn-restart-service" style="padding: 8px 16px; background: rgba(255, 152, 0, 0.2); border: 1px solid rgba(255, 152, 0, 0.5); color: #ff9800; border-radius: 5px; cursor: pointer; font-size: 0.9rem; width: 100%;">
-                        🔄 Reiniciar Servicio
-                    </button>
-                `;
-                    card.appendChild(buttonDiv);
-                }
-            } else {
-                // Servicio activo: ocultar botón de reinicio si existe
-                if (restartButton) {
-                    restartButton.parentElement.remove();
-                }
-            }
-        }
-
-        console.log(`Servicio ${serviceName} actualizado:`, { isRunning, status: serviceData.status || serviceData.online });
-    }
-
-    // Funciones de notificación (si no existen)
-    if (typeof showLoading === 'undefined') {
-        window.showLoading = function (message) {
-            const loadingDiv = document.createElement('div');
-            loadingDiv.id = 'loading-overlay';
-            loadingDiv.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10000; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.2rem;';
-            loadingDiv.innerHTML = `<div style="text-align: center;"><div style="margin-bottom: 10px;">⏳</div><div>${message || 'Cargando...'}</div></div>`;
-            document.body.appendChild(loadingDiv);
-        };
-    }
-
-    if (typeof hideLoading === 'undefined') {
-        window.hideLoading = function () {
-            const loadingDiv = document.getElementById('loading-overlay');
-            if (loadingDiv) {
-                loadingDiv.remove();
-            }
-        };
-    }
-
-    if (typeof showSuccess === 'undefined') {
-        window.showSuccess = function (message) {
-            alert(message);
-        };
-    }
-
-    if (typeof showError === 'undefined') {
-        window.showError = function (message) {
-            alert(message);
-        };
-    }
-
-    // Función para reiniciar un servicio (eliminada - ya no se monitorean servicios del sistema)
-
-    // Verificar estado solo al abrir el turno (no automáticamente)
-    // La verificación se hace solo cuando se abre un turno
-
-
+    // Limpiar
+    window.addEventListener('beforeunload', () => {
+        if (dashboardUpdateInterval) clearInterval(dashboardUpdateInterval);
+    });
 </script>
+
+<style>
+    /* Dashboard Styles */
+    :root {
+        --bg-dark: #0f172a;
+        --bg-card: #1e293b;
+        --text-main: #f8fafc;
+        --text-muted: #94a3b8;
+        --accent: #00ff88;
+        --accent-glow: rgba(0, 255, 136, 0.2);
+        --border: rgba(255, 255, 255, 0.05);
+    }
+
+    .admin-dashboard {
+        background-color: var(--bg-dark);
+        min-height: calc(100vh - 60px);
+        color: var(--text-main);
+        font-family: 'Inter', sans-serif;
+        padding: 20px;
+    }
+
+    .dashboard-container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    /* Header */
+    .dashboard-header {
+        margin-bottom: 30px;
+        background: var(--bg-card);
+        padding: 20px;
+        border-radius: 16px;
+        border: 1px solid var(--border);
+    }
+
+    .header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+
+    .dashboard-header h1 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin: 0 0 5px 0;
+        background: linear-gradient(90deg, #fff, #94a3b8);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        background: rgba(0, 255, 136, 0.1);
+        border-radius: 20px;
+        color: var(--accent);
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .dot {
+        width: 8px;
+        height: 8px;
+        background: var(--accent);
+        border-radius: 50%;
+        box-shadow: 0 0 8px var(--accent);
+        animation: pulse 2s infinite;
+    }
+
+    /* Meta Section */
+    .meta-container {
+        flex: 1;
+        max-width: 400px;
+        background: rgba(0, 0, 0, 0.2);
+        padding: 15px;
+        border-radius: 12px;
+    }
+
+    .meta-info {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        font-size: 0.9rem;
+    }
+
+    .meta-info .value {
+        font-weight: 700;
+        color: var(--accent);
+    }
+
+    .progress-bar-container {
+        height: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        overflow: hidden;
+        margin-bottom: 8px;
+    }
+
+    .progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, var(--accent), #00cc6a);
+        border-radius: 4px;
+        transition: width 1s ease;
+    }
+
+    .meta-details {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    /* Grid Layout */
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        /* 4 columnas base */
+        grid-template-rows: auto auto auto;
+        gap: 20px;
+    }
+
+    /* Cards */
+    .card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 20px;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Hero Card (Total Recaudado) */
+    .hero-card {
+        grid-column: span 2;
+        /* Ocupa 2 columnas */
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+    }
+
+    .hero-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 150px;
+        height: 150px;
+        background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+        opacity: 0.5;
+    }
+
+    .card-label {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        display: block;
+        margin-bottom: 10px;
+    }
+
+    .hero-value {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: #fff;
+        margin-bottom: 15px;
+        text-shadow: 0 0 20px rgba(0, 255, 136, 0.1);
+    }
+
+    .hero-subvalues {
+        display: flex;
+        gap: 20px;
+    }
+
+    .subvalue {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.9rem;
+        color: var(--text-muted);
+    }
+
+    .subvalue span:last-child {
+        color: #fff;
+        font-weight: 600;
+    }
+
+    /* KPI Cards */
+    .kpi-grid {
+        grid-column: span 2;
+        /* Ocupa las otras 2 columnas */
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+
+    .kpi-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 15px;
+    }
+
+    .kpi-icon {
+        font-size: 1.5rem;
+        margin-bottom: 5px;
+    }
+
+    .kpi-value {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: #fff;
+    }
+
+    .kpi-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+    }
+
+    /* Chart Card */
+    .chart-card {
+        grid-column: span 4;
+        /* Ancho completo */
+        height: 300px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .chart-container {
+        flex: 1;
+        position: relative;
+        width: 100%;
+    }
+
+    /* Lists Grid */
+    .lists-grid {
+        grid-column: span 4;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+    }
+
+    .list-card {
+        height: 300px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .card-header h3 {
+        margin: 0 0 15px 0;
+        font-size: 1.1rem;
+        color: var(--text-main);
+    }
+
+    .list-content {
+        flex: 1;
+        overflow-y: auto;
+        padding-right: 5px;
+    }
+
+    .list-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .rank {
+        width: 24px;
+        height: 24px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--text-muted);
+    }
+
+    .list-item:first-child .rank {
+        background: var(--accent);
+        color: #000;
+        box-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    .item-details {
+        flex: 1;
+    }
+
+    .item-name {
+        font-size: 0.9rem;
+        margin-bottom: 4px;
+    }
+
+    .item-bar-bg {
+        height: 4px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 2px;
+        overflow: hidden;
+    }
+
+    .item-bar {
+        height: 100%;
+        background: var(--accent);
+        border-radius: 2px;
+    }
+
+    .item-value {
+        font-weight: 700;
+        color: #fff;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+    }
+
+    /* Loading & Empty States */
+    .loading-state,
+    .empty-state,
+    .error-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 400px;
+        text-align: center;
+        color: var(--text-muted);
+    }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(255, 255, 255, 0.1);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 20px;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    @keyframes pulse {
+        0% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.5;
+        }
+
+        100% {
+            opacity: 1;
+        }
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+        .dashboard-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .hero-card,
+        .kpi-grid,
+        .chart-card,
+        .lists-grid {
+            grid-column: span 1;
+        }
+
+        .lists-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
 {% endblock %}
