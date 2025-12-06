@@ -1,0 +1,10 @@
+/Users/sebagatica/Library/Python/3.9/lib/python/site-packages/urllib3/__init__.py:35: NotOpenSSLWarning: urllib3 v2 only supports OpenSSL 1.1.1+, currently the 'ssl' module is compiled with 'LibreSSL 2.8.3'. See: https://github.com/urllib3/urllib3/issues/3020
+  warnings.warn(
+[2025-12-06 10:20:52,344] INFO in __init__: ✅ Variables de entorno cargadas desde: /Users/sebagatica/tickets/.env
+[2025-12-06 10:20:52,344] INFO in __init__:    API_KEY configurada: Sí
+[2025-12-06 10:20:52,344] INFO in __init__:    BASE_API_URL configurada: Sí
+[2025-12-06 10:20:52,843] INFO in __init__: ✅ Blueprint de notificaciones registrado
+[2025-12-06 10:21:00,516] INFO in __init__: ✅ Base de datos inicializada (todas las tablas)
+[2025-12-06 10:21:00,516] INFO in __init__: ⚠️  Kiosko desactivado
+[2025-12-06 10:21:00,574] INFO in __init__: ✅ Blueprint de Caja registrado
+Ingredients in DB: 46
