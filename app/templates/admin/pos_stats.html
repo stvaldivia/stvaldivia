@@ -1,0 +1,2961 @@
+{% extends "base.html" %}
+{% block title %}Estadísticas de Cajas{% endblock %}
+
+{% block head_extra %}
+<style>
+    .pos-stats-container {
+        width: 100%;
+        padding: 20px;
+        box-sizing: border-box;
+    }
+    
+    .stats-header {
+        text-align: center;
+        margin-bottom: 30px;
+        padding: 25px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px;
+        color: white;
+    }
+    
+    .stats-header h1 {
+        margin: 0;
+        font-size: 2.5rem;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .stat-card {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        border: 2px solid rgba(102, 126, 234, 0.3);
+        border-radius: 15px;
+        padding: 25px;
+        transition: all 0.3s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-5px);
+        border-color: rgba(102, 126, 234, 0.6);
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    }
+    
+    .stat-card .label {
+        font-size: 0.9rem;
+        color: #aaa;
+        margin-bottom: 10px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .stat-card .value {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #fff;
+    }
+    
+    .payment-methods-section {
+        background: #252525;
+        border-radius: 15px;
+        padding: 25px;
+        margin-bottom: 30px;
+    }
+    
+    .payment-methods-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+    }
+    
+    .payment-card {
+        text-align: center;
+        padding: 20px;
+        border-radius: 10px;
+        border: 2px solid;
+    }
+    
+    .payment-card.cash {
+        background: rgba(76, 175, 80, 0.1);
+        border-color: rgba(76, 175, 80, 0.3);
+    }
+    
+    .payment-card.debit {
+        background: rgba(33, 150, 243, 0.1);
+        border-color: rgba(33, 150, 243, 0.3);
+    }
+    
+    .payment-card.credit {
+        background: rgba(156, 39, 176, 0.1);
+        border-color: rgba(156, 39, 176, 0.3);
+    }
+    
+    .payment-card .amount {
+        font-size: 2rem;
+        font-weight: bold;
+        margin: 10px 0;
+    }
+    
+    .payment-card.cash .amount {
+        color: #4caf50;
+    }
+    
+    .payment-card.debit .amount {
+        color: #2196f3;
+    }
+    
+    .payment-card.credit .amount {
+        color: #9c27b0;
+    }
+    
+    .registers-section {
+        background: #252525;
+        border-radius: 15px;
+        padding: 25px;
+        margin-bottom: 30px;
+    }
+    
+    .registers-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+    }
+    
+    .register-card {
+        background: #2a2a2a;
+        border: 2px solid rgba(102, 126, 234, 0.3);
+        border-radius: 15px;
+        padding: 25px;
+        transition: all 0.3s ease;
+    }
+    
+    .register-card:hover {
+        transform: translateY(-5px);
+        border-color: rgba(102, 126, 234, 0.6);
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+    }
+    
+    .register-header {
+        border-bottom: 2px solid rgba(102, 126, 234, 0.3);
+        padding-bottom: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .register-name {
+        font-size: 1.8rem;
+        font-weight: bold;
+        color: #667eea;
+        margin-bottom: 10px;
+        text-align: center;
+    }
+    
+    .register-status-badge {
+        display: inline-block;
+        padding: 6px 15px;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: bold;
+        margin-left: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .register-status-badge.abierta {
+        background: rgba(76, 175, 80, 0.2);
+        color: #4caf50;
+        border: 2px solid rgba(76, 175, 80, 0.5);
+    }
+    
+    .register-status-badge.bloqueada {
+        background: rgba(255, 152, 0, 0.2);
+        color: #ff9800;
+        border: 2px solid rgba(255, 152, 0, 0.5);
+    }
+    
+    .register-status-badge.cerrada {
+        background: rgba(158, 158, 158, 0.2);
+        color: #9e9e9e;
+        border: 2px solid rgba(158, 158, 158, 0.5);
+    }
+    
+    .view-close-btn {
+        padding: 8px 20px;
+        background-color: #667eea;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 0.9rem;
+        transition: all 0.3s;
+        margin-top: 10px;
+    }
+    
+    .view-close-btn:hover {
+        background-color: #5568d3;
+        transform: scale(1.05);
+    }
+    
+    .register-info-section {
+        padding: 15px 0;
+    }
+    
+    .info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: 12px 0;
+        border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+    }
+    
+    .info-row:last-child {
+        border-bottom: none;
+    }
+    
+    .info-label {
+        color: #aaa;
+        font-size: 0.95rem;
+        font-weight: 500;
+        flex: 0 0 45%;
+    }
+    
+    .info-value {
+        color: #fff;
+        font-size: 1rem;
+        text-align: right;
+        flex: 1;
+    }
+    
+    .payment-breakdown {
+        text-align: right;
+        color: #fff;
+        font-size: 0.95rem;
+    }
+    
+    .register-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .register-stat-item {
+        background: rgba(102, 126, 234, 0.1);
+        border-radius: 10px;
+        padding: 15px;
+        text-align: center;
+    }
+    
+    .register-stat-item .label {
+        font-size: 0.8rem;
+        color: #aaa;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .register-stat-item .value {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #fff;
+    }
+    
+    .register-payment-methods {
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid rgba(102, 126, 234, 0.2);
+    }
+    
+    .register-payment-methods h4 {
+        color: #667eea;
+        font-size: 1rem;
+        margin-bottom: 15px;
+        text-align: center;
+    }
+    
+    .register-payment-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+    }
+    
+    .register-payment-item {
+        background: rgba(102, 126, 234, 0.05);
+        border-radius: 8px;
+        padding: 12px;
+        text-align: center;
+    }
+    
+    .register-payment-item .payment-label {
+        font-size: 0.75rem;
+        color: #aaa;
+        margin-bottom: 5px;
+    }
+    
+    .register-payment-item .payment-amount {
+        font-size: 1.1rem;
+        font-weight: bold;
+        color: #fff;
+        margin-bottom: 3px;
+    }
+    
+    .register-payment-item .payment-count {
+        font-size: 0.7rem;
+        color: #888;
+    }
+    
+    .register-payment-item.cash {
+        border-left: 3px solid #4caf50;
+    }
+    
+    .register-payment-item.debit {
+        border-left: 3px solid #2196f3;
+    }
+    
+    .register-payment-item.credit {
+        border-left: 3px solid #9c27b0;
+    }
+    
+    .loading {
+        text-align: center;
+        padding: 40px;
+        color: #aaa;
+        font-size: 1.1rem;
+    }
+    
+    .error-message {
+        background: rgba(244, 67, 54, 0.2);
+        border: 2px solid rgba(244, 67, 54, 0.5);
+        border-radius: 10px;
+        padding: 20px;
+        color: #f44336;
+        text-align: center;
+        margin: 20px 0;
+    }
+    
+    .section-title {
+        font-size: 1.8rem;
+        color: #e8e8e8;
+        margin-bottom: 10px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid rgba(102, 126, 234, 0.3);
+    }
+    
+    .section-subtitle {
+        color: #aaa;
+        font-size: 0.95rem;
+        margin-bottom: 20px;
+    }
+    
+    /* Estilos para cierres pendientes */
+    .pending-closes-section {
+        background: #252525;
+        border-radius: 15px;
+        padding: 25px;
+        margin-bottom: 30px;
+    }
+    
+    .pending-closes-list {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        margin-top: 20px;
+    }
+    
+    .pending-close-card {
+        background: #1a1a2e;
+        border: 1px solid #2a2a3e;
+        border-radius: 12px;
+        padding: 20px;
+        transition: all 0.3s ease;
+    }
+    
+    .pending-close-card:hover {
+        border-color: #4a4a6e;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    
+    .pending-close-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #2a2a3e;
+    }
+    
+    .pending-close-title {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    
+    .pending-close-title h3 {
+        margin: 0;
+        color: #e8e8e8;
+        font-size: 1.3rem;
+    }
+    
+    .pending-close-status {
+        padding: 5px 12px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        background: rgba(255, 152, 0, 0.2);
+        color: #ff9800;
+    }
+    
+    .pending-close-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        text-align: right;
+        color: #aaa;
+        font-size: 0.9rem;
+    }
+    
+    .pending-close-body {
+        margin-bottom: 20px;
+    }
+    
+    .pending-close-amounts {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+        padding: 20px;
+        background: #0f0f1e;
+        border-radius: 8px;
+        margin-bottom: 15px;
+    }
+    
+    .pending-amount-section h4 {
+        margin: 0 0 15px 0;
+        color: #e8e8e8;
+        font-size: 1rem;
+        border-bottom: 1px solid #2a2a3e;
+        padding-bottom: 10px;
+    }
+    
+    .pending-amount-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        color: #ccc;
+        font-size: 0.9rem;
+    }
+    
+    .pending-amount-row.difference {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid #2a2a3e;
+        font-weight: 600;
+    }
+    
+    .pending-total-difference {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px;
+        background: #0f0f1e;
+        border-radius: 8px;
+        font-size: 1.1rem;
+        margin-bottom: 15px;
+    }
+    
+    .pending-total-difference strong {
+        color: #e8e8e8;
+    }
+    
+    .pending-close-notes {
+        padding: 15px;
+        background: #0f0f1e;
+        border-radius: 8px;
+        color: #ccc;
+        font-size: 0.9rem;
+        margin-bottom: 15px;
+    }
+    
+    .pending-close-notes strong {
+        color: #e8e8e8;
+        display: block;
+        margin-bottom: 8px;
+    }
+    
+    .pending-close-actions {
+        display: flex;
+        gap: 10px;
+        padding-top: 15px;
+        border-top: 1px solid #2a2a3e;
+    }
+    
+    .btn-accept-close {
+        flex: 1;
+        padding: 12px 24px;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: #4caf50;
+        color: white;
+    }
+    
+    .btn-accept-close:hover {
+        background: #45a049;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+    }
+    
+    .no-pending-closes {
+        text-align: center;
+        padding: 60px 20px;
+        color: #aaa;
+        background: #1a1a1a;
+        border-radius: 10px;
+    }
+    
+    .no-pending-closes p {
+        font-size: 1.2rem;
+        margin: 10px 0;
+    }
+    
+    .no-pending-closes .subtitle {
+        font-size: 0.9rem;
+        color: #666;
+    }
+    
+    /* Estilos para últimos tickets - similar a /admin/logs */
+    .recent-tickets-section {
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid rgba(102, 126, 234, 0.2);
+    }
+    
+    .recent-tickets-title {
+        font-size: 1.2rem;
+        color: #667eea;
+        margin-bottom: 15px;
+        font-weight: bold;
+    }
+    
+    .tickets-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+    }
+    
+    .tickets-table thead th {
+        padding: 12px;
+        background: linear-gradient(135deg, #2d5a3d 0%, #1e3d2a 100%);
+        color: #fff;
+        border: 1px solid #1a2e1f;
+        text-align: left;
+        font-weight: bold;
+        font-size: 0.9rem;
+    }
+    
+    .tickets-table thead th:nth-child(1) { width: 20%; }
+    .tickets-table thead th:nth-child(2) { width: 20%; }
+    .tickets-table thead th:nth-child(3) { width: 15%; text-align: right; }
+    .tickets-table thead th:nth-child(4) { width: 15%; }
+    .tickets-table thead th:nth-child(5) { width: 15%; }
+    .tickets-table thead th:nth-child(6) { width: 15%; }
+    
+    .tickets-table tbody tr {
+        background-color: #1a1a1a;
+        transition: background-color 0.2s;
+    }
+    
+    .tickets-table tbody tr:nth-child(even) {
+        background-color: #222;
+    }
+    
+    .tickets-table tbody tr:hover {
+        background-color: rgba(76, 175, 80, 0.15);
+        cursor: pointer;
+    }
+    
+    .tickets-table tbody td {
+        padding: 12px;
+        border: 1px solid #333;
+        color: #e8e8e8;
+        font-size: 0.9rem;
+    }
+    
+    .ticket-id-cell {
+        color: #4caf50;
+        font-weight: bold;
+    }
+    
+    .ticket-amount-cell {
+        text-align: right;
+        color: #4caf50;
+        font-weight: bold;
+    }
+    
+    .ticket-payment-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: bold;
+    }
+    
+    .ticket-payment-badge.cash {
+        background-color: rgba(76, 175, 80, 0.2);
+        color: #4caf50;
+    }
+    
+    .ticket-payment-badge.debit {
+        background-color: rgba(33, 150, 243, 0.2);
+        color: #2196f3;
+    }
+    
+    .ticket-payment-badge.credit {
+        background-color: rgba(156, 39, 176, 0.2);
+        color: #9c27b0;
+    }
+    
+    .ticket-time-cell {
+        color: #aaa;
+        font-size: 0.85rem;
+    }
+    
+    .ticket-empty {
+        text-align: center;
+        padding: 40px;
+        color: #aaa;
+    }
+    
+    /* Botón colapsable para tickets */
+    .tickets-toggle-btn {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        padding: 12px 15px;
+        background: linear-gradient(135deg, #2d5a3d 0%, #1e3d2a 100%);
+        color: #fff;
+        border: 1px solid #1a2e1f;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        margin-bottom: 10px;
+    }
+    
+    .tickets-toggle-btn:hover {
+        background: linear-gradient(135deg, #1e3d2a 0%, #2d5a3d 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    
+    .tickets-toggle-btn .arrow {
+        transition: transform 0.3s ease;
+        font-size: 1.2rem;
+    }
+    
+    .tickets-toggle-btn.collapsed .arrow {
+        transform: rotate(-90deg);
+    }
+    
+    .tickets-content {
+        max-height: 600px;
+        overflow: hidden;
+        transition: max-height 0.3s ease, opacity 0.3s ease;
+        opacity: 1;
+    }
+    
+    .tickets-content.collapsed {
+        max-height: 0;
+        opacity: 0;
+        overflow: hidden;
+    }
+    
+    .tickets-count-badge {
+        background-color: rgba(76, 175, 80, 0.3);
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.9rem;
+        margin-left: 10px;
+    }
+    
+    /* Modal de detalle de ticket */
+    .ticket-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 10000;
+        overflow-y: auto;
+        padding: 20px;
+    }
+    
+    .ticket-modal.active {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+    }
+    
+    .ticket-modal-content {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        border-radius: 15px;
+        padding: 30px;
+        max-width: 800px;
+        width: 100%;
+        margin-top: 20px;
+        margin-bottom: 20px;
+        border: 2px solid rgba(102, 126, 234, 0.3);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+    
+    .ticket-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid rgba(102, 126, 234, 0.3);
+    }
+    
+    .ticket-modal-title {
+        font-size: 1.8rem;
+        color: #667eea;
+        font-weight: bold;
+    }
+    
+    .ticket-modal-close {
+        background: rgba(244, 67, 54, 0.2);
+        border: 2px solid rgba(244, 67, 54, 0.5);
+        color: #f44336;
+        border-radius: 8px;
+        padding: 10px 20px;
+        cursor: pointer;
+        font-size: 1rem;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+    
+    .ticket-modal-close:hover {
+        background: rgba(244, 67, 54, 0.3);
+        transform: scale(1.05);
+    }
+    
+    .ticket-detail-section {
+        margin-bottom: 25px;
+    }
+    
+    .ticket-detail-label {
+        font-size: 0.9rem;
+        color: #aaa;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .ticket-detail-value {
+        font-size: 1.2rem;
+        color: #fff;
+        font-weight: bold;
+    }
+    
+    .ticket-items-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+    }
+    
+    .ticket-items-table th {
+        background: rgba(102, 126, 234, 0.2);
+        padding: 12px;
+        text-align: left;
+        color: #667eea;
+        font-weight: bold;
+        border-bottom: 2px solid rgba(102, 126, 234, 0.3);
+    }
+    
+    .ticket-items-table td {
+        padding: 12px;
+        border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+        color: #fff;
+    }
+    
+    .ticket-items-table tr:hover {
+        background: rgba(102, 126, 234, 0.1);
+    }
+    
+    .ticket-total-row {
+        background: rgba(102, 126, 234, 0.2);
+        font-weight: bold;
+        font-size: 1.1rem;
+    }
+    
+    /* Estilos para lista de cierres de caja */
+    .closes-section {
+        background: #252525;
+        border-radius: 15px;
+        padding: 25px;
+        margin-bottom: 30px;
+    }
+    
+    .closes-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+        background: #1a1a1a;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    
+    .closes-table thead th {
+        padding: 15px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+        text-align: left;
+        font-weight: bold;
+        font-size: 0.95rem;
+        border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .closes-table tbody tr {
+        background-color: #1a1a1a;
+        transition: background-color 0.2s;
+        border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+    }
+    
+    .closes-table tbody tr:nth-child(even) {
+        background-color: #222;
+    }
+    
+    .closes-table tbody tr:hover {
+        background-color: rgba(102, 126, 234, 0.15);
+    }
+    
+    .closes-table tbody td {
+        padding: 15px;
+        color: #e8e8e8;
+        font-size: 0.9rem;
+    }
+    
+    .close-id-cell {
+        color: #aaa;
+        font-weight: bold;
+        font-size: 0.9rem;
+        text-align: center;
+    }
+    
+    .close-register-name {
+        color: #667eea;
+        font-weight: bold;
+    }
+    
+    .close-employee-name {
+        color: #fff;
+    }
+    
+    .close-amount {
+        color: #4caf50;
+        font-weight: bold;
+        text-align: right;
+    }
+    
+    .close-date {
+        color: #aaa;
+        font-size: 0.85rem;
+    }
+    
+    /* Paginación */
+    .pagination-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+        margin-top: 25px;
+        padding: 20px;
+    }
+    
+    .pagination-btn {
+        padding: 10px 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+        min-width: 45px;
+    }
+    
+    .pagination-btn:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    .pagination-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
+    .pagination-info {
+        color: #aaa;
+        font-size: 0.95rem;
+        padding: 0 15px;
+    }
+    
+    .pagination-page-input {
+        background: #1a1a1a;
+        border: 2px solid rgba(102, 126, 234, 0.3);
+        color: #fff;
+        border-radius: 8px;
+        padding: 8px 15px;
+        width: 60px;
+        text-align: center;
+        font-size: 0.95rem;
+    }
+    
+    .pagination-page-input:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+    
+    .closes-empty {
+        text-align: center;
+        padding: 60px 20px;
+        color: #aaa;
+        font-size: 1.1rem;
+    }
+    
+    .view-close-detail-btn {
+        padding: 8px 16px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .view-close-detail-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    /* Modal de detalle de cierre */
+    .close-detail-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 10000;
+        overflow-y: auto;
+        padding: 20px;
+    }
+    
+    .close-detail-modal.active {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+    }
+    
+    .close-detail-content {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        border-radius: 15px;
+        padding: 30px;
+        max-width: 900px;
+        width: 100%;
+        margin-top: 20px;
+        margin-bottom: 20px;
+        border: 2px solid rgba(102, 126, 234, 0.3);
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+    
+    .close-detail-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid rgba(102, 126, 234, 0.3);
+    }
+    
+    .close-detail-header h2 {
+        font-size: 1.8rem;
+        color: #667eea;
+        font-weight: bold;
+        margin: 0;
+    }
+    
+    .close-detail-header-actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+    
+    .close-detail-print-btn {
+        padding: 8px 16px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .close-detail-print-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    .close-detail-close-btn {
+        background: rgba(244, 67, 54, 0.2);
+        border: 2px solid rgba(244, 67, 54, 0.5);
+        color: #f44336;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        cursor: pointer;
+        font-size: 1.5rem;
+        font-weight: bold;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .close-detail-close-btn:hover {
+        background: rgba(244, 67, 54, 0.3);
+        transform: scale(1.1);
+    }
+    
+    .close-detail-section {
+        margin-bottom: 30px;
+    }
+    
+    .close-detail-section h3 {
+        font-size: 1.3rem;
+        color: #667eea;
+        margin-bottom: 15px;
+        border-bottom: 1px solid rgba(102, 126, 234, 0.2);
+        padding-bottom: 10px;
+    }
+    
+    .close-detail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+    }
+    
+    .close-detail-item {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .close-detail-label {
+        font-size: 0.85rem;
+        color: #aaa;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .close-detail-value {
+        font-size: 1.1rem;
+        color: #fff;
+        font-weight: bold;
+    }
+    
+    .close-detail-status {
+        display: inline-block;
+        padding: 5px 12px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    
+    .close-detail-status.pending {
+        background: rgba(255, 152, 0, 0.2);
+        color: #ff9800;
+    }
+    
+    .close-detail-status.balanced {
+        background: rgba(76, 175, 80, 0.2);
+        color: #4caf50;
+    }
+    
+    .close-detail-status.resolved {
+        background: rgba(33, 150, 243, 0.2);
+        color: #2196f3;
+    }
+    
+    .close-detail-value.positive {
+        color: #4caf50;
+    }
+    
+    .close-detail-value.negative {
+        color: #f44336;
+    }
+    
+    .close-detail-notes {
+        background: rgba(102, 126, 234, 0.1);
+        border-left: 3px solid rgba(102, 126, 234, 0.5);
+        padding: 15px;
+        border-radius: 8px;
+        color: #e8e8e8;
+        white-space: pre-wrap;
+        line-height: 1.6;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pos-stats-container">
+    {% if not shift_status.get('is_open', False) %}
+    <div class="error-message">
+        ⚠️ No hay un turno abierto. Abre un turno para ver las estadísticas POS.
+    </div>
+    {% else %}
+    
+    <!-- Resumen General -->
+    <div class="stats-grid">
+        <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <div class="label">Total Ventas POS</div>
+            <div class="value" id="pos-total-sales">0</div>
+        </div>
+        <div class="stat-card" style="background: linear-gradient(135deg, #4caf50 0%, #45a049 100%); color: white;">
+            <div class="label">Total Recaudado</div>
+            <div class="value" id="pos-total-amount">$0</div>
+        </div>
+        <div class="stat-card" style="background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%); color: white;">
+            <div class="label">Promedio por Venta</div>
+            <div class="value" id="pos-avg-sale">$0</div>
+        </div>
+        <div class="stat-card" style="background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); color: white;">
+            <div class="label">Cajas Activas</div>
+            <div class="value" id="pos-active-registers">0</div>
+        </div>
+    </div>
+    
+    <!-- Información de Kioskos -->
+    {% if kiosk_stats %}
+    <div class="kiosk-stats-section" style="margin-bottom: 30px; padding: 25px; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border: 2px solid rgba(255, 193, 7, 0.3); border-radius: 15px;">
+        <h2 class="section-title">🎫 Tótems de Autoatención - Kioskos</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px;">
+            <div style="background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 10px; padding: 20px; text-align: center;">
+                <div style="font-size: 2.5rem; margin-bottom: 10px;">🖥️</div>
+                <h3 style="color: #e8e8e8; margin: 0 0 10px 0; font-size: 1.2rem;">Acceso al Tótem</h3>
+                <a href="/kiosk" target="_blank" style="display: inline-block; padding: 10px 20px; background: rgba(255, 193, 7, 0.3); border: 1px solid rgba(255, 193, 7, 0.5); color: #ffc107; border-radius: 8px; text-decoration: none; font-weight: 600; transition: all 0.3s ease;">
+                    🖥️ Abrir Tótem
+                </a>
+            </div>
+            
+            <div style="background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 10px; padding: 20px; text-align: center;">
+                <div style="font-size: 2.5rem; margin-bottom: 10px;">📊</div>
+                <h3 style="color: #e8e8e8; margin: 0 0 10px 0; font-size: 1.2rem;">Estadísticas del Turno</h3>
+                <div style="color: #aaa; margin: 8px 0;">
+                    <strong style="color: #4caf50;">Pagos aprobados:</strong> {{ kiosk_stats.pagos_turno }}
+                </div>
+                <div style="color: #aaa; margin: 8px 0;">
+                    <strong style="color: #4caf50;">Monto del turno:</strong> ${{ "{:,.0f}".format(kiosk_stats.monto_turno) }}
+                </div>
+                {% if kiosk_stats.pagos_pendientes > 0 %}
+                <div style="color: #ff9800; margin: 8px 0;">
+                    <strong>Pendientes:</strong> {{ kiosk_stats.pagos_pendientes }}
+                </div>
+                {% endif %}
+                <span style="display: inline-block; margin-top: 10px; padding: 5px 12px; background: rgba(76, 175, 80, 0.3); color: #4caf50; border-radius: 15px; font-size: 0.85rem; font-weight: bold;">Turno Actual</span>
+            </div>
+            
+            <div style="background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 10px; padding: 20px; text-align: center;">
+                <div style="font-size: 2.5rem; margin-bottom: 10px;">💰</div>
+                <h3 style="color: #e8e8e8; margin: 0 0 10px 0; font-size: 1.2rem;">Total Histórico</h3>
+                <div style="color: #aaa; margin: 8px 0;">
+                    <strong style="color: #667eea;">Total pagos:</strong> {{ kiosk_stats.total_pagos }}
+                </div>
+                <div style="color: #aaa; margin: 8px 0;">
+                    <strong style="color: #667eea;">Monto total:</strong> ${{ "{:,.0f}".format(kiosk_stats.monto_total) }}
+                </div>
+                <span style="display: inline-block; margin-top: 10px; padding: 5px 12px; background: rgba(102, 126, 234, 0.3); color: #667eea; border-radius: 15px; font-size: 0.85rem; font-weight: bold;">Historial</span>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Métodos de Pago -->
+    <div class="payment-methods-section">
+        <h2 class="section-title">💳 Distribución por Método de Pago</h2>
+        <div class="payment-methods-grid">
+            <div class="payment-card cash">
+                <div style="font-size: 1.2rem; margin-bottom: 10px;">💵 Efectivo</div>
+                <div class="amount" id="pos-cash-total">$0</div>
+                <div style="font-size: 0.85rem; color: #888;" id="pos-cash-count">0 ventas</div>
+            </div>
+            <div class="payment-card debit">
+                <div style="font-size: 1.2rem; margin-bottom: 10px;">💳 Débito</div>
+                <div class="amount" id="pos-debit-total">$0</div>
+                <div style="font-size: 0.85rem; color: #888;" id="pos-debit-count">0 ventas</div>
+            </div>
+            <div class="payment-card credit">
+                <div style="font-size: 1.2rem; margin-bottom: 10px;">💳 Crédito</div>
+                <div class="amount" id="pos-credit-total">$0</div>
+                <div style="font-size: 0.85rem; color: #888;" id="pos-credit-count">0 ventas</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Estadísticas por Caja -->
+    <div class="registers-section">
+        <h2 class="section-title">📊 Estadísticas por Cajas</h2>
+        <div id="pos-registers-stats" class="registers-grid">
+            <div class="loading">Cargando estadísticas...</div>
+        </div>
+    </div>
+    
+    <!-- Cierres Pendientes de Aceptación -->
+    <div class="pending-closes-section">
+        <h2 class="section-title">⏳ Cierres Pendientes de Revisión</h2>
+        <p class="section-subtitle">Recibe y acepta los cierres de caja realizados por los cajeros</p>
+        <div id="pending-closes-container">
+            <div class="loading">Cargando cierres pendientes...</div>
+        </div>
+    </div>
+    
+    <!-- Lista de Cierres de Caja -->
+    <div class="closes-section">
+        <h2 class="section-title">🔒 Cierres de Caja</h2>
+        <p class="section-subtitle">Historial de todos los cierres de caja</p>
+        <div id="pos-closes-container">
+            <div class="loading">Cargando cierres...</div>
+        </div>
+    </div>
+    
+    {% endif %}
+</div>
+
+<script>
+    // Cargar estadísticas de Cajas (no es monitoreo en tiempo real)
+    async function updatePosStats() {
+        try {
+            console.log('🔄 Actualizando estadísticas POS...');
+            const response = await fetch('/admin/api/register-sales-monitor?include_stats=true');
+            const result = await response.json();
+            
+            console.log('📊 Respuesta del servidor:', result);
+            
+            // Verificar si hay error de autenticación
+            if (!result.success) {
+                if (result.error === 'No autenticado' || response.status === 401) {
+                    console.error('❌ Error: No estás autenticado. Por favor, inicia sesión.');
+                    const registersStatsContainer = document.getElementById('pos-registers-stats');
+                    if (registersStatsContainer) {
+                        registersStatsContainer.innerHTML = `
+                            <div class="error-message" style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #f44336;">
+                                ⚠️ Error de autenticación. Por favor, <a href="/login_admin" style="color: #667eea;">inicia sesión</a> nuevamente.
+                            </div>
+                        `;
+                    }
+                    return;
+                }
+                
+                console.error('❌ Error en respuesta:', result.error || 'Respuesta sin success');
+                const registersStatsContainer = document.getElementById('pos-registers-stats');
+                if (registersStatsContainer) {
+                    registersStatsContainer.innerHTML = `
+                        <div class="error-message" style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #f44336;">
+                            ❌ Error: ${result.error || 'No se pudieron cargar las estadísticas'}
+                        </div>
+                    `;
+                }
+                return;
+            }
+            
+            if (result.success && result.data) {
+                const data = result.data;
+                const summary = data.summary || {};
+                const registers = data.registers || {};
+                
+                console.log('📊 Datos recibidos:', { summary, registers: Object.keys(registers) });
+                
+                // Actualizar resumen general
+                const totalSalesEl = document.getElementById('pos-total-sales');
+                const totalAmountEl = document.getElementById('pos-total-amount');
+                const avgSaleEl = document.getElementById('pos-avg-sale');
+                const activeRegistersEl = document.getElementById('pos-active-registers');
+                
+                if (totalSalesEl) totalSalesEl.textContent = summary.total_sales || 0;
+                if (totalAmountEl) {
+                    totalAmountEl.textContent = '$' + parseFloat(summary.total_amount || 0).toLocaleString('es-CL', {maximumFractionDigits: 0});
+                }
+                
+                const avgSale = summary.total_sales > 0 ? (summary.total_amount / summary.total_sales) : 0;
+                if (avgSaleEl) {
+                    avgSaleEl.textContent = '$' + parseFloat(avgSale).toLocaleString('es-CL', {maximumFractionDigits: 0});
+                }
+                
+                // Contar cajas activas (abiertas, con o sin ventas)
+                const activeRegisters = Object.keys(registers).filter(regId => {
+                    const reg = registers[regId];
+                    // Caja activa si está abierta (tiene lock) y no está cerrada
+                    return reg && !reg.is_closed && (reg.current_cashier_id || reg.opened_at);
+                }).length;
+                if (activeRegistersEl) activeRegistersEl.textContent = activeRegisters;
+                
+                // Actualizar métodos de pago
+                const cashTotalEl = document.getElementById('pos-cash-total');
+                const debitTotalEl = document.getElementById('pos-debit-total');
+                const creditTotalEl = document.getElementById('pos-credit-total');
+                const cashCountEl = document.getElementById('pos-cash-count');
+                const debitCountEl = document.getElementById('pos-debit-count');
+                const creditCountEl = document.getElementById('pos-credit-count');
+                
+                if (cashTotalEl) {
+                    cashTotalEl.textContent = '$' + parseFloat(summary.total_cash || 0).toLocaleString('es-CL', {maximumFractionDigits: 0});
+                }
+                if (debitTotalEl) {
+                    debitTotalEl.textContent = '$' + parseFloat(summary.total_debit || 0).toLocaleString('es-CL', {maximumFractionDigits: 0});
+                }
+                if (creditTotalEl) {
+                    creditTotalEl.textContent = '$' + parseFloat(summary.total_credit || 0).toLocaleString('es-CL', {maximumFractionDigits: 0});
+                }
+                
+                // Contar ventas por método
+                let cashCount = 0, debitCount = 0, creditCount = 0;
+                Object.values(registers).forEach(reg => {
+                    if (reg.sales) {
+                        reg.sales.forEach(sale => {
+                            const paymentType = sale.payment_type || '';
+                            if (paymentType === 'Efectivo' || sale.payment_cash > 0) cashCount++;
+                            else if (paymentType === 'Débito' || sale.payment_debit > 0) debitCount++;
+                            else if (paymentType === 'Crédito' || sale.payment_credit > 0) creditCount++;
+                        });
+                    }
+                });
+                
+                if (cashCountEl) cashCountEl.textContent = `${cashCount} ventas`;
+                if (debitCountEl) debitCountEl.textContent = `${debitCount} ventas`;
+                if (creditCountEl) creditCountEl.textContent = `${creditCount} ventas`;
+                
+                // Actualizar estadísticas por caja
+                const registersStatsContainer = document.getElementById('pos-registers-stats');
+                if (registersStatsContainer) {
+                    if (Object.keys(registers).length === 0) {
+                        registersStatsContainer.innerHTML = `
+                            <div style="text-align: center; padding: 40px; color: #aaa; grid-column: 1 / -1;">
+                                No hay cajas con actividad en el turno actual
+                            </div>
+                        `;
+                    } else {
+                        const registerCards = Object.entries(registers).map(([regId, reg]) => {
+                            const regName = reg.register_name || `Caja ${regId}`;
+                            const regTotal = reg.total_amount || 0;
+                            const avgTicket = reg.average_ticket || 0;
+                            const cashierName = reg.current_cashier_name || 'Sin asignar';
+                            const openedAt = reg.opened_at || null;
+                            
+                            // Determinar estado de la caja
+                            const isClosed = reg.is_closed || false;
+                            const hasLock = reg.current_cashier_id && reg.opened_at;
+                            let registerStatus = 'BLOQUEADA';
+                            let statusClass = 'bloqueada';
+                            
+                            if (isClosed) {
+                                registerStatus = 'CERRADA';
+                                statusClass = 'cerrada';
+                            } else if (hasLock) {
+                                registerStatus = 'ABIERTA';
+                                statusClass = 'abierta';
+                            }
+                            
+                            // Información de cierre
+                            const closedAt = reg.closed_at || null;
+                            const closeStatus = reg.close_status || null;
+                            let closedAtFormatted = 'No disponible';
+                            if (closedAt) {
+                                try {
+                                    const closedDate = new Date(closedAt);
+                                    closedAtFormatted = closedDate.toLocaleString('es-CL', {
+                                        day: '2-digit',
+                                        month: '2-digit',
+                                        year: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                    });
+                                } catch (e) {
+                                    closedAtFormatted = closedAt;
+                                }
+                            }
+                            
+                            // Formatear hora de apertura
+                            let openedAtFormatted = 'No disponible';
+                            if (openedAt) {
+                                try {
+                                    const openedDate = new Date(openedAt);
+                                    openedAtFormatted = openedDate.toLocaleString('es-CL', {
+                                        day: '2-digit',
+                                        month: '2-digit',
+                                        year: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                    });
+                                } catch (e) {
+                                    openedAtFormatted = openedAt;
+                                }
+                            }
+                            
+                            // Métodos de pago
+                            const cashTotal = reg.total_cash || 0;
+                            const debitTotal = reg.total_debit || 0;
+                            const creditTotal = reg.total_credit || 0;
+                            
+                            // Tiempos de actividad e inactividad
+                            const activityTime = reg.activity_time || '0h 0m';
+                            const inactivityTime = reg.inactivity_time || '0h 0m';
+                            
+                            return `
+                                <div class="register-card">
+                                    <div class="register-header">
+                                        <div class="register-name" style="font-size: 1.8rem; font-weight: bold; margin-bottom: 10px; text-align: center; color: #667eea;">
+                                            ${regName}
+                                            <span class="register-status-badge ${statusClass}">${registerStatus}</span>
+                                        </div>
+                                        ${isClosed && closedAt ? `
+                                        <div style="text-align: center; margin-bottom: 15px; padding: 10px; background: rgba(158, 158, 158, 0.1); border-radius: 8px;">
+                                            <div style="color: #aaa; font-size: 0.85rem; margin-bottom: 5px;">Hora de Cierre:</div>
+                                            <div style="color: #9e9e9e; font-weight: bold; font-size: 1rem;">${closedAtFormatted}</div>
+                                            <button type="button" 
+                                                    class="view-close-btn" 
+                                                    onclick="showRegisterClose('${regId}')">
+                                                📋 Ver Detalle del Cierre
+                                            </button>
+                                        </div>
+                                        ` : ''}
+                                    </div>
+                                    
+                                    <div class="register-info-section">
+                                        <div class="info-row">
+                                            <span class="info-label">Abierta por:</span>
+                                            <span class="info-value">${cashierName}</span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span class="info-label">Hora apertura:</span>
+                                            <span class="info-value">${openedAtFormatted}</span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span class="info-label">Total Recaudado:</span>
+                                            <span class="info-value" style="color: #4caf50; font-weight: bold;">
+                                                $${parseFloat(regTotal).toLocaleString('es-CL', {maximumFractionDigits: 0})}
+                                            </span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span class="info-label">Promedio por venta:</span>
+                                            <span class="info-value" style="color: #ff9800; font-weight: bold;">
+                                                $${parseFloat(avgTicket).toLocaleString('es-CL', {maximumFractionDigits: 0})}
+                                            </span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span class="info-label">Desglose por medio de pago:</span>
+                                            <div class="payment-breakdown" style="margin-top: 10px;">
+                                                <div style="margin: 5px 0;">💵 Efectivo: $${parseFloat(cashTotal).toLocaleString('es-CL', {maximumFractionDigits: 0})}</div>
+                                                <div style="margin: 5px 0;">💳 Débito: $${parseFloat(debitTotal).toLocaleString('es-CL', {maximumFractionDigits: 0})}</div>
+                                                <div style="margin: 5px 0;">💳 Crédito: $${parseFloat(creditTotal).toLocaleString('es-CL', {maximumFractionDigits: 0})}</div>
+                                            </div>
+                                        </div>
+                                        <div class="info-row">
+                                            <span class="info-label">Tiempo de actividad:</span>
+                                            <span class="info-value" style="color: #4caf50; font-weight: bold;">${activityTime}</span>
+                                        </div>
+                                        <div class="info-row">
+                                            <span class="info-label">Tiempo de inactividad:</span>
+                                            <span class="info-value" style="color: #ff9800; font-weight: bold;">${inactivityTime}</span>
+                                        </div>
+                                    </div>
+                                    
+                                    ${reg.sales && reg.sales.length > 0 ? `
+                                    <div class="recent-tickets-section">
+                                        <button type="button" 
+                                                class="tickets-toggle-btn" 
+                                                onclick="toggleTicketsTable('${regId}')"
+                                                id="tickets-toggle-${regId}">
+                                            <span>
+                                                🎫 Últimos Tickets
+                                                <span class="tickets-count-badge">${reg.sales.length}</span>
+                                            </span>
+                                            <span class="arrow">▼</span>
+                                        </button>
+                                        <div class="tickets-content" id="tickets-content-${regId}">
+                                            <table class="tickets-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Ticket</th>
+                                                    <th>Fecha/Hora</th>
+                                                    <th>Total</th>
+                                                    <th>Cajero</th>
+                                                    <th>Método</th>
+                                                    <th>Acción</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                ${reg.sales.slice(0, 10).map((sale, index) => {
+                                                    const saleId = sale.sale_id || sale.id || 'N/A';
+                                                    const saleTotal = sale.total || sale.total_amount || 0;
+                                                    let saleTime = 'N/A';
+                                                    if (sale.sale_time_formatted) {
+                                                        saleTime = sale.sale_time_formatted;
+                                                    } else if (sale.sale_time) {
+                                                        try {
+                                                            saleTime = new Date(sale.sale_time).toLocaleString('es-CL', {
+                                                                day: '2-digit',
+                                                                month: '2-digit',
+                                                                year: 'numeric',
+                                                                hour: '2-digit',
+                                                                minute: '2-digit'
+                                                            });
+                                                        } catch (e) {
+                                                            saleTime = sale.sale_time;
+                                                        }
+                                                    } else if (sale.created_at) {
+                                                        try {
+                                                            saleTime = new Date(sale.created_at).toLocaleString('es-CL', {
+                                                                day: '2-digit',
+                                                                month: '2-digit',
+                                                                year: 'numeric',
+                                                                hour: '2-digit',
+                                                                minute: '2-digit'
+                                                            });
+                                                        } catch (e) {
+                                                            saleTime = sale.created_at;
+                                                        }
+                                                    }
+                                                    
+                                                    const paymentType = sale.payment_type || '';
+                                                    const paymentClass = paymentType === 'Efectivo' || sale.payment_cash > 0 ? 'cash' : 
+                                                                         paymentType === 'Débito' || sale.payment_debit > 0 ? 'debit' : 'credit';
+                                                    const paymentLabel = paymentType || (sale.payment_cash > 0 ? 'Efectivo' : 
+                                                                                        sale.payment_debit > 0 ? 'Débito' : 'Crédito');
+                                                    
+                                                    // Usar índice para almacenar datos en un array global
+                                                    const saleIndex = `sale_${regId}_${index}`;
+                                                    
+                                                    return `
+                                                        <tr onclick="showTicketDetailByIndex('${saleIndex}')" style="background-color: ${index % 2 === 0 ? '#1a1a1a' : '#222'};">
+                                                            <td class="ticket-id-cell">🎫 ${saleId}</td>
+                                                            <td class="ticket-time-cell">${saleTime}</td>
+                                                            <td class="ticket-amount-cell">$${parseFloat(saleTotal).toLocaleString('es-CL', {maximumFractionDigits: 0})}</td>
+                                                            <td>${sale.employee_name || 'Sin cajero'}</td>
+                                                            <td><span class="ticket-payment-badge ${paymentClass}">${paymentLabel}</span></td>
+                                                            <td>
+                                                                <button type="button" 
+                                                                        onclick="event.stopPropagation(); showTicketDetailByIndex('${saleIndex}')"
+                                                                        style="padding: 6px 15px; background-color: #4caf50; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 0.85rem; transition: all 0.3s;"
+                                                                        onmouseover="this.style.backgroundColor='#45a049'; this.style.transform='scale(1.05)'"
+                                                                        onmouseout="this.style.backgroundColor='#4caf50'; this.style.transform='scale(1)'">
+                                                                    📋 Ver
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    `;
+                                                }).join('')}
+                                            </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                    ` : `
+                                    <div class="recent-tickets-section">
+                                        <div class="recent-tickets-title">🎫 Últimos Tickets</div>
+                                        <div class="ticket-empty">
+                                            No hay tickets registrados para esta caja
+                                        </div>
+                                    </div>
+                                    `}
+                                </div>
+                            `;
+                        }).join('');
+                        
+                        registersStatsContainer.innerHTML = registerCards;
+                        
+                        // Almacenar datos de ventas y cierres en objeto global después de renderizar
+                        if (!window.registerSalesData) {
+                            window.registerSalesData = {};
+                        }
+                        if (!window.registerClosesData) {
+                            window.registerClosesData = {};
+                        }
+                        Object.entries(registers).forEach(([regId, reg]) => {
+                            if (reg.sales && reg.sales.length > 0) {
+                                window.registerSalesData[regId] = reg.sales.slice(0, 10);
+                            }
+                            // Almacenar datos completos de la caja para el modal de cierre
+                            window.registerClosesData[regId] = reg;
+                        });
+                        
+                        // Cargar todos los cierres desde endpoint separado (independiente del turno)
+                        loadAllCloses(1);
+                    }
+                }
+            } else {
+                console.error('❌ Error en respuesta:', result.error || 'Respuesta sin success');
+                const container = document.getElementById('pos-registers-stats');
+                if (container) {
+                    container.innerHTML = `
+                        <div class="error-message" style="grid-column: 1 / -1;">
+                            ❌ Error: ${result.error || 'No se pudieron cargar las estadísticas'}
+                        </div>
+                    `;
+                }
+            }
+        } catch (error) {
+            console.error('❌ Error al actualizar estadísticas POS:', error);
+            const container = document.getElementById('pos-registers-stats');
+            if (container) {
+                container.innerHTML = `
+                    <div class="error-message" style="grid-column: 1 / -1;">
+                        ❌ Error al cargar estadísticas: ${error.message}
+                    </div>
+                `;
+            }
+        }
+    }
+    
+    // Función para cargar y mostrar todos los cierres de caja con paginación
+    let allClosesList = [];
+    let currentClosesPage = 1;
+    const closesPerPage = 10;
+    let totalCloses = 0;
+    let totalPages = 1;
+    
+    // Cargar todos los cierres desde el backend (independiente del turno actual)
+    async function loadAllCloses(page = 1) {
+        try {
+            const container = document.getElementById('pos-closes-container');
+            if (container) {
+                container.innerHTML = '<div class="loading">Cargando cierres...</div>';
+            }
+            
+            const response = await fetch(`/admin/api/register-closes?page=${page}&per_page=${closesPerPage}`);
+            const result = await response.json();
+            
+            if (!result.success) {
+                console.error('❌ Error al cargar cierres:', result.error);
+                if (container) {
+                    container.innerHTML = `
+                        <div class="error-message">
+                            ❌ Error al cargar cierres: ${result.error || 'Error desconocido'}
+                        </div>
+                    `;
+                }
+                return;
+            }
+            
+            allClosesList = result.closes || [];
+            totalCloses = result.pagination?.total || 0;
+            totalPages = result.pagination?.pages || 1;
+            currentClosesPage = result.pagination?.page || page;
+            
+            // Renderizar lista paginada
+            renderClosesList();
+        } catch (error) {
+            console.error('❌ Error al cargar cierres:', error);
+            const container = document.getElementById('pos-closes-container');
+            if (container) {
+                container.innerHTML = `
+                    <div class="error-message">
+                        ❌ Error al cargar cierres: ${error.message}
+                    </div>
+                `;
+            }
+        }
+    }
+    
+    function renderClosesList() {
+        const container = document.getElementById('pos-closes-container');
+        if (!container) return;
+        
+        if (allClosesList.length === 0) {
+            container.innerHTML = `
+                <div class="closes-empty">
+                    No hay cierres de caja registrados
+                </div>
+            `;
+            return;
+        }
+        
+        // Los cierres ya vienen paginados del backend
+        const currentCloses = allClosesList;
+        const startIndex = (currentClosesPage - 1) * closesPerPage + 1;
+        const endIndex = Math.min(startIndex + currentCloses.length - 1, totalCloses);
+        
+        // Construir HTML de la tabla
+        const tableHTML = `
+            <table class="closes-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Caja</th>
+                        <th>Cajero</th>
+                        <th>Apertura</th>
+                        <th>Cierre</th>
+                        <th>Ventas</th>
+                        <th style="text-align: right;">Total</th>
+                        <th style="text-align: center;">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${currentCloses.map(close => {
+                        // Las fechas ya vienen formateadas desde el backend en formato legible
+                        // Solo usar tal cual para evitar problemas de timezone
+                        let openedAtFormatted = close.opened_at || 'N/A';
+                        let closedAtFormatted = close.closed_at || 'N/A';
+                        
+                        return `
+                            <tr>
+                                <td class="close-id-cell">#${close.id || 'N/A'}</td>
+                                <td class="close-register-name">${close.register_name || `Caja ${close.register_id}`}</td>
+                                <td class="close-employee-name">${close.employee_name || 'Sin asignar'}</td>
+                                <td class="close-date">${openedAtFormatted}</td>
+                                <td class="close-date">${closedAtFormatted}</td>
+                                <td style="text-align: center;">${close.total_sales || 0}</td>
+                                <td class="close-amount">
+                                    ${(() => {
+                                        // Calcular el total como suma de montos reales recaudados
+                                        const actualCash = parseFloat(close.actual_cash || 0);
+                                        const actualDebit = parseFloat(close.actual_debit || 0);
+                                        const actualCredit = parseFloat(close.actual_credit || 0);
+                                        const totalRecaudado = actualCash + actualDebit + actualCredit;
+                                        
+                                        // Si total_amount tiene valor, usarlo; sino usar la suma de montos reales
+                                        const totalAmount = parseFloat(close.total_amount || 0);
+                                        const displayAmount = totalAmount > 0 ? totalAmount : totalRecaudado;
+                                        
+                                        return '$' + displayAmount.toLocaleString('es-CL', {maximumFractionDigits: 0});
+                                    })()}
+                                </td>
+                                <td style="text-align: center;">
+                                    <button class="view-close-detail-btn" onclick="viewCloseDetail(${close.id})" title="Ver detalles del cierre" data-close-id="${close.id}">
+                                        👁️ Ver
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+            
+                        ${totalPages > 1 ? `
+                <div class="pagination-container">
+                    <button class="pagination-btn" 
+                            onclick="loadAllCloses(1)" 
+                            ${currentClosesPage === 1 ? 'disabled' : ''}>
+                        ⏮ Primera
+                    </button>
+                    <button class="pagination-btn" 
+                            onclick="loadAllCloses(${currentClosesPage - 1})" 
+                            ${currentClosesPage === 1 ? 'disabled' : ''}>
+                        ◀ Anterior
+                    </button>
+                    <span class="pagination-info">
+                        Página 
+                        <input type="number" 
+                               class="pagination-page-input" 
+                               value="${currentClosesPage}" 
+                               min="1" 
+                               max="${totalPages}"
+                               onchange="loadAllCloses(parseInt(this.value) || 1)">
+                        de ${totalPages}
+                    </span>
+                    <span class="pagination-info">
+                        (${startIndex} - ${endIndex} de ${totalCloses} cierres)
+                    </span>
+                    <button class="pagination-btn" 
+                            onclick="loadAllCloses(${currentClosesPage + 1})" 
+                            ${currentClosesPage === totalPages ? 'disabled' : ''}>
+                        Siguiente ▶
+                    </button>
+                    <button class="pagination-btn" 
+                            onclick="loadAllCloses(${totalPages})" 
+                            ${currentClosesPage === totalPages ? 'disabled' : ''}>
+                        Última ⏭
+                    </button>
+                </div>
+            ` : totalCloses > 0 ? `
+                <div class="pagination-container">
+                    <span class="pagination-info">
+                        Total: ${totalCloses} cierre${totalCloses !== 1 ? 's' : ''}
+                    </span>
+                </div>
+            ` : ''}
+        `;
+        
+        container.innerHTML = tableHTML;
+    }
+    
+    // Hacer función global para que funcione desde onclick
+    window.loadAllCloses = loadAllCloses;
+    
+    // --- Funcionalidad para ver detalles de cierres antiguos ---
+    async function viewCloseDetail(closeId) {
+        const modal = document.getElementById('close-detail-modal');
+        const body = document.getElementById('close-detail-body');
+        
+        if (!modal || !body) {
+            console.error('❌ Modal de detalles no encontrado');
+            return;
+        }
+        
+        // Mostrar modal y cargar datos
+        modal.classList.add('active');
+        body.innerHTML = '<div class="loading">Cargando detalles del cierre...</div>';
+        
+        // Agregar event listener al botón de imprimir del header (estático)
+        setTimeout(() => {
+            const printBtn = modal.querySelector('.close-detail-print-btn');
+            if (printBtn) {
+                // Remover listeners anteriores
+                const newPrintBtn = printBtn.cloneNode(true);
+                printBtn.parentNode.replaceChild(newPrintBtn, printBtn);
+                
+                // Agregar nuevo listener
+                newPrintBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (window.printCloseDetail) {
+                        window.printCloseDetail();
+                    } else {
+                        console.error('❌ Función printCloseDetail no encontrada');
+                        alert('❌ Error: No se pudo encontrar la función de impresión');
+                    }
+                });
+            }
+        }, 50);
+        
+        try {
+            const response = await fetch(`/admin/api/register-close/${closeId}`);
+            const result = await response.json();
+            
+            if (!result.success) {
+                body.innerHTML = `
+                    <div class="error-message">
+                        ❌ Error al cargar detalles: ${result.error || 'Error desconocido'}
+                    </div>
+                `;
+                return;
+            }
+            
+            // El endpoint retorna 'close', no 'close_details'
+            const close = result.close;
+            if (!close) {
+                console.error('❌ No se encontraron datos del cierre en la respuesta:', result);
+                body.innerHTML = `
+                    <div class="error-message">
+                        ❌ Error: No se encontraron datos del cierre. Respuesta: ${JSON.stringify(result).substring(0, 200)}
+                    </div>
+                `;
+                return;
+            }
+            console.log('✅ Datos del cierre recibidos:', close);
+            renderCloseDetail(close);
+        } catch (error) {
+            console.error('❌ Error al cargar detalles del cierre:', error);
+            body.innerHTML = `
+                <div class="error-message">
+                    ❌ Error al cargar detalles: ${error.message}
+                </div>
+            `;
+        }
+    }
+    
+    function renderCloseDetail(close) {
+        const body = document.getElementById('close-detail-body');
+        if (!body) return;
+        
+        // Determinar clase de estado
+        let statusClass = 'balanced';
+        let statusText = 'Balanceado';
+        if (close.status === 'pending') {
+            statusClass = 'pending';
+            statusText = 'Pendiente';
+        } else if (close.status === 'resolved') {
+            statusClass = 'resolved';
+            statusText = 'Resuelto';
+        }
+        
+        // Calcular diferencias
+        const diffCash = (close.actual_cash || 0) - (close.expected_cash || 0);
+        const diffDebit = (close.actual_debit || 0) - (close.expected_debit || 0);
+        const diffCredit = (close.actual_credit || 0) - (close.expected_credit || 0);
+        const diffTotal = close.difference_total || 0;
+        
+        const html = `
+            <!-- Información General -->
+            <div class="close-detail-section">
+                <h3>📊 Información General</h3>
+                <div class="close-detail-grid">
+                    <div class="close-detail-item">
+                        <span class="close-detail-label">ID Cierre</span>
+                        <span class="close-detail-value">#${close.id || 'N/A'}</span>
+                    </div>
+                    <div class="close-detail-item">
+                        <span class="close-detail-label">Caja</span>
+                        <span class="close-detail-value">${close.register_name || `Caja ${close.register_id}`}</span>
+                    </div>
+                    <div class="close-detail-item">
+                        <span class="close-detail-label">Cajero</span>
+                        <span class="close-detail-value">${close.employee_name || 'Sin asignar'}</span>
+                    </div>
+                    <div class="close-detail-item">
+                        <span class="close-detail-label">Estado</span>
+                        <span class="close-detail-status ${statusClass}">${statusText}</span>
+                    </div>
+                    <div class="close-detail-item">
+                        <span class="close-detail-label">Fecha Turno</span>
+                        <span class="close-detail-value">${close.shift_date || 'N/A'}</span>
+                    </div>
+                    <div class="close-detail-item">
+                        <span class="close-detail-label">Apertura</span>
+                        <span class="close-detail-value">${close.opened_at || 'N/A'}</span>
+                    </div>
+                    <div class="close-detail-item">
+                        <span class="close-detail-label">Cierre</span>
+                        <span class="close-detail-value">${close.closed_at || 'N/A'}</span>
+                    </div>
+                    ${close.resolved_at ? `
+                    <div class="close-detail-item">
+                        <span class="close-detail-label">Resuelto</span>
+                        <span class="close-detail-value">${close.resolved_at}</span>
+                    </div>
+                    <div class="close-detail-item">
+                        <span class="close-detail-label">Resuelto por</span>
+                        <span class="close-detail-value">${close.resolved_by || 'N/A'}</span>
+                    </div>
+                    ` : ''}
+                </div>
+            </div>
+            
+            <!-- Estadísticas de Ventas -->
+            <div class="close-detail-section">
+                <h3>💰 Estadísticas de Ventas</h3>
+                <div class="close-detail-grid">
+                    <div class="close-detail-item">
+                        <span class="close-detail-label">Total Ventas</span>
+                        <span class="close-detail-value">${close.total_sales || 0}</span>
+                    </div>
+                    <div class="close-detail-item">
+                        <span class="close-detail-label">Total Recaudado</span>
+                        <span class="close-detail-value">$${parseFloat(close.total_amount || 0).toLocaleString('es-CL', {maximumFractionDigits: 0})}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Efectivo -->
+            <div class="close-detail-section">
+                <h3>💵 Efectivo</h3>
+                <div class="close-detail-grid">
+                    <div class="close-detail-item">
+                        <span class="close-detail-label">Esperado</span>
+                        <span class="close-detail-value">$${parseFloat(close.expected_cash || 0).toLocaleString('es-CL', {maximumFractionDigits: 0})}</span>
+                    </div>
+                    <div class="close-detail-item">
+                        <span class="close-detail-label">Real</span>
+                        <span class="close-detail-value">$${parseFloat(close.actual_cash || 0).toLocaleString('es-CL', {maximumFractionDigits: 0})}</span>
+                    </div>
+                    <div class="close-detail-item">
+                        <span class="close-detail-label">Diferencia</span>
+                        <span class="close-detail-value ${Math.abs(diffCash) <= 100 ? 'positive' : 'negative'}">
+                            ${diffCash >= 0 ? '+' : ''}$${parseFloat(Math.abs(diffCash)).toLocaleString('es-CL', {maximumFractionDigits: 0})}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Débito -->
+            <div class="close-detail-section">
+                <h3>💳 Débito</h3>
+                <div class="close-detail-grid">
+                    <div class="close-detail-item">
+                        <span class="close-detail-label">Esperado</span>
+                        <span class="close-detail-value">$${parseFloat(close.expected_debit || 0).toLocaleString('es-CL', {maximumFractionDigits: 0})}</span>
+                    </div>
+                    <div class="close-detail-item">
+                        <span class="close-detail-label">Real</span>
+                        <span class="close-detail-value">$${parseFloat(close.actual_debit || 0).toLocaleString('es-CL', {maximumFractionDigits: 0})}</span>
+                    </div>
+                    <div class="close-detail-item">
+                        <span class="close-detail-label">Diferencia</span>
+                        <span class="close-detail-value ${Math.abs(diffDebit) <= 100 ? 'positive' : 'negative'}">
+                            ${diffDebit >= 0 ? '+' : ''}$${parseFloat(Math.abs(diffDebit)).toLocaleString('es-CL', {maximumFractionDigits: 0})}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Crédito -->
+            <div class="close-detail-section">
+                <h3>💳 Crédito</h3>
+                <div class="close-detail-grid">
+                    <div class="close-detail-item">
+                        <span class="close-detail-label">Esperado</span>
+                        <span class="close-detail-value">$${parseFloat(close.expected_credit || 0).toLocaleString('es-CL', {maximumFractionDigits: 0})}</span>
+                    </div>
+                    <div class="close-detail-item">
+                        <span class="close-detail-label">Real</span>
+                        <span class="close-detail-value">$${parseFloat(close.actual_credit || 0).toLocaleString('es-CL', {maximumFractionDigits: 0})}</span>
+                    </div>
+                    <div class="close-detail-item">
+                        <span class="close-detail-label">Diferencia</span>
+                        <span class="close-detail-value ${Math.abs(diffCredit) <= 100 ? 'positive' : 'negative'}">
+                            ${diffCredit >= 0 ? '+' : ''}$${parseFloat(Math.abs(diffCredit)).toLocaleString('es-CL', {maximumFractionDigits: 0})}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Diferencia Total -->
+            <div class="close-detail-section">
+                <h3>📊 Diferencia Total</h3>
+                <div class="close-detail-item" style="text-align: center; padding: 20px;">
+                    <span class="close-detail-label" style="font-size: 1rem; margin-bottom: 10px;">Diferencia General</span>
+                    <span class="close-detail-value ${Math.abs(diffTotal) <= 100 ? 'positive' : 'negative'}" style="font-size: 2rem;">
+                        ${diffTotal >= 0 ? '+' : ''}$${parseFloat(Math.abs(diffTotal)).toLocaleString('es-CL', {maximumFractionDigits: 0})}
+                    </span>
+                </div>
+            </div>
+            
+            ${close.notes ? `
+            <!-- Notas del Cajero -->
+            <div class="close-detail-section">
+                <h3>📝 Notas del Cajero</h3>
+                <div class="close-detail-notes">${close.notes}</div>
+            </div>
+            ` : ''}
+            
+            ${close.resolution_notes ? `
+            <!-- Notas de Resolución -->
+            <div class="close-detail-section">
+                <h3>✅ Notas de Resolución</h3>
+                <div class="close-detail-notes">${close.resolution_notes}</div>
+            </div>
+            ` : ''}
+        `;
+        
+        body.innerHTML = html;
+        
+        // Guardar datos del cierre para imprimir
+        window.currentCloseDetail = close;
+        
+        // Agregar event listener al botón de imprimir después de renderizar
+        setTimeout(() => {
+            const printBtn = document.querySelector('.close-detail-print-btn');
+            if (printBtn) {
+                printBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (window.printCloseDetail) {
+                        window.printCloseDetail();
+                    } else {
+                        console.error('❌ Función printCloseDetail no encontrada');
+                        alert('❌ Error: No se pudo encontrar la función de impresión');
+                    }
+                });
+            }
+        }, 100);
+    }
+    
+    // Función para imprimir el cierre
+    function printCloseDetail() {
+        const close = window.currentCloseDetail;
+        if (!close) {
+            alert('❌ No hay datos del cierre para imprimir');
+            return;
+        }
+        
+        // Calcular diferencias
+        const diffCash = (close.actual_cash || 0) - (close.expected_cash || 0);
+        const diffDebit = (close.actual_debit || 0) - (close.expected_debit || 0);
+        const diffCredit = (close.actual_credit || 0) - (close.expected_credit || 0);
+        const diffTotal = close.difference_total || 0;
+        
+        // Determinar estado
+        let statusText = 'Balanceado';
+        if (close.status === 'pending') {
+            statusText = 'Pendiente';
+        } else if (close.status === 'resolved') {
+            statusText = 'Resuelto';
+        }
+        
+        // Calcular total recaudado
+        const actualCash = parseFloat(close.actual_cash || 0);
+        const actualDebit = parseFloat(close.actual_debit || 0);
+        const actualCredit = parseFloat(close.actual_credit || 0);
+        const totalRecaudado = actualCash + actualDebit + actualCredit;
+        const totalAmount = parseFloat(close.total_amount || 0);
+        const displayTotal = totalAmount > 0 ? totalAmount : totalRecaudado;
+        
+        // Crear ventana de impresión
+        const printWindow = window.open('', '_blank');
+        const printContent = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Cierre de Caja #${close.id}</title>
+    <style>
+        @media print {
+            @page {
+                size: A4;
+                margin: 1.5cm;
+            }
+            body {
+                margin: 0;
+                padding: 0;
+            }
+        }
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        .print-header {
+            text-align: center;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .print-header h1 {
+            color: #667eea;
+            margin: 0 0 10px 0;
+            font-size: 24px;
+        }
+        .print-header .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+        .print-section {
+            margin-bottom: 25px;
+            page-break-inside: avoid;
+        }
+        .print-section h2 {
+            color: #667eea;
+            font-size: 18px;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+        }
+        .print-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .print-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+        .print-label {
+            font-weight: bold;
+            color: #666;
+        }
+        .print-value {
+            color: #333;
+            font-weight: bold;
+        }
+        .print-amount {
+            text-align: right;
+            font-size: 16px;
+        }
+        .print-status {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .print-status.pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .print-status.resolved {
+            background: #d4edda;
+            color: #155724;
+        }
+        .print-status.balanced {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .print-difference {
+            font-size: 20px;
+            font-weight: bold;
+            text-align: center;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+        }
+        .print-difference.positive {
+            background: #d4edda;
+            color: #155724;
+        }
+        .print-difference.negative {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .print-notes {
+            background: #f9f9f9;
+            padding: 15px;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+            margin-top: 15px;
+        }
+        .print-notes strong {
+            display: block;
+            margin-bottom: 8px;
+            color: #667eea;
+        }
+        .print-footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #ddd;
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="print-header">
+        <h1>💰 CIERRE DE CAJA</h1>
+        <div class="print-subtitle">ID: #${close.id} | ${close.register_name || `Caja ${close.register_id}`}</div>
+    </div>
+    
+    <div class="print-section">
+        <h2>📊 Información General</h2>
+        <div class="print-grid">
+            <div class="print-item">
+                <span class="print-label">Caja:</span>
+                <span class="print-value">${close.register_name || `Caja ${close.register_id}`}</span>
+            </div>
+            <div class="print-item">
+                <span class="print-label">Cajero:</span>
+                <span class="print-value">${close.employee_name || 'Sin asignar'}</span>
+            </div>
+            <div class="print-item">
+                <span class="print-label">Fecha Turno:</span>
+                <span class="print-value">${close.shift_date || 'N/A'}</span>
+            </div>
+            <div class="print-item">
+                <span class="print-label">Estado:</span>
+                <span class="print-value">
+                    <span class="print-status ${close.status || 'balanced'}">${statusText}</span>
+                </span>
+            </div>
+            <div class="print-item">
+                <span class="print-label">Apertura:</span>
+                <span class="print-value">${close.opened_at || 'N/A'}</span>
+            </div>
+            <div class="print-item">
+                <span class="print-label">Cierre:</span>
+                <span class="print-value">${close.closed_at || 'N/A'}</span>
+            </div>
+            ${close.resolved_at ? `
+            <div class="print-item">
+                <span class="print-label">Resuelto:</span>
+                <span class="print-value">${close.resolved_at}</span>
+            </div>
+            <div class="print-item">
+                <span class="print-label">Resuelto por:</span>
+                <span class="print-value">${close.resolved_by || 'N/A'}</span>
+            </div>
+            ` : ''}
+        </div>
+    </div>
+    
+    <div class="print-section">
+        <h2>💰 Estadísticas de Ventas</h2>
+        <div class="print-grid">
+            <div class="print-item">
+                <span class="print-label">Total Ventas:</span>
+                <span class="print-value">${close.total_sales || 0}</span>
+            </div>
+            <div class="print-item">
+                <span class="print-label">Total Recaudado:</span>
+                <span class="print-value print-amount">$${displayTotal.toLocaleString('es-CL', {maximumFractionDigits: 0})}</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="print-section">
+        <h2>💵 Efectivo</h2>
+        <div class="print-grid">
+            <div class="print-item">
+                <span class="print-label">Esperado:</span>
+                <span class="print-value print-amount">$${parseFloat(close.expected_cash || 0).toLocaleString('es-CL', {maximumFractionDigits: 0})}</span>
+            </div>
+            <div class="print-item">
+                <span class="print-label">Real:</span>
+                <span class="print-value print-amount">$${parseFloat(close.actual_cash || 0).toLocaleString('es-CL', {maximumFractionDigits: 0})}</span>
+            </div>
+            <div class="print-item">
+                <span class="print-label">Diferencia:</span>
+                <span class="print-value print-amount ${Math.abs(diffCash) <= 100 ? 'positive' : 'negative'}">
+                    ${diffCash >= 0 ? '+' : ''}$${parseFloat(Math.abs(diffCash)).toLocaleString('es-CL', {maximumFractionDigits: 0})}
+                </span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="print-section">
+        <h2>💳 Débito</h2>
+        <div class="print-grid">
+            <div class="print-item">
+                <span class="print-label">Esperado:</span>
+                <span class="print-value print-amount">$${parseFloat(close.expected_debit || 0).toLocaleString('es-CL', {maximumFractionDigits: 0})}</span>
+            </div>
+            <div class="print-item">
+                <span class="print-label">Real:</span>
+                <span class="print-value print-amount">$${parseFloat(close.actual_debit || 0).toLocaleString('es-CL', {maximumFractionDigits: 0})}</span>
+            </div>
+            <div class="print-item">
+                <span class="print-label">Diferencia:</span>
+                <span class="print-value print-amount ${Math.abs(diffDebit) <= 100 ? 'positive' : 'negative'}">
+                    ${diffDebit >= 0 ? '+' : ''}$${parseFloat(Math.abs(diffDebit)).toLocaleString('es-CL', {maximumFractionDigits: 0})}
+                </span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="print-section">
+        <h2>💳 Crédito</h2>
+        <div class="print-grid">
+            <div class="print-item">
+                <span class="print-label">Esperado:</span>
+                <span class="print-value print-amount">$${parseFloat(close.expected_credit || 0).toLocaleString('es-CL', {maximumFractionDigits: 0})}</span>
+            </div>
+            <div class="print-item">
+                <span class="print-label">Real:</span>
+                <span class="print-value print-amount">$${parseFloat(close.actual_credit || 0).toLocaleString('es-CL', {maximumFractionDigits: 0})}</span>
+            </div>
+            <div class="print-item">
+                <span class="print-label">Diferencia:</span>
+                <span class="print-value print-amount ${Math.abs(diffCredit) <= 100 ? 'positive' : 'negative'}">
+                    ${diffCredit >= 0 ? '+' : ''}$${parseFloat(Math.abs(diffCredit)).toLocaleString('es-CL', {maximumFractionDigits: 0})}
+                </span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="print-section">
+        <h2>📊 Diferencia Total</h2>
+        <div class="print-difference ${Math.abs(diffTotal) <= 100 ? 'positive' : 'negative'}">
+            ${diffTotal >= 0 ? '+' : ''}$${parseFloat(Math.abs(diffTotal)).toLocaleString('es-CL', {maximumFractionDigits: 0})}
+        </div>
+    </div>
+    
+    ${close.notes ? `
+    <div class="print-section">
+        <h2>📝 Notas del Cajero</h2>
+        <div class="print-notes">
+            <strong>Notas:</strong>
+            <div>${close.notes}</div>
+        </div>
+    </div>
+    ` : ''}
+    
+    ${close.resolution_notes ? `
+    <div class="print-section">
+        <h2>✅ Notas de Resolución</h2>
+        <div class="print-notes">
+            <strong>Notas de Resolución:</strong>
+            <div>${close.resolution_notes}</div>
+        </div>
+    </div>
+    ` : ''}
+    
+    <div class="print-footer">
+        <p>Documento generado el ${new Date().toLocaleString('es-CL', {dateStyle: 'long', timeStyle: 'short'})}</p>
+        <p>Sistema BIMBA - Cierre de Caja</p>
+    </div>
+</body>
+</html>`;
+        
+        printWindow.document.write(printContent);
+        printWindow.document.close();
+        
+        // Esperar a que se cargue el contenido y luego imprimir
+        printWindow.onload = function() {
+            setTimeout(() => {
+                printWindow.print();
+            }, 250);
+        };
+    }
+    
+    // Hacer función global
+    window.printCloseDetail = printCloseDetail;
+    
+    function closeCloseDetailModal() {
+        const modal = document.getElementById('close-detail-modal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
+    }
+    
+    // Cerrar modal al hacer clic fuera
+    document.addEventListener('click', function(event) {
+        const modal = document.getElementById('close-detail-modal');
+        if (modal && event.target === modal) {
+            closeCloseDetailModal();
+        }
+    });
+    
+    // Cerrar modal con ESC
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeCloseDetailModal();
+        }
+    });
+    
+    // Hacer función global
+    window.viewCloseDetail = viewCloseDetail;
+    window.closeCloseDetailModal = closeCloseDetailModal;
+    
+    // ========================================
+    // FUNCIONES PARA CIERRES PENDIENTES
+    // ========================================
+    
+    // Cargar cierres pendientes
+    async function loadPendingCloses() {
+        try {
+            const container = document.getElementById('pending-closes-container');
+            if (container) {
+                container.innerHTML = '<div class="loading">Cargando cierres pendientes...</div>';
+            }
+            
+            const response = await fetch('/admin/api/pending-closes');
+            const result = await response.json();
+            
+            if (!result.success) {
+                console.error('❌ Error al cargar cierres pendientes:', result.error);
+                if (container) {
+                    container.innerHTML = `
+                        <div class="error-message">
+                            ❌ Error al cargar cierres pendientes: ${result.error || 'Error desconocido'}
+                        </div>
+                    `;
+                }
+                return;
+            }
+            
+            const pendingCloses = result.pending_closes || [];
+            renderPendingCloses(pendingCloses);
+            
+        } catch (error) {
+            console.error('❌ Error al cargar cierres pendientes:', error);
+            const container = document.getElementById('pending-closes-container');
+            if (container) {
+                container.innerHTML = `
+                    <div class="error-message">
+                        ❌ Error de conexión al cargar cierres pendientes: ${error.message}
+                    </div>
+                `;
+            }
+        }
+    }
+    
+    // Renderizar cierres pendientes
+    function renderPendingCloses(closes) {
+        const container = document.getElementById('pending-closes-container');
+        if (!container) return;
+        
+        if (!closes || closes.length === 0) {
+            container.innerHTML = `
+                <div class="no-pending-closes">
+                    <p>✅ No hay cierres de caja pendientes</p>
+                    <p class="subtitle">Todos los cierres han sido procesados</p>
+                </div>
+            `;
+            return;
+        }
+        
+        const closesHTML = closes.map(close => {
+            const diffCash = close.diff_cash || 0;
+            const diffDebit = close.diff_debit || 0;
+            const diffCredit = close.diff_credit || 0;
+            const diffTotal = close.difference_total || 0;
+            const isBalanced = Math.abs(diffTotal) <= 100;
+            
+            return `
+                <div class="pending-close-card">
+                    <div class="pending-close-header">
+                        <div class="pending-close-title">
+                            <h3>${close.register_name || `Caja ${close.register_id}`}</h3>
+                            <span class="pending-close-status">PENDIENTE</span>
+                        </div>
+                        <div class="pending-close-meta">
+                            <div><strong>ID Cierre:</strong> #${close.id || 'N/A'}</div>
+                            <div><strong>Cajero:</strong> ${close.employee_name || 'Sin asignar'}</div>
+                            <div><strong>Fecha Turno:</strong> ${close.shift_date || 'N/A'}</div>
+                            <div><strong>Apertura:</strong> ${close.opened_at_formatted || 'N/A'}</div>
+                            <div><strong>Cierre:</strong> ${close.closed_at_formatted || 'N/A'}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="pending-close-body">
+                        <div class="pending-close-amounts">
+                            <div class="pending-amount-section">
+                                <h4>💵 Efectivo</h4>
+                                <div class="pending-amount-row">
+                                    <span>Esperado:</span>
+                                    <span>$${parseFloat(close.expected_cash || 0).toLocaleString('es-CL', {maximumFractionDigits: 0})}</span>
+                                </div>
+                                <div class="pending-amount-row">
+                                    <span>Real:</span>
+                                    <span class="actual-amount">$${parseFloat(close.actual_cash || 0).toLocaleString('es-CL', {maximumFractionDigits: 0})}</span>
+                                </div>
+                                <div class="pending-amount-row difference ${Math.abs(diffCash) <= 100 ? 'balanced' : 'unbalanced'}">
+                                    <span>Diferencia:</span>
+                                    <span>$${parseFloat(Math.abs(diffCash)).toLocaleString('es-CL', {maximumFractionDigits: 0})}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="pending-amount-section">
+                                <h4>💳 Débito</h4>
+                                <div class="pending-amount-row">
+                                    <span>Esperado:</span>
+                                    <span>$${parseFloat(close.expected_debit || 0).toLocaleString('es-CL', {maximumFractionDigits: 0})}</span>
+                                </div>
+                                <div class="pending-amount-row">
+                                    <span>Real:</span>
+                                    <span class="actual-amount">$${parseFloat(close.actual_debit || 0).toLocaleString('es-CL', {maximumFractionDigits: 0})}</span>
+                                </div>
+                                <div class="pending-amount-row difference ${Math.abs(diffDebit) <= 100 ? 'balanced' : 'unbalanced'}">
+                                    <span>Diferencia:</span>
+                                    <span>$${parseFloat(Math.abs(diffDebit)).toLocaleString('es-CL', {maximumFractionDigits: 0})}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="pending-amount-section">
+                                <h4>💳 Crédito</h4>
+                                <div class="pending-amount-row">
+                                    <span>Esperado:</span>
+                                    <span>$${parseFloat(close.expected_credit || 0).toLocaleString('es-CL', {maximumFractionDigits: 0})}</span>
+                                </div>
+                                <div class="pending-amount-row">
+                                    <span>Real:</span>
+                                    <span class="actual-amount">$${parseFloat(close.actual_credit || 0).toLocaleString('es-CL', {maximumFractionDigits: 0})}</span>
+                                </div>
+                                <div class="pending-amount-row difference ${Math.abs(diffCredit) <= 100 ? 'balanced' : 'unbalanced'}">
+                                    <span>Diferencia:</span>
+                                    <span>$${parseFloat(Math.abs(diffCredit)).toLocaleString('es-CL', {maximumFractionDigits: 0})}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="pending-total-difference ${isBalanced ? 'balanced' : 'unbalanced'}">
+                            <strong>Diferencia Total:</strong>
+                            <span>$${parseFloat(Math.abs(diffTotal)).toLocaleString('es-CL', {maximumFractionDigits: 0})}</span>
+                        </div>
+                        
+                        ${close.notes ? `
+                            <div class="pending-close-notes">
+                                <strong>Notas del Cajero:</strong>
+                                <p>${close.notes}</p>
+                            </div>
+                        ` : ''}
+                    </div>
+                    
+                    <div class="pending-close-actions">
+                        <button class="btn-accept-close" onclick="acceptPendingClose(${close.id})">
+                            ✅ Aceptar Cierre
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        container.innerHTML = `<div class="pending-closes-list">${closesHTML}</div>`;
+    }
+    
+    // Aceptar cierre pendiente
+    async function acceptPendingClose(closeId) {
+        if (!confirm('¿Estás seguro de que quieres aceptar este cierre? La caja será desbloqueada.')) {
+            return;
+        }
+        
+        const notes = prompt('Notas adicionales (opcional):', '');
+        
+        try {
+            const response = await fetch('/admin/api/accept-close', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    close_id: closeId,
+                    notes: notes || ''
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                alert('✅ Cierre aceptado correctamente. La caja ha sido desbloqueada.');
+                // Recargar cierres pendientes y todos los cierres
+                loadPendingCloses();
+                loadAllCloses(1);
+                // También actualizar estadísticas para reflejar cambios
+                updatePosStats();
+            } else {
+                alert('❌ Error: ' + (result.error || 'No se pudo aceptar el cierre'));
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('❌ Error al aceptar el cierre: ' + error.message);
+        }
+    }
+    
+    // Hacer función global
+    window.acceptPendingClose = acceptPendingClose;
+    
+    // Cargar estadísticas solo una vez al cargar la página (no es monitoreo en tiempo real)
+    // Esperar a que el DOM esté completamente cargado
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            updatePosStats();
+            // Cargar todos los cierres (independiente del turno)
+            loadAllCloses(1);
+            // Cargar cierres pendientes
+            loadPendingCloses();
+        });
+    } else {
+        // DOM ya está cargado
+        updatePosStats();
+        // Cargar todos los cierres (independiente del turno)
+        loadAllCloses(1);
+        // Cargar cierres pendientes
+        loadPendingCloses();
+    }
+    
+    // Almacenar datos de ventas globalmente
+    if (!window.registerSalesData) {
+        window.registerSalesData = {};
+    }
+    
+    // Función para mostrar detalle de ticket por índice
+    function showTicketDetailByIndex(saleIndex) {
+        const [regId, index] = saleIndex.replace('sale_', '').split('_');
+        const sales = window.registerSalesData[regId];
+        if (!sales || !sales[index]) {
+            console.error('❌ Venta no encontrada:', saleIndex);
+            return;
+        }
+        showTicketDetail(sales[index]);
+    }
+    
+    // Función para mostrar detalle de ticket
+    function showTicketDetail(sale) {
+        console.log('📋 Mostrando detalle de ticket:', sale);
+        
+        const modal = document.getElementById('ticket-detail-modal');
+        if (!modal) {
+            console.error('❌ Modal no encontrado');
+            return;
+        }
+        
+        // Formatear fecha
+        let saleTime = 'N/A';
+        if (sale.sale_time_formatted) {
+            saleTime = sale.sale_time_formatted;
+        } else if (sale.sale_time) {
+            try {
+                saleTime = new Date(sale.sale_time).toLocaleString('es-CL');
+            } catch (e) {
+                saleTime = sale.sale_time;
+            }
+        } else if (sale.created_at) {
+            try {
+                saleTime = new Date(sale.created_at).toLocaleString('es-CL');
+            } catch (e) {
+                saleTime = sale.created_at;
+            }
+        }
+        
+        // Determinar método de pago
+        const paymentType = sale.payment_type || (sale.payment_cash > 0 ? 'Efectivo' : 
+                                                   sale.payment_debit > 0 ? 'Débito' : 'Crédito');
+        const paymentClass = paymentType === 'Efectivo' ? 'cash' : 
+                            paymentType === 'Débito' ? 'debit' : 'credit';
+        
+        // Items del ticket
+        const items = sale.items || sale.cart_items || [];
+        const itemsHtml = items.map(item => `
+            <tr>
+                <td>${item.name || item.product_name || 'Producto'}</td>
+                <td style="text-align: center;">${item.quantity || 1}</td>
+                <td style="text-align: right;">$${parseFloat(item.unit_price || item.price || 0).toLocaleString('es-CL', {maximumFractionDigits: 0})}</td>
+                <td style="text-align: right;">$${parseFloat(item.subtotal || (item.quantity || 1) * (item.unit_price || item.price || 0)).toLocaleString('es-CL', {maximumFractionDigits: 0})}</td>
+            </tr>
+        `).join('');
+        
+        const total = sale.total || sale.total_amount || 0;
+        
+        // Construir HTML del modal
+        modal.innerHTML = `
+            <div class="ticket-modal-content">
+                <div class="ticket-modal-header">
+                    <div class="ticket-modal-title">🎫 Detalle del Ticket #${sale.sale_id || sale.id || 'N/A'}</div>
+                    <button class="ticket-modal-close" onclick="closeTicketDetail()">✕ Cerrar</button>
+                </div>
+                
+                <div class="ticket-detail-section">
+                    <div class="ticket-detail-label">Información General</div>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 10px;">
+                        <div>
+                            <div style="color: #aaa; font-size: 0.85rem; margin-bottom: 5px;">Caja</div>
+                            <div class="ticket-detail-value">${sale.register_name || 'N/A'}</div>
+                        </div>
+                        <div>
+                            <div style="color: #aaa; font-size: 0.85rem; margin-bottom: 5px;">Cajero</div>
+                            <div class="ticket-detail-value">${sale.employee_name || 'Sin asignar'}</div>
+                        </div>
+                        <div>
+                            <div style="color: #aaa; font-size: 0.85rem; margin-bottom: 5px;">Fecha y Hora</div>
+                            <div class="ticket-detail-value" style="font-size: 1rem;">${saleTime}</div>
+                        </div>
+                        <div>
+                            <div style="color: #aaa; font-size: 0.85rem; margin-bottom: 5px;">Método de Pago</div>
+                            <span class="ticket-payment-badge ${paymentClass}" style="font-size: 1rem; padding: 8px 15px;">${paymentType}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="ticket-detail-section">
+                    <div class="ticket-detail-label">Items del Ticket</div>
+                    <table class="ticket-items-table">
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th style="text-align: center;">Cantidad</th>
+                                <th style="text-align: right;">Precio Unit.</th>
+                                <th style="text-align: right;">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${itemsHtml}
+                            <tr class="ticket-total-row">
+                                <td colspan="3" style="text-align: right; padding-right: 20px;">TOTAL:</td>
+                                <td style="text-align: right; color: #4caf50; font-size: 1.3rem;">
+                                    $${parseFloat(total).toLocaleString('es-CL', {maximumFractionDigits: 0})}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                ${sale.comment ? `
+                <div class="ticket-detail-section">
+                    <div class="ticket-detail-label">Comentarios</div>
+                    <div class="ticket-detail-value" style="font-size: 1rem; font-weight: normal; color: #aaa;">
+                        ${sale.comment}
+                    </div>
+                </div>
+                ` : ''}
+            </div>
+        `;
+        
+        modal.classList.add('active');
+    }
+    
+    // Función para cerrar modal
+    function closeTicketDetail() {
+        const modal = document.getElementById('ticket-detail-modal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
+    }
+    
+    // Cerrar modal al hacer clic fuera
+    document.addEventListener('click', function(e) {
+        const modal = document.getElementById('ticket-detail-modal');
+        if (modal && modal.classList.contains('active')) {
+            if (e.target === modal) {
+                closeTicketDetail();
+            }
+        }
+    });
+    
+    // Cerrar modal con ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeTicketDetail();
+        }
+    });
+    
+    // Función para colapsar/expandir tabla de tickets
+    function toggleTicketsTable(registerId) {
+        const content = document.getElementById(`tickets-content-${registerId}`);
+        const toggleBtn = document.getElementById(`tickets-toggle-${registerId}`);
+        
+        if (content && toggleBtn) {
+            content.classList.toggle('collapsed');
+            toggleBtn.classList.toggle('collapsed');
+        }
+    }
+    
+    // Función para mostrar detalle del cierre de caja
+    function showRegisterClose(registerId) {
+        // Obtener datos desde el objeto global
+        const registerData = window.registerClosesData && window.registerClosesData[registerId];
+        if (!registerData) {
+            console.error('❌ Datos de cierre no encontrados para caja:', registerId);
+            alert('No se encontraron datos del cierre de esta caja.');
+            return;
+        }
+        
+        console.log('📋 Mostrando detalle de cierre de caja:', registerId, registerData);
+        
+        const modal = document.getElementById('ticket-detail-modal');
+        if (!modal) {
+            console.error('❌ Modal no encontrado');
+            return;
+        }
+        
+        const regName = registerData.register_name || `Caja ${registerId}`;
+        const closedAt = registerData.closed_at || 'N/A';
+        const closeStatus = registerData.close_status || 'unknown';
+        const cashierName = registerData.current_cashier_name || registerData.employee_name || 'Sin asignar';
+        
+        let closedAtFormatted = 'N/A';
+        if (closedAt && closedAt !== 'N/A') {
+            try {
+                closedAtFormatted = new Date(closedAt).toLocaleString('es-CL');
+            } catch (e) {
+                closedAtFormatted = closedAt;
+            }
+        }
+        
+        // Formatear estado del cierre
+        let statusLabel = 'Desconocido';
+        let statusColor = '#9e9e9e';
+        if (closeStatus === 'pending') {
+            statusLabel = 'Pendiente de Revisión';
+            statusColor = '#ff9800';
+        } else if (closeStatus === 'approved') {
+            statusLabel = 'Aprobado';
+            statusColor = '#4caf50';
+        } else if (closeStatus === 'discrepancy') {
+            statusLabel = 'Con Discrepancia';
+            statusColor = '#f44336';
+        } else if (closeStatus === 'closed') {
+            statusLabel = 'Cerrado';
+            statusColor = '#9e9e9e';
+        }
+        
+        // Construir HTML del modal
+        modal.innerHTML = `
+            <div class="ticket-modal-content">
+                <div class="ticket-modal-header">
+                    <div class="ticket-modal-title">🔒 Detalle del Cierre - ${regName}</div>
+                    <button class="ticket-modal-close" onclick="closeTicketDetail()">✕ Cerrar</button>
+                </div>
+                
+                <div class="ticket-detail-section">
+                    <div class="ticket-detail-label">Información del Cierre</div>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 10px;">
+                        <div>
+                            <div style="color: #aaa; font-size: 0.85rem; margin-bottom: 5px;">Caja</div>
+                            <div class="ticket-detail-value">${regName}</div>
+                        </div>
+                        <div>
+                            <div style="color: #aaa; font-size: 0.85rem; margin-bottom: 5px;">Cajero</div>
+                            <div class="ticket-detail-value">${cashierName}</div>
+                        </div>
+                        <div>
+                            <div style="color: #aaa; font-size: 0.85rem; margin-bottom: 5px;">Hora de Cierre</div>
+                            <div class="ticket-detail-value" style="font-size: 1rem;">${closedAtFormatted}</div>
+                        </div>
+                        <div>
+                            <div style="color: #aaa; font-size: 0.85rem; margin-bottom: 5px;">Estado</div>
+                            <span class="ticket-payment-badge" style="background-color: rgba(${statusColor === '#4caf50' ? '76, 175, 80' : statusColor === '#ff9800' ? '255, 152, 0' : statusColor === '#f44336' ? '244, 67, 54' : '158, 158, 158'}, 0.2); color: ${statusColor}; border: 1px solid ${statusColor}; font-size: 1rem; padding: 8px 15px;">
+                                ${statusLabel}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="ticket-detail-section">
+                    <div class="ticket-detail-label">Resumen de Ventas</div>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 10px;">
+                        <div>
+                            <div style="color: #aaa; font-size: 0.85rem; margin-bottom: 5px;">Total Ventas</div>
+                            <div class="ticket-detail-value">${registerData.total_sales || 0}</div>
+                        </div>
+                        <div>
+                            <div style="color: #aaa; font-size: 0.85rem; margin-bottom: 5px;">Total Recaudado</div>
+                            <div class="ticket-detail-value" style="color: #4caf50;">
+                                $${parseFloat(registerData.total_amount || 0).toLocaleString('es-CL', {maximumFractionDigits: 0})}
+                            </div>
+                        </div>
+                        <div>
+                            <div style="color: #aaa; font-size: 0.85rem; margin-bottom: 5px;">Promedio por Venta</div>
+                            <div class="ticket-detail-value" style="color: #ff9800;">
+                                $${parseFloat(registerData.average_ticket || 0).toLocaleString('es-CL', {maximumFractionDigits: 0})}
+                            </div>
+                        </div>
+                        <div>
+                            <div style="color: #aaa; font-size: 0.85rem; margin-bottom: 5px;">Métodos de Pago</div>
+                            <div style="font-size: 0.9rem; color: #fff;">
+                                <div>💵 Efectivo: $${parseFloat(registerData.total_cash || 0).toLocaleString('es-CL', {maximumFractionDigits: 0})}</div>
+                                <div>💳 Débito: $${parseFloat(registerData.total_debit || 0).toLocaleString('es-CL', {maximumFractionDigits: 0})}</div>
+                                <div>💳 Crédito: $${parseFloat(registerData.total_credit || 0).toLocaleString('es-CL', {maximumFractionDigits: 0})}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        modal.classList.add('active');
+    }
+</script>
+
+<!-- Modal de detalle de ticket -->
+<div id="ticket-detail-modal" class="ticket-modal"></div>
+
+<!-- Modal de detalle de cierre -->
+<div id="close-detail-modal" class="close-detail-modal">
+    <div class="close-detail-content">
+        <div class="close-detail-header">
+            <h2>📋 Detalles del Cierre de Caja</h2>
+            <div class="close-detail-header-actions">
+                <button class="close-detail-print-btn" title="Imprimir cierre">
+                    🖨️ Imprimir
+                </button>
+                <button class="close-detail-close-btn" onclick="closeCloseDetailModal()">×</button>
+            </div>
+        </div>
+        <div id="close-detail-body">
+            <div class="loading">Cargando detalles...</div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+

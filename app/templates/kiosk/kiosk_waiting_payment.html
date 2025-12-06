@@ -1,0 +1,137 @@
+{% extends "kiosk/base.html" %}
+
+{% block title %}Procesando Pago - Club Bimba{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="waiting-screen">
+    <div class="waiting-content">
+        <div class="waiting-icon">
+            <div class="spinner"></div>
+        </div>
+        <h1>Procesa tu pago</h1>
+        
+        {% if request.args.get('payment_method') in ['terminal', 'terminal_android', 'terminal_ios'] %}
+        <!-- Modo: Tap to Pay -->
+        {% set payment_method = request.args.get('payment_method') %}
+        {% set is_ios = payment_method == 'terminal_ios' %}
+        <div class="payment-terminal-section">
+            <p class="waiting-message">
+                {% if is_ios %}
+                <strong>🍎 Acerca tu tarjeta o iPhone/Apple Watch al dispositivo</strong>
+                {% else %}
+                <strong>💳 Acerca tu tarjeta o celular al dispositivo</strong>
+                {% endif %}
+            </p>
+            <div class="terminal-instructions" style="font-size: 1.5rem; margin: 2rem 0; padding: 2rem; background-color: {% if is_ios %}rgba(0, 122, 255, 0.1){% else %}rgba(76, 175, 80, 0.1){% endif %}; border-radius: 10px; border: 2px solid {% if is_ios %}#007AFF{% else %}#4CAF50{% endif %};">
+                {% if is_ios %}
+                <p style="margin-bottom: 1rem;">🍎 El iPhone/iPad procesará el pago con Apple Pay</p>
+                <p style="margin-bottom: 1rem;">💳 Acerca tu tarjeta sin contacto, iPhone o Apple Watch</p>
+                <p>⏳ Espera la confirmación...</p>
+                {% else %}
+                <p style="margin-bottom: 1rem;">📱 El dispositivo procesará el pago automáticamente</p>
+                <p style="margin-bottom: 1rem;">💳 Acerca tu tarjeta sin contacto o celular</p>
+                <p>⏳ Espera la confirmación...</p>
+                {% endif %}
+            </div>
+            <p class="qr-instructions" style="font-size: 1.2rem; margin-top: 1rem; color: {% if is_ios %}#007AFF{% else %}#4CAF50{% endif %};">
+                El pago se procesará directamente usando Tap to Pay{% if is_ios %} con Apple Pay{% endif %}
+            </p>
+        </div>
+        {% elif request.args.get('checkout_url') %}
+        <!-- Modo: Pago desde celular con QR -->
+        <div class="payment-qr-section">
+            <p class="waiting-message">
+                <strong>Escanea este código con tu celular para pagar</strong>
+            </p>
+            <div id="payment-qr-code" class="payment-qr-container"></div>
+            <p class="qr-instructions" style="font-size: 1.2rem; margin-top: 1rem; color: #ff6b6b;">
+                Abre la cámara de tu celular y escanea el código<br>
+                O acerca tu tarjeta/celular al iPhone con SumUp
+            </p>
+        </div>
+        {% else %}
+        <!-- Modo: Pago tradicional con iPhone -->
+        <p class="waiting-message">
+            Estamos procesando tu pago en SumUp.<br>
+            <strong>Acerca tu tarjeta o celular al iPhone con SumUp.</strong>
+        </p>
+        <p class="waiting-instructions" style="font-size: 1.2rem; margin-top: 1rem; color: #ff6b6b;">
+            El personal te indicará cuándo acercar tu método de pago.
+        </p>
+        {% endif %}
+        
+        <div class="waiting-status" id="waiting-status">
+            Esperando confirmación...
+        </div>
+    </div>
+</div>
+
+<script>
+const pagoId = '{{ pago_id }}';
+const checkoutUrl = '{{ request.args.get("checkout_url", "") }}';
+let pollInterval;
+let timeoutTimer;
+
+// Si hay checkout_url, generar QR code para pagar desde celular
+if (checkoutUrl) {
+    new QRCode(document.getElementById("payment-qr-code"), {
+        text: checkoutUrl,
+        width: 400,
+        height: 400,
+        colorDark: "#ffffff",
+        colorLight: "#1a1a1a",
+        correctLevel: QRCode.CorrectLevel.H
+    });
+}
+
+// Polling para verificar estado del pago
+async function verificarEstadoPago() {
+    try {
+        const response = await fetch(`/kiosk/api/pagos/status?pago_id=${pagoId}`);
+        const data = await response.json();
+        
+        if (data.ok) {
+            const estado = data.estado;
+            const statusEl = document.getElementById('waiting-status');
+            
+            if (estado === 'PAID') {
+                // Pago aprobado
+                clearInterval(pollInterval);
+                clearTimeout(timeoutTimer);
+                statusEl.textContent = '¡Pago aprobado!';
+                setTimeout(() => {
+                    window.location.href = `/kiosk/success?pago_id=${pagoId}`;
+                }, 1000);
+            } else if (estado === 'FAILED') {
+                // Pago rechazado
+                clearInterval(pollInterval);
+                clearTimeout(timeoutTimer);
+                alert('El pago fue rechazado. Por favor intenta de nuevo.');
+                window.location.href = '{{ url_for("kiosk.kiosk_home") }}';
+            }
+            // Si es PENDING, continuar esperando
+        }
+    } catch (error) {
+        console.error('Error al verificar estado:', error);
+    }
+}
+
+// Eliminado: polling automático para reducir carga en API
+// pollInterval = setInterval(verificarEstadoPago, 2000);
+
+// Timeout después de 5 minutos
+timeoutTimer = setTimeout(() => {
+    clearInterval(pollInterval);
+    alert('El tiempo de espera ha expirado. Por favor intenta de nuevo.');
+    window.location.href = '{{ url_for("kiosk.kiosk_home") }}';
+}, 300000); // 5 minutos
+
+// Verificar inmediatamente
+verificarEstadoPago();
+</script>
+{% endblock %}
+

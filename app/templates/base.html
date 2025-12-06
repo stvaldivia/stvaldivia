@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="description" content="Sistema de Gestión de Entregas BIMBA">
+    <title>{% block title %}POS{% endblock %}</title>
+
+    <!-- Estilos principales -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+
+    {% block head_extra %}{% endblock %}
+</head>
+
+<body {% if session.get('admin_logged_in') %}class="has-admin-nav" {% endif %}>
+    <!-- Barra de Navegación Superior Sticky (solo para admin) -->
+    {% if session.get('admin_logged_in') %}
+    <nav class="admin-top-nav">
+        <div class="admin-nav-container">
+            <div class="admin-nav-left">
+                <a href="/admin" class="admin-nav-logo">
+                    <img src="{{ url_for('static', filename='img/bimba-logo.png') }}" alt="BIMBA" class="logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                    <span class="logo-text">BIMBA</span>
+                </a>
+            </div>
+            <div class="admin-nav-right">
+                <a href="{{ url_for('routes.admin_panel_control') }}"
+                    class="admin-nav-btn {% if request.endpoint == 'routes.admin_panel_control' %}active{% endif %}"
+                    aria-label="Panel de Control">
+                    🎛️ Panel de Control
+                </a>
+                <a href="{{ url_for('routes.admin_logs') }}"
+                    class="admin-nav-btn {% if request.endpoint == 'routes.admin_logs' %}active{% endif %}"
+                    aria-label="Ver Tickets de Entregas">
+                    📋 Tickets
+                </a>
+                <a href="{{ url_for('routes.pos_stats') }}"
+                    class="admin-nav-btn {% if request.endpoint == 'routes.pos_stats' %}active{% endif %}"
+                    aria-label="Estadísticas de Cajas y Kioskos">
+                    💰 Cajas y Kioskos
+                </a>
+                <a href="{{ url_for('survey.survey_admin') }}"
+                    class="admin-nav-btn {% if request.endpoint and request.endpoint.startswith('survey.') %}active{% endif %}"
+                    aria-label="Administrar Encuestas">
+                    📝 Encuestas
+                </a>
+                <a href="{{ url_for('routes.admin_turnos') }}"
+                    class="admin-nav-btn {% if request.endpoint == 'routes.admin_turnos' %}active{% endif %}"
+                    aria-label="Gestionar Turnos">
+                    ⏰ Turnos
+                </a>
+                <a href="/admin/inventario"
+                    class="admin-nav-btn {% if request.path.startswith('/admin/inventario') or request.path.startswith('/admin/inventory') or request.endpoint == 'routes.register_inventory' %}active{% endif %}"
+                    aria-label="Gestionar Inventario">
+                    📦 Inventario
+                </a>
+                <a href="{{ url_for('equipo.listar') }}"
+                    class="admin-nav-btn {% if request.endpoint and request.endpoint.startswith('equipo.') %}active{% endif %}"
+                    aria-label="Gestionar Equipo">
+                    👥 Equipo
+                </a>
+                <a href="{{ url_for('routes.logout_admin') }}" class="admin-nav-btn logout-btn"
+                    aria-label="Cerrar Sesión de Administrador">🔓 Salir</a>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+
+    <div class="container">
+        <!-- Flash messages -->
+        <div class="flash-container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div class="flash flash-{{ category }}">
+                {{ message }}
+            </div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+        </div>
+
+        <!-- Título del sistema (solo en sistema de entrega, no en admin, no en home, no en login) -->
+        {% if not session.get('admin_logged_in') and request.endpoint != 'routes.index' and request.endpoint !=
+        'routes.login_admin' %}
+        {% block titulo_sistema %}
+        <h1 class="titulo-sistema-principal">SISTEMA DE ENTREGA DE PRODUCTOS BIMBA</h1>
+        {% endblock %}
+        {% endif %}
+
+        <!-- Contenido principal -->
+        <main class="main-container">
+            {% block content %}{% endblock %}
+        </main>
+
+        <!-- Footer con información del desarrollador -->
+        <footer class="footer-desarrollador">
+            Sistema Desarrollado por Sebastian Gatica - <a
+                href="mailto:hola@sebastiangatica.cl">hola@sebastiangatica.cl</a>
+            {% if app_version %}
+            <span style="margin-left: 10px; color: #888; font-size: 0.85em;">| {{ app_version }}</span>
+            {% endif %}
+        </footer>
+    </div>
+
+    <!-- Barra del Footer Fija (solo en sistema de entrega, NO en admin, NO en home, NO en login) -->
+    {% if not session.get('admin_logged_in') and request.endpoint != 'routes.index' and request.endpoint !=
+    'routes.login_admin' %}
+    <div class="footer-bar">
+        <div class="session-info">
+            {% if session.get('barra') and session.get('bartender') %}
+            <p><strong>Barra:</strong> <span aria-label="Barra actual">{{ session.get('barra') }}</span> |
+                <strong>Bartender:</strong> <span aria-label="Bartender actual">{{ session.get('bartender') }}</span>
+            </p>
+            {% else %}
+            <p><em>Seleccione Barra/Bartender</em></p>
+            {% endif %}
+        </div>
+        <div style="color: #888; font-size: 0.75em; padding-right: 10px;">
+            {% if app_version %}
+            <span>{{ app_version }}</span>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Footer Admin Unificado (todas las páginas admin) -->
+    {% if session.get('admin_logged_in') %}
+    <footer class="admin-footer-unified"
+        style="position: fixed; bottom: 0; left: 0; right: 0; background: rgba(26, 26, 46, 0.95); border-top: 2px solid rgba(102, 126, 234, 0.3); padding: 12px 20px; z-index: 999; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; backdrop-filter: blur(10px);">
+        <!-- Información del turno (izquierda) -->
+        <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+            {% set shift_status_actual = shift_status if shift_status else (g.shift_status if g.shift_status else {}) %}
+            {% set shift_metrics_actual = shift_metrics if shift_metrics else (g.shift_metrics if g.shift_metrics else {}) %}
+            {% if shift_status_actual.get('is_open', False) %}
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span
+                    style="display: inline-block; width: 10px; height: 10px; background: #4caf50; border-radius: 50%; animation: pulse 2s infinite;"></span>
+                <span style="color: #4caf50; font-weight: bold;">Turno Abierto</span>
+            </div>
+            <div style="color: #aaa; font-size: 0.9rem;">
+                <strong>Tiempo:</strong> {{ shift_metrics_actual.get('tiempo_transcurrido', 'N/A') }}
+            </div>
+            <div style="color: #aaa; font-size: 0.9rem;">
+                <strong>Entregas:</strong> <span style="color: #4caf50; font-weight: bold;">{{ shift_metrics_actual.get('total_entregas', 0) }}</span>
+            </div>
+            <div style="color: #aaa; font-size: 0.9rem;">
+                <strong>Entradas:</strong> <span style="color: #667eea; font-weight: bold;">{{ shift_metrics_actual.get('total_entradas', 0) }}</span>
+            </div>
+            {% else %}
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span
+                    style="display: inline-block; width: 10px; height: 10px; background: #ff9800; border-radius: 50%;"></span>
+                <span style="color: #ff9800; font-weight: bold;">Turno Cerrado</span>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Información del sistema (centro/derecha) -->
+        <div style="color: #888; font-size: 0.85rem; display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+            <span>
+                <strong>Usuario:</strong> <span style="color: #667eea; font-weight: bold;">{{ session.get('admin_username', 'admin') }}</span>
+            </span>
+            <span>|</span>
+            <span>
+                Sistema BIMBA - <span id="current-time-footer-unified">--:--:--</span>
+            </span>
+            {% if app_version %}
+            <span>|</span>
+            <span style="color: #667eea; font-weight: 500;">{{ app_version }}</span>
+            {% endif %}
+        </div>
+
+        <!-- Countdown solo en /admin/logs -->
+        {% if request.endpoint == 'routes.admin_logs' %}
+        <div id="countdown-footer" style="display: flex; align-items: center; gap: 12px;">
+            <div
+                style="display: flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: #fff; padding: 8px 16px; border-radius: 8px; font-size: 0.85rem; font-weight: 500; backdrop-filter: blur(10px);">
+                <div id="countdown-indicator"
+                    style="width: 6px; height: 6px; background-color: #4caf50; border-radius: 50%; animation: countdownPulse 1s infinite;">
+                </div>
+                <span id="countdown-text" style="color: #e8e8e8;">Actualizando en</span>
+                <span id="countdown-number"
+                    style="color: #4caf50; font-size: 1rem; font-weight: 700; min-width: 15px; text-align: center;">5</span>
+                <span style="color: #e8e8e8;">s</span>
+            </div>
+            <button id="pause-update-btn" onclick="toggleAutoUpdate()"
+                style="padding: 8px 16px; background: rgba(102, 126, 234, 0.3); border: 1px solid rgba(102, 126, 234, 0.5); border-radius: 6px; color: #667eea; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.3s;"
+                onmouseover="this.style.background='rgba(102, 126, 234, 0.4)'"
+                onmouseout="this.style.background='rgba(102, 126, 234, 0.3)'">
+                ⏸️ Pausar
+            </button>
+        </div>
+        {% endif %}
+    </footer>
+    
+    <style>
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.7;
+                transform: scale(1.1);
+            }
+        }
+
+        @keyframes countdownPulse {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.5;
+                transform: scale(1.2);
+            }
+        }
+
+        /* Ajustar padding del contenido cuando hay footer admin */
+        {% if session.get('admin_logged_in') %}
+        .main-container {
+            padding-bottom: 70px;
+        }
+        {% endif %}
+    </style>
+    
+    <script>
+        // Actualizar hora en el footer unificado
+        function updateFooterTime() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            const timeElement = document.getElementById('current-time-footer-unified');
+            if (timeElement) {
+                timeElement.textContent = `${hours}:${minutes}:${seconds}`;
+            }
+        }
+        // Actualizar inmediatamente y luego cada segundo
+        updateFooterTime();
+        setInterval(updateFooterTime, 1000);
+        
+        // Countdown solo en /admin/logs
+        {% if request.endpoint == 'routes.admin_logs' %}
+        let countdown = 5;
+        function updateCountdown() {
+            const countdownElement = document.getElementById('countdown-number');
+            if (countdownElement) {
+                countdownElement.textContent = countdown;
+                countdown = countdown > 0 ? countdown - 1 : 5;
+            }
+        }
+        setInterval(updateCountdown, 1000);
+        
+        // Estado de actualización automática
+        window.autoUpdatePaused = false;
+        window.countdownInterval = null;
+        window.updateInterval = null;
+
+        // Función para pausar/reanudar actualización
+        function toggleAutoUpdate() {
+            window.autoUpdatePaused = !window.autoUpdatePaused;
+            const btn = document.getElementById('pause-update-btn');
+            const indicator = document.getElementById('countdown-indicator');
+            const countdownDiv = document.getElementById('countdown-footer').querySelector('div');
+
+            if (window.autoUpdatePaused) {
+                // Pausar
+                if (window.countdownInterval) {
+                    clearInterval(window.countdownInterval);
+                    window.countdownInterval = null;
+                }
+                if (window.updateInterval) {
+                    clearInterval(window.updateInterval);
+                    window.updateInterval = null;
+                }
+                btn.textContent = '▶️ Reanudar';
+                btn.style.background = 'rgba(76, 175, 80, 0.3)';
+                btn.style.borderColor = 'rgba(76, 175, 80, 0.5)';
+                btn.style.color = '#4caf50';
+                if (indicator) indicator.style.animation = 'none';
+                if (countdownDiv) countdownDiv.style.opacity = '0.5';
+                document.getElementById('countdown-text').textContent = 'Actualización pausada';
+                document.getElementById('countdown-number').textContent = '—';
+            } else {
+                // Reanudar
+                btn.textContent = '⏸️ Pausar';
+                btn.style.background = 'rgba(102, 126, 234, 0.3)';
+                btn.style.borderColor = 'rgba(102, 126, 234, 0.5)';
+                btn.style.color = '#667eea';
+                if (indicator) indicator.style.animation = 'countdownPulse 1s infinite';
+                if (countdownDiv) countdownDiv.style.opacity = '1';
+                document.getElementById('countdown-text').textContent = 'Actualizando en';
+                // Reiniciar countdown y actualización
+                if (window.startCountdownFunction) window.startCountdownFunction();
+                if (window.startUpdateIntervalFunction) window.startUpdateIntervalFunction();
+            }
+        }
+        {% endif %}
+    </script>
+    {% endif %}
+
+    <!-- Indicador de estado de conexión API -->
+    <div id="api-status-indicator"
+        style="position: fixed; top: 10px; right: 10px; padding: 8px 12px; border-radius: 6px; font-size: 0.85rem; font-weight: bold; z-index: 1000; transition: all 0.3s; display: none;">
+        <span id="api-status-text"></span>
+    </div>
+
+    <script>
+        // Verificar estado de conexión API (siempre visible)
+        function checkApiStatus() {
+            fetch('{{ url_for("routes.api_health_check") }}', {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Cache-Control': 'no-cache'
+                },
+                cache: 'no-store'
+            })
+                .then(response => {
+                    // Si la respuesta no es OK, intentar parsear el JSON de error
+                    if (!response.ok) {
+                        return response.json().then(data => {
+                            // Retornar datos con el status code
+                            return { ...data, httpStatus: response.status };
+                        }).catch(() => {
+                            // Si no se puede parsear, crear un objeto de error
+                            return {
+                                status: 'error',
+                                message: `HTTP ${response.status}`,
+                                online: false,
+                                httpStatus: response.status
+                            };
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const indicator = document.getElementById('api-status-indicator');
+                    const text = document.getElementById('api-status-text');
+
+                    // Solo mostrar si hay un indicador en el DOM
+                    if (!indicator || !text) return;
+
+                    // Log solo en desarrollo
+                    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                        console.log('API Health Check Response:', data);
+                    }
+
+                    if (data.online === true || data.status === 'ok') {
+                        indicator.style.backgroundColor = '#00ff00';
+                        indicator.style.color = '#000';
+                        indicator.style.display = 'block';
+                        text.textContent = '✓ API Conectada';
+                        // Ocultar después de 3 segundos si está online
+                        setTimeout(() => {
+                            if (indicator) indicator.style.display = 'none';
+                        }, 3000);
+                    } else {
+                        // Mostrar todos los errores
+                        indicator.style.backgroundColor = '#ff4444';
+                        indicator.style.color = '#fff';
+                        indicator.style.display = 'block';
+                        text.textContent = `✗ ${data.message || 'API Desconectada'}`;
+                    }
+                })
+                .catch(error => {
+                    const indicator = document.getElementById('api-status-indicator');
+                    const text = document.getElementById('api-status-text');
+
+                    if (indicator && text) {
+                        // Log solo en desarrollo
+                        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                            console.error('Error verificando API:', error);
+                        }
+                        indicator.style.backgroundColor = '#ff4444';
+                        indicator.style.color = '#fff';
+                        indicator.style.display = 'block';
+                        text.textContent = `✗ Error de conexión: ${error.message || 'Desconocido'}`;
+                    }
+                });
+        }
+
+        // Verificar solo al abrir el turno (no automáticamente)
+        // La verificación se hace solo cuando se abre un turno desde el dashboard
+
+        document.addEventListener('DOMContentLoaded', (event) => {
+            // JavaScript personalizado si es necesario
+        });
+    </script>
+
+    <!-- Scripts cargados al final para no bloquear el renderizado -->
+    <!-- SocketIO -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.0/socket.io.js" defer></script>
+    <!-- Chart.js para gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
+
+    <!-- Módulos JavaScript reutilizables (optimización) -->
+    <script src="{{ url_for('static', filename='js/utils/dateFormatter.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/utils/currencyFormatter.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/components/Modal.js') }}"></script>
+    
+    <!-- Utilidades JavaScript -->
+    <script src="{{ url_for('static', filename='js/utils.js') }}" defer></script>
+    <!-- Sistema de Confirmaciones -->
+    <script src="{{ url_for('static', filename='js/confirm.js') }}" defer></script>
+    <!-- Mejoras de Accesibilidad -->
+    <script src="{{ url_for('static', filename='js/accessibility.js') }}" defer></script>
+</body>
+
+</html>

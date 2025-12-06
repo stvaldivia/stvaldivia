@@ -1,0 +1,27 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Entornos virtuales
+venv/
+env/
+
+# Archivos sensibles
+.env
+.env.*
+
+# Base de datos y runtime
+instance/
+*.db
+*.sqlite3
+*.log
+logs.csv
+
+# macOS
+.DS_Store
+__MACOSX/
+
+# Backups
+backups/

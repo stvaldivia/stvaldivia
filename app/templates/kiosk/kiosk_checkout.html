@@ -1,0 +1,539 @@
+{% extends "kiosk/base.html" %}
+
+{% block title %}Confirmar Pedido - Club Bimba{% endblock %}
+
+{% block content %}
+<div class="checkout-screen">
+    <div class="screen-header">
+        <h1>Confirma tu pedido</h1>
+        <button class="btn-secondary btn-small" onclick="window.location.href='{{ url_for('kiosk.kiosk_products') }}'">
+            Volver
+        </button>
+    </div>
+    
+    <div class="checkout-content">
+        <div class="checkout-items" id="checkout-items">
+            <!-- Se llenará con JavaScript -->
+        </div>
+        
+        <div class="checkout-total">
+            <div class="total-line">
+                <span>Total a pagar:</span>
+                <span id="checkout-total-amount">$0</span>
+            </div>
+        </div>
+        
+        <div class="checkout-actions">
+            <button class="btn-secondary btn-large" onclick="window.location.href='{{ url_for('kiosk.kiosk_products') }}'">
+                ← Volver a Productos
+            </button>
+            <div style="display: flex; flex-direction: column; gap: 1rem; width: 100%; margin-top: 2rem;">
+                <button class="btn-primary btn-large" id="btn-pagar-qr" onclick="procesarPagoQR()" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
+                    📱 PAGAR CON QR
+                </button>
+                {% if config.get('GETNET_ENABLED', False) %}
+                <button class="btn-primary btn-large" id="btn-pagar-getnet" onclick="procesarPagoGetNet()" style="background: linear-gradient(135deg, #0066CC 0%, #004499 100%);">
+                    💳 PAGAR CON TARJETA
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para pago con tarjeta GetNet -->
+{% if config.get('GETNET_ENABLED', False) %}
+<div id="modal-getnet" class="modal-getnet" style="display: none;">
+    <div class="modal-getnet-content">
+        <div class="modal-getnet-header">
+            <h2>Procesando pago con tarjeta</h2>
+        </div>
+        <div class="modal-getnet-body">
+            <div id="getnet-status" class="getnet-status">
+                <div class="getnet-spinner"></div>
+                <p id="getnet-message">Conectando con el terminal...</p>
+            </div>
+            <div id="getnet-amount" class="getnet-amount" style="display: none;">
+                <span class="getnet-amount-label">Monto:</span>
+                <span class="getnet-amount-value" id="getnet-amount-value">$0</span>
+            </div>
+        </div>
+        <div class="modal-getnet-footer">
+            <button id="btn-cancelar-pago" class="btn-secondary" onclick="cancelarPagoGetNet()" style="display: none;">
+                Cancelar
+            </button>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<style>
+.modal-getnet {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+}
+
+.modal-getnet-content {
+    background: white;
+    border-radius: 20px;
+    padding: 2rem;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+}
+
+.modal-getnet-header h2 {
+    margin: 0 0 1.5rem 0;
+    color: #333;
+    font-size: 1.8rem;
+    text-align: center;
+}
+
+.modal-getnet-body {
+    text-align: center;
+    padding: 1rem 0;
+}
+
+.getnet-status {
+    margin: 2rem 0;
+}
+
+.getnet-spinner {
+    width: 60px;
+    height: 60px;
+    border: 6px solid #f3f3f3;
+    border-top: 6px solid #0066CC;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1.5rem;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+#getnet-message {
+    font-size: 1.2rem;
+    color: #666;
+    margin: 0;
+}
+
+.getnet-amount {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: #f5f5f5;
+    border-radius: 10px;
+}
+
+.getnet-amount-label {
+    display: block;
+    font-size: 1rem;
+    color: #666;
+    margin-bottom: 0.5rem;
+}
+
+.getnet-amount-value {
+    display: block;
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: #FF0000;
+}
+
+.modal-getnet-footer {
+    margin-top: 2rem;
+    text-align: center;
+}
+</style>
+
+<script>
+// Cargar carrito desde localStorage
+let carritoItems = [];
+
+function cargarCarrito() {
+    const carritoData = localStorage.getItem('carrito_pendiente');
+    if (carritoData) {
+        carritoItems = JSON.parse(carritoData);
+        mostrarCarrito();
+    } else {
+        // Si no hay carrito, volver a productos
+        window.location.href = '{{ url_for("kiosk.kiosk_products") }}';
+    }
+}
+
+function mostrarCarrito() {
+    const itemsEl = document.getElementById('checkout-items');
+    const totalEl = document.getElementById('checkout-total-amount');
+    
+    let html = '';
+    let total = 0;
+    
+    carritoItems.forEach(item => {
+        total += item.total;
+        html += `
+            <div class="checkout-item">
+                <div class="checkout-item-info">
+                    <span class="checkout-item-nombre">${item.nombre}</span>
+                    <span class="checkout-item-detalle">${item.cantidad} x $${item.precio.toLocaleString()}</span>
+                </div>
+                <span class="checkout-item-subtotal">$${item.total.toLocaleString()}</span>
+            </div>
+        `;
+    });
+    
+    itemsEl.innerHTML = html;
+    totalEl.textContent = `$${total.toLocaleString()}`;
+}
+
+// Variable global para el pago actual
+let pagoActualId = null;
+let getnetTicketNumber = null;
+
+// Inicializar GetNet cuando se carga la página (solo si está habilitado)
+document.addEventListener('DOMContentLoaded', function() {
+    {% if config.get('GETNET_ENABLED', False) %}
+    if (typeof Getnet !== 'undefined' && typeof GETNET_CONFIG !== 'undefined') {
+        const host = GETNET_CONFIG.HOST || window.GETNET_SERVER_HOST || 'localhost';
+        const port = parseInt(GETNET_CONFIG.PORT) || window.GETNET_SERVER_PORT || 8020;
+        
+        Getnet.Init(
+            host,
+            port,
+            handleGetNetMessage,  // Callback para mensajes
+            handleGetNetError      // Callback para errores
+        );
+    }
+    {% else %}
+    console.log('⚠️ GetNet está desactivado');
+    {% endif %}
+});
+
+// Manejar mensajes del POS GetNet
+function handleGetNetMessage(response) {
+    console.log('📥 Respuesta del POS:', response);
+    
+    const functionCode = response.FunctionCode || response.Command;
+    const responseCode = response.ResponseCode;
+    const responseMessage = response.ResponseMessage || '';
+    
+    updateGetNetStatus('Procesando respuesta...', false);
+    
+    // Procesar según código de función
+    switch (functionCode) {
+        case 106: // Poll - Conexión
+            if (responseCode === 0) {
+                updateGetNetStatus('✅ Terminal conectado. Iniciando venta...', false);
+                // Después de Poll exitoso, enviar Sale
+                setTimeout(() => {
+                    iniciarVentaGetNet();
+                }, 500);
+            } else {
+                mostrarErrorGetNet('Error al conectar con el terminal: ' + responseMessage);
+            }
+            break;
+            
+        case 100: // Sale - Venta
+            if (responseCode === 0) {
+                // Pago aprobado
+                // El campo correcto es "Ticket" según la respuesta del POS
+                const voucherNumber = response.Ticket || response.VoucherNumber || response.TicketNumber || '';
+                const authorizationCode = response.AuthorizationCode || '';
+                const cardBrand = response.CardBrand || '';
+                const last4Digits = response.Last4Digits || '';
+                
+                updateGetNetStatus('✅ Pago aprobado', false);
+                
+                // Enviar respuesta al backend
+                enviarRespuestaGetNetAlBackend({
+                    pago_id: pagoActualId,
+                    function_code: functionCode,
+                    response_code: responseCode,
+                    response_message: responseMessage || 'Aprobado',
+                    voucher_number: voucherNumber,
+                    authorization_code: authorizationCode,
+                    card_brand: cardBrand,
+                    last4_digits: last4Digits,
+                    success: true,
+                    data: response
+                });
+            } else {
+                // Pago rechazado
+                mostrarErrorGetNet('Pago rechazado: ' + responseMessage);
+                
+                // Enviar respuesta al backend
+                enviarRespuestaGetNetAlBackend({
+                    pago_id: pagoActualId,
+                    function_code: functionCode,
+                    response_code: responseCode,
+                    response_message: responseMessage || 'Rechazado',
+                    success: false,
+                    data: response
+                });
+            }
+            break;
+            
+        default:
+            console.log('Respuesta del POS:', response);
+    }
+}
+
+// Manejar errores de GetNet
+function handleGetNetError(error) {
+    console.error('❌ Error GetNet:', error);
+    mostrarErrorGetNet('Error de conexión: ' + (error.message || error));
+}
+
+// Función para procesar pago con GetNet POS
+async function procesarPagoGetNet() {
+    const btnPagar = document.getElementById('btn-pagar-getnet');
+    
+    // Calcular total
+    const total = carritoItems.reduce((sum, item) => sum + item.total, 0);
+    
+    if (total <= 0) {
+        alert('El carrito está vacío');
+        return;
+    }
+    
+    // Deshabilitar botón
+    if (btnPagar) {
+        btnPagar.disabled = true;
+    }
+    
+    try {
+        // Crear registro de pago en el backend primero
+        const response = await fetch('/kiosk/api/pagos/getnet/crear', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                monto: total,
+                items: carritoItems,
+                kiosko_id: 'KIOSKO_1'
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (!data.ok) {
+            throw new Error(data.error || 'Error al crear el pago');
+        }
+        
+        // Guardar ID del pago y ticket
+        pagoActualId = data.pago_id;
+        getnetTicketNumber = data.pago_id; // Usar pago_id como ticket number
+        
+        // Mostrar modal bloqueante
+        mostrarModalGetNet(total);
+        
+        // Conectar y procesar
+        await conectarYProcesarGetNet(total);
+        
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al procesar el pago: ' + error.message);
+        ocultarModalGetNet();
+        if (btnPagar) {
+            btnPagar.disabled = false;
+        }
+    }
+}
+
+// Conectar y procesar pago GetNet
+async function conectarYProcesarGetNet(amount) {
+    try {
+        updateGetNetStatus('Conectando con el terminal...', false);
+        
+        // Conectar WebSocket
+        await Getnet.Connect();
+        
+        updateGetNetStatus('Verificando conexión con POS...', false);
+        
+        // Enviar Poll (106) para verificar conexión
+        Getnet.Poll();
+        
+        // El Sale se enviará automáticamente cuando Poll responda OK
+        // (ver handleGetNetMessage)
+        
+    } catch (error) {
+        console.error('Error al conectar:', error);
+        mostrarErrorGetNet('No se pudo conectar con el terminal. Verifica que el servidor Node.js esté corriendo.');
+    }
+}
+
+// Iniciar venta después de Poll exitoso
+function iniciarVentaGetNet() {
+    const total = carritoItems.reduce((sum, item) => sum + item.total, 0);
+    const amountInCents = Math.round(total); // GetNet espera centavos
+    
+    updateGetNetStatus('Esperando tarjeta en el terminal...', true);
+    document.getElementById('getnet-amount-value').textContent = `$${total.toLocaleString()}`;
+    document.getElementById('getnet-amount').style.display = 'block';
+    document.getElementById('btn-cancelar-pago').style.display = 'block';
+    
+    // Enviar comando Sale (100)
+    Getnet.Sale(amountInCents, getnetTicketNumber);
+}
+
+// Actualizar estado en el modal
+function updateGetNetStatus(message, showAmount) {
+    const messageEl = document.getElementById('getnet-message');
+    if (messageEl) {
+        messageEl.textContent = message;
+    }
+    
+    if (showAmount !== undefined) {
+        const amountEl = document.getElementById('getnet-amount');
+        if (amountEl) {
+            amountEl.style.display = showAmount ? 'block' : 'none';
+        }
+    }
+}
+
+// Mostrar error en el modal
+function mostrarErrorGetNet(message) {
+    updateGetNetStatus('❌ ' + message, false);
+    document.getElementById('getnet-spinner').style.display = 'none';
+    
+    setTimeout(() => {
+        ocultarModalGetNet();
+        restaurarBotonGetNet();
+    }, 3000);
+}
+
+// Mostrar modal
+function mostrarModalGetNet(amount) {
+    const modal = document.getElementById('modal-getnet');
+    if (modal) {
+        modal.style.display = 'flex';
+        updateGetNetStatus('Conectando con el terminal...', false);
+        document.getElementById('getnet-amount-value').textContent = `$${amount.toLocaleString()}`;
+        document.getElementById('getnet-amount').style.display = 'none';
+        document.getElementById('btn-cancelar-pago').style.display = 'none';
+    }
+}
+
+// Ocultar modal
+function ocultarModalGetNet() {
+    const modal = document.getElementById('modal-getnet');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// Cancelar pago
+function cancelarPagoGetNet() {
+    if (Getnet && Getnet.IsConnected && Getnet.IsConnected()) {
+        Getnet.CancelSale();
+    }
+    Getnet.Disconnect();
+    ocultarModalGetNet();
+    restaurarBotonGetNet();
+}
+
+// Restaurar botón
+function restaurarBotonGetNet() {
+    const btnPagar = document.getElementById('btn-pagar-getnet');
+    if (btnPagar) {
+        btnPagar.disabled = false;
+    }
+}
+
+// Enviar respuesta al backend
+async function enviarRespuestaGetNetAlBackend(respuestaData) {
+    try {
+        const response = await fetch('/kiosk/api/pagos/getnet/respuesta', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(respuestaData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.ok && respuestaData.success) {
+            // Limpiar carrito
+            localStorage.removeItem('carrito_pendiente');
+            
+            // Cerrar conexión
+            Getnet.Disconnect();
+            
+            // Ocultar modal
+            ocultarModalGetNet();
+            
+            // Redirigir a pantalla de éxito
+            window.location.href = `/kiosk/success?pago_id=${pagoActualId}`;
+        } else if (!respuestaData.success) {
+            // Pago rechazado, ya se mostró el error
+            setTimeout(() => {
+                ocultarModalGetNet();
+                restaurarBotonGetNet();
+            }, 2000);
+        }
+    } catch (error) {
+        console.error('Error al enviar respuesta:', error);
+        mostrarErrorGetNet('Error al procesar la respuesta del pago');
+    }
+}
+
+// Función para procesar pago con QR
+async function procesarPagoQR() {
+    const btnPagar = document.getElementById('btn-pagar-qr');
+    
+    // Deshabilitar botón
+    if (btnPagar) {
+        btnPagar.disabled = true;
+        btnPagar.textContent = 'Generando QR...';
+    }
+    
+    try {
+        // Calcular total
+        const total = carritoItems.reduce((sum, item) => sum + item.total, 0);
+        
+        // Crear pago QR en el backend
+        const response = await fetch('/kiosk/api/pagos/getnet/qr', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                monto: total,
+                items: carritoItems,
+                kiosko_id: 'KIOSKO_1'
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (!data.ok) {
+            throw new Error(data.error || 'Error al crear el pago QR');
+        }
+        
+        // Redirigir a pantalla de QR
+        window.location.href = `/kiosk/qr-payment/${data.pago_id}`;
+        
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al procesar el pago QR: ' + error.message);
+        if (btnPagar) {
+            btnPagar.disabled = false;
+            btnPagar.textContent = '📱 PAGAR CON QR';
+        }
+    }
+}
+
+// Cargar carrito al iniciar
+cargarCarrito();
+</script>
+{% endblock %}
+

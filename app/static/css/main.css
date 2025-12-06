@@ -1,0 +1,1348 @@
+
+/* Reseteo Básico y Configuración General */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+*, *:before, *:after {
+  box-sizing: inherit;
+}
+
+/* Barra de Navegación Superior Sticky para Admin */
+.admin-top-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); /* Gradiente oscuro */
+  border-bottom: 2px solid rgba(102, 126, 234, 0.5);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+  padding: 0;
+}
+
+.admin-nav-container {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  flex-wrap: wrap;
+  gap: 10px;
+  box-sizing: border-box;
+}
+
+.admin-nav-left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-shrink: 0;
+}
+
+.admin-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.admin-nav-logo {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  padding: 8px 15px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.admin-nav-logo img.logo-img {
+  height: 40px;
+  width: auto;
+  max-width: 150px;
+  object-fit: contain;
+  display: block;
+}
+
+.admin-nav-logo .logo-text {
+  display: none;
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+  letter-spacing: 1px;
+}
+
+/* Si la imagen no carga, mostrar el texto */
+.admin-nav-logo img.logo-img:not([src]),
+.admin-nav-logo:has(img.logo-img:not([src])) .logo-text {
+  display: block;
+}
+
+.admin-nav-logo span {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+  letter-spacing: 1px;
+}
+
+.admin-nav-logo:hover {
+  background: rgba(102, 126, 234, 0.2);
+}
+
+.admin-nav-btn {
+  background: rgba(102, 126, 234, 0.3);
+  color: #e8e8e8;
+  text-decoration: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  white-space: nowrap;
+  display: inline-block;
+}
+
+.admin-nav-btn:hover {
+  background: rgba(102, 126, 234, 0.5);
+  color: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(102, 126, 234, 0.3);
+}
+
+.admin-nav-btn.back-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-weight: bold;
+  border: none;
+}
+
+.admin-nav-btn.back-btn:hover {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.5);
+}
+
+.admin-nav-btn.logout-btn {
+  background: rgba(220, 53, 69, 0.3);
+  border-color: rgba(220, 53, 69, 0.4);
+}
+
+.admin-nav-btn.logout-btn:hover {
+  background: rgba(220, 53, 69, 0.6);
+  border-color: rgba(220, 53, 69, 0.8);
+}
+
+.admin-nav-btn.active {
+  background: rgba(102, 126, 234, 0.6);
+  border-color: rgba(102, 126, 234, 0.5);
+  color: #fff;
+  font-weight: bold;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+}
+
+.admin-nav-btn.active:hover {
+  background: rgba(102, 126, 234, 0.7);
+  transform: translateY(-1px);
+}
+
+/* Ajuste del padding superior cuando hay nav admin */
+body.has-admin-nav {
+  padding-top: 70px;
+}
+
+@media (max-width: 768px) {
+  .admin-nav-container {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 10px;
+  }
+  
+  .admin-nav-left,
+  .admin-nav-right {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .admin-nav-btn {
+    width: 100%;
+    text-align: center;
+    margin: 2px 0;
+  }
+  
+  .admin-nav-logo {
+    text-align: center;
+    margin-bottom: 5px;
+  }
+  
+  body.has-admin-nav {
+    padding-top: 140px;
+  }
+}
+
+body {
+  font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+  text-align: center;
+  background: #0f0f1e !important; /* Fondo oscuro */
+  color: #e8e8e8;
+  font-size: 15px;
+  line-height: 1.5;
+  /* Ajuste del padding-bottom para la nueva altura del footer (solo en sistema de entrega) */
+  padding-bottom: 85px;
+}
+
+/* Ajuste del padding cuando hay footer admin */
+body.has-admin-nav {
+  padding-bottom: 80px; /* Espacio para el footer admin */
+}
+
+/* Ajuste del padding superior cuando hay nav admin */
+body.has-admin-nav .container {
+  padding-top: 10px;
+}
+
+/* Footer Admin Sticky */
+.admin-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); /* Gradiente oscuro */
+  border-top: 2px solid rgba(102, 126, 234, 0.5);
+  box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.5);
+  z-index: 9998;
+  padding: 0;
+}
+
+.admin-footer-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  padding: 15px 20px;
+  flex-wrap: wrap;
+  box-sizing: border-box;
+}
+
+.admin-footer-btn {
+  background: #2a2a2a;
+  color: #fff;
+  text-decoration: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  border: none;
+  white-space: nowrap;
+  display: inline-block;
+  min-width: 150px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.admin-footer-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+}
+
+/* Botón EN TIEMPO REAL - Verde cuando está activo */
+.admin-footer-btn.active-tiempo-real {
+  background: #4caf50;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+}
+
+.admin-footer-btn.active-tiempo-real:hover {
+  background: #45a049;
+}
+
+/* Botón POR MÓDULO - Marrón/gris cuando está activo */
+.admin-footer-btn.active-modulo {
+  background: #8b6f47;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(139, 111, 71, 0.4);
+}
+
+.admin-footer-btn.active-modulo:hover {
+  background: #7a5f3d;
+}
+
+/* Botón NO ENTREGADOS - Rojo cuando está activo */
+.admin-footer-btn.active-pendientes {
+  background: #f44336;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
+}
+
+.admin-footer-btn.active-pendientes:hover {
+  background: #da190b;
+}
+
+@media (max-width: 768px) {
+  .admin-footer-container {
+    flex-direction: column;
+    padding: 10px;
+  }
+  
+  .admin-footer-btn {
+    width: 100%;
+    min-width: auto;
+  }
+  
+  body.has-admin-nav {
+    padding-bottom: 140px; /* Más espacio en móvil */
+  }
+}
+
+.container {
+  padding: 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.main-container {
+  padding: 0 10px 10px 10px;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: calc(100vh - 85px);
+}
+
+/* Mensajes Flash */
+.messages {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 15px 0;
+}
+.messages li {
+  padding: 12px 15px;
+  margin-bottom: 10px;
+  border-radius: 5px;
+  font-weight: bold;
+  text-align: center;
+}
+.messages .info { background-color: #0353a4; color: #fff; }
+.messages .success { background-color: #008000; color: #fff; }
+.messages .error { background-color: #b22222; color: #fff; }
+
+.flash-container {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 10px 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+.flash {
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border-radius: 5px;
+  font-weight: bold;
+  text-align: center;
+  font-size: 0.95rem;
+}
+.flash-info { background-color: #0353a4; color: #fff; }
+.flash-success { background-color: #008000; color: #fff; }
+.flash-error { background-color: #b22222; color: #fff; }
+.flash-warning { background-color: #ffaa00; color: #000; }
+
+/* Barra del Footer Fija (solo en sistema de entrega) */
+body.has-admin-nav .footer-bar {
+    display: none !important;
+}
+
+/* Ocultar título del sistema cuando hay admin nav */
+body.has-admin-nav .titulo-sistema-principal {
+    display: none !important;
+}
+
+.footer-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background-color: #222;
+    border-top: 1px solid #444;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 10px;
+    flex-wrap: wrap;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.5);
+    min-height: 75px; /* Aumentamos la altura mínima para acomodar botones más grandes */
+}
+
+.session-info {
+    flex-grow: 1;
+    text-align: left;
+    font-size: 0.8em;
+    padding-left: 5px;
+}
+.session-info p { margin: 2px 0; color: #aaa; }
+.session-info strong { color: #fff; }
+
+.nav-links {
+    display: flex;
+    justify-content: flex-end;
+    flex-grow: 2;
+}
+
+.nav-button {
+  background-color: #007bff;
+  color: white;
+  text-decoration: none;
+  padding: 12px 16px; 
+  border-radius: 8px;
+  margin: 0 4px;
+  font-size: 1em; 
+  font-weight: bold;
+  white-space: nowrap;
+  transition: background-color 0.2s;
+}
+
+.nav-button:hover {
+    background-color: #0056b3;
+}
+.nav-button.reset { background-color: #dc3545; }
+.nav-button.reset:hover { background-color: #c82333; }
+
+.button-like, .action-button {
+    display: inline-block;
+    font-size: 1.2em;
+    margin: 10px 5px;
+    padding: 15px 25px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    text-decoration: none;
+    width: calc(100% - 20px);
+}
+.action-button:hover { background: #0056b3; }
+
+/* Títulos - Táctil y visible para discoteca (ajustado) */
+.titulo-principal {
+  font-size: 2rem;
+  margin-bottom: 10px;
+  text-align: center;
+  color: #00ff00;
+  font-weight: bold;
+  text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+}
+
+.titulo-sistema-principal {
+  font-size: 1.8rem;
+  margin: 15px 0 20px 0;
+  text-align: center;
+  color: #00ff00;
+  font-weight: bold;
+  text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+}
+
+.footer-desarrollador {
+  text-align: center;
+  padding: 15px 10px 100px 10px;
+  margin-top: 20px;
+  margin-bottom: 0;
+  color: #888;
+  font-size: 0.85rem;
+  border-top: 1px solid #444;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.footer-desarrollador a {
+  color: #00ff00;
+  text-decoration: none;
+}
+
+.footer-desarrollador a:hover {
+  text-decoration: underline;
+}
+
+.titulo-venta {
+  font-size: 1.6rem;
+  margin-top: 0;
+  margin-bottom: 10px;
+  text-align: center;
+  color: #00ff00;
+  font-weight: bold;
+}
+
+.titulo-detalles {
+  font-size: 1.4rem;
+  margin-bottom: 8px;
+  text-align: center;
+  color: #00ff00;
+  font-weight: bold;
+}
+
+.titulo-buscar {
+  font-size: 1.3rem;
+  margin-bottom: 8px;
+  text-align: center;
+  color: #00ff00;
+  font-weight: bold;
+}
+
+h1, h2 {
+  font-size: 2rem;
+  margin-bottom: 10px;
+  text-align: center;
+  color: #e8e8e8;
+}
+
+h2 {
+  font-size: 1.5rem;
+}
+
+h3 {
+  font-size: 1.3rem;
+  margin-bottom: 10px;
+  text-align: center;
+  color: #e8e8e8;
+}
+
+/* Formularios */
+form {
+  margin: 15px 0;
+}
+
+form label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: #e8e8e8;
+}
+
+form input[type="text"],
+form input[type="password"],
+form select {
+  padding: 12px;
+  font-size: 1em;
+  border-radius: 6px;
+  border: 1px solid #444;
+  outline: none;
+  background-color: #222;
+  color: #e8e8e8;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+form input:focus,
+form select:focus {
+  border-color: #007bff;
+}
+
+form button[type="submit"],
+form button {
+  padding: 15px 25px;
+  background-color: #00ff00;
+  border: none;
+  border-radius: 8px;
+  color: #000;
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(0, 255, 0, 0.3);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+form button[type="submit"]:active,
+form button:active {
+  transform: scale(0.98);
+}
+
+form button[type="submit"]:hover,
+form button:hover {
+  background-color: #00cc00;
+  box-shadow: 0 6px 20px rgba(0, 255, 0, 0.4);
+}
+
+/* Info del vendedor (ajustado) */
+.venta-info {
+  background-color: #222;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.venta-info p {
+  margin: 4px 0;
+  font-size: 0.9rem;
+  color: #e8e8e8;
+}
+
+/* Detalles de venta en dos columnas */
+.venta-info-dos-lineas {
+  background-color: #222;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.titulo-detalles-dos-lineas {
+  font-size: 1.4rem;
+  margin-bottom: 12px;
+  text-align: center;
+  color: #00ff00;
+  font-weight: bold;
+}
+
+.venta-info-columnas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.venta-info-columna {
+  font-size: 0.95rem;
+  color: #e8e8e8;
+}
+
+.venta-info-columna p {
+  margin: 6px 0;
+}
+
+@media (max-width: 768px) {
+  .venta-info-columnas {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .buscar-form-inline {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .titulo-buscar-inline {
+    text-align: center;
+  }
+
+  .buscar-form-inline input {
+    width: 100%;
+  }
+}
+
+/* Formulario de búsqueda */
+.search-container {
+  width: 100%;
+  margin-bottom: 20px;
+  box-sizing: border-box;
+}
+
+.search-container input {
+  width: 100%;
+  padding: 14px;
+  font-size: 1.1rem;
+  border-radius: 6px;
+  border: 1px solid #444;
+  outline: none;
+  background-color: #222;
+  color: #e8e8e8;
+  box-sizing: border-box;
+  margin-bottom: 10px;
+}
+
+.search-container input:focus {
+  border-color: #007bff;
+}
+
+.search-container button {
+  width: 100%;
+  padding: 14px;
+  background-color: #007bff;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.search-container button:hover {
+  background-color: #0056b3;
+}
+
+/* Buscar box */
+.buscar-box {
+  width: 100%;
+  margin: 15px 0;
+  padding: 15px;
+  background-color: #222;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.buscar-box h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  color: #e8e8e8;
+}
+
+.buscar-box form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.buscar-box input {
+  padding: 15px;
+  font-size: 1.3rem;
+  border-radius: 8px;
+  border: 2px solid #444;
+  outline: none;
+  background-color: #222;
+  color: #e8e8e8;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.buscar-box input:focus {
+  border-color: #00ff00;
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+}
+
+.buscar-box button {
+  padding: 15px 25px;
+  background-color: #00ff00;
+  border: none;
+  border-radius: 8px;
+  color: #000;
+  font-size: 1.3rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(0, 255, 0, 0.3);
+  width: 100%;
+  margin-top: 8px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.buscar-box button:active {
+  transform: scale(0.98);
+}
+
+.buscar-box button:hover {
+  background-color: #00cc00;
+  box-shadow: 0 6px 20px rgba(0, 255, 0, 0.4);
+}
+
+/* Buscar box inline - en una línea */
+.buscar-box-inline {
+  width: 100%;
+  margin: 15px 0;
+  padding: 12px 15px;
+  background-color: #222;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.buscar-form-inline {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0;
+}
+
+.titulo-buscar-inline {
+  font-size: 1.2rem;
+  color: #00ff00;
+  font-weight: bold;
+  white-space: nowrap;
+  margin: 0;
+}
+
+.buscar-form-inline input {
+  flex: 1;
+  min-width: 200px;
+  padding: 12px;
+  font-size: 1.2rem;
+  border-radius: 8px;
+  border: 2px solid #444;
+  outline: none;
+  background-color: #222;
+  color: #e8e8e8;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.buscar-form-inline input:focus {
+  border-color: #00ff00;
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+}
+
+.buscar-form-inline button {
+  padding: 12px 20px;
+  background-color: #00ff00;
+  border: none;
+  border-radius: 8px;
+  color: #000;
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(0, 255, 0, 0.3);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+}
+
+.buscar-form-inline button:active {
+  transform: scale(0.98);
+}
+
+.buscar-form-inline button:hover {
+  background-color: #00cc00;
+  box-shadow: 0 6px 20px rgba(0, 255, 0, 0.4);
+}
+
+/* Tabla productos (clase .productos) - Táctil para discoteca (ajustado) */
+.productos {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  background-color: #1a1a1a !important; /* Fondo oscuro */
+  font-size: 1.1rem;
+  box-sizing: border-box;
+}
+
+.productos th {
+  background-color: #222;
+  padding: 10px 8px;
+  font-size: 1.15rem;
+  font-weight: bold;
+  text-align: left;
+  border-bottom: 2px solid #444;
+  color: #e8e8e8;
+}
+
+.productos td {
+  padding: 12px 10px;
+  text-align: left;
+  border-bottom: 1px solid #444;
+  vertical-align: top;
+  color: #e8e8e8;
+  font-size: 1.15rem;
+}
+
+.producto-nombre {
+  font-size: 1.3rem !important;
+  font-weight: 500;
+}
+
+.producto-cantidad,
+.producto-entregado,
+.producto-pendiente {
+  font-size: 1.2rem !important;
+  font-weight: bold;
+  text-align: center;
+}
+
+.productos tr:nth-child(even) {
+  background-color: #1a1a1a;
+}
+
+.productos tr:nth-child(odd) {
+  background-color: #1a1a1a !important; /* Fondo oscuro */
+}
+
+.productos tr.completo {
+  background-color: #0a2a0a;
+  opacity: 0.6;
+}
+
+.productos tr.pendiente-disponible {
+  background-color: rgba(0, 100, 0, 0.3) !important;
+  border-left: 4px solid #00ff00;
+}
+
+/* Modificadores */
+.mods {
+  list-style: none;
+  padding: 0;
+  margin: 5px 0 0 0;
+  font-size: 0.85rem;
+  color: #aaa;
+}
+
+.mods li {
+  padding: 2px 0;
+}
+
+/* Mensajes (.msg) - ajustado */
+.msg {
+  padding: 10px 15px;
+  border-radius: 6px;
+  margin: 10px 0;
+  text-align: center;
+  font-weight: 500;
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 0.95rem;
+}
+
+.msg-info {
+  background-color: #0353a4;
+  color: #fff;
+}
+
+.msg-error {
+  background-color: #b22222;
+  color: #fff;
+}
+
+.msg-success {
+  background-color: #008000;
+  color: #fff;
+}
+
+/* Botones (.btn) */
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-size: 1em;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.btn-entregar {
+  background-color: #007bff;
+  color: white;
+}
+
+.btn-entregar:hover {
+  background-color: #0056b3;
+}
+
+.btn-primary {
+  background-color: #007bff;
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #0056b3;
+}
+
+.btn-success {
+  background-color: #008000;
+  color: white;
+}
+
+.btn-success:hover {
+  background-color: #006600;
+}
+
+.btn-danger {
+  background-color: #dc3545;
+  color: white;
+}
+
+.btn-danger:hover {
+  background-color: #c82333;
+}
+
+/* Formulario entregar - Táctil para discoteca (ajustado) */
+.entregar-form-tactil {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+}
+
+/* Selector de cantidad táctil (ajustado) */
+.quantity-selector-tactil {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #222;
+  padding: 6px;
+  border-radius: 8px;
+  border: 2px solid #444;
+}
+
+.qty-btn {
+  width: 48px;
+  height: 48px;
+  border: none;
+  border-radius: 8px;
+  background-color: #007bff;
+  color: white;
+  font-size: 1.6rem;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.qty-btn:active {
+  transform: scale(0.95);
+  background-color: #0056b3;
+}
+
+.qty-btn:hover {
+  background-color: #0056b3;
+}
+
+.qty-btn span {
+  line-height: 1;
+}
+
+.qty-input-tactil {
+  width: 65px;
+  height: 48px;
+  padding: 0;
+  text-align: center;
+  border-radius: 8px;
+  border: 2px solid #444;
+  background-color: #1a1a1a !important; /* Fondo oscuro */
+  color: #00ff00;
+  font-size: 1.6rem;
+  font-weight: bold;
+  -moz-appearance: textfield;
+  transition: transform 0.2s;
+  cursor: default;
+}
+
+.qty-input-tactil::-webkit-inner-spin-button,
+.qty-input-tactil::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Botón entregar táctil (ajustado) */
+.btn-entregar-tactil {
+  width: 100%;
+  min-width: 170px;
+  height: 52px;
+  padding: 8px 18px;
+  background-color: #00ff00;
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.4rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(0, 255, 0, 0.3);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.btn-entregar-tactil:active {
+  transform: scale(0.95);
+  box-shadow: 0 2px 8px rgba(0, 255, 0, 0.5);
+}
+
+.btn-entregar-tactil:hover {
+  background-color: #00cc00;
+  box-shadow: 0 6px 20px rgba(0, 255, 0, 0.4);
+}
+
+.btn-entregar-tactil span {
+  line-height: 1;
+}
+
+.entregado-info-tactil {
+  text-align: center;
+  font-size: 1rem;
+  color: #00ff00;
+  padding: 5px;
+}
+
+.entregado-completo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  opacity: 0.6;
+}
+
+.icono-ok {
+  font-size: 3rem;
+  color: #00ff00;
+  font-weight: bold;
+  line-height: 1;
+  opacity: 0.6;
+}
+
+.historial-entregas {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #444;
+  font-size: 0.9rem;
+  color: #aaa;
+}
+
+.historial-entregas strong {
+  color: #fff;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.entrega-item {
+  padding: 4px 0;
+  padding-left: 12px;
+  border-left: 2px solid #555;
+  margin-bottom: 4px;
+  font-size: 0.85rem;
+}
+
+/* Formulario entregar original (mantener por compatibilidad) */
+.entregar-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.entregar-form input[type="number"] {
+  width: 60px;
+  padding: 8px;
+  text-align: center;
+  border-radius: 6px;
+  border: 1px solid #444;
+  background-color: #222;
+  color: #e8e8e8;
+  font-size: 1em;
+  -moz-appearance: textfield;
+}
+
+.entregar-form input[type="number"]::-webkit-inner-spin-button,
+.entregar-form input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.entregar-form input[type="number"]:focus {
+  outline: none;
+  border-color: #007bff;
+}
+
+/* Tabla admin */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+  background-color: #1a1a1a !important; /* Fondo oscuro */
+  box-sizing: border-box;
+}
+
+table th {
+  background-color: #222;
+  padding: 12px;
+  font-size: 1rem;
+  text-align: left;
+  border-bottom: 2px solid #444;
+  color: #e8e8e8;
+}
+
+table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #444;
+  color: #e8e8e8;
+}
+
+table tr:nth-child(even) {
+  background-color: #1a1a1a;
+}
+
+table tr:nth-child(odd) {
+  background-color: #1a1a1a !important; /* Fondo oscuro */
+}
+
+table tr:hover {
+  background-color: #222;
+}
+
+.delete-log-form {
+  display: inline;
+}
+
+.delete-log-form button {
+  padding: 6px 12px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.delete-log-form button:hover {
+  background-color: #c82333;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .footer-bar {
+    flex-direction: column;
+    min-height: auto;
+    padding: 10px;
+  }
+
+  .session-info {
+    text-align: center;
+    margin-bottom: 10px;
+  }
+
+  .nav-links {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .nav-button {
+    margin: 4px;
+  }
+
+  .productos,
+  table {
+    font-size: 0.9rem;
+  }
+
+  .productos th,
+  .productos td,
+  table th,
+  table td {
+    padding: 8px;
+  }
+
+  body {
+    padding-bottom: 120px;
+  }
+}
+
+/* ============================================================================
+   Mejoras de Responsive Design Adicionales
+   ============================================================================ */
+
+/* Tablets en horizontal */
+@media (max-width: 1024px) {
+  .admin-nav-container {
+    padding: 10px 15px;
+  }
+
+  .admin-nav-btn {
+    font-size: 0.85rem;
+    padding: 8px 12px;
+  }
+
+  .inventory-container,
+  .form-card {
+    padding: 20px;
+  }
+
+  .product-item {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Móviles grandes */
+@media (max-width: 480px) {
+  .admin-top-nav {
+    padding: 8px 0;
+  }
+
+  .admin-nav-left,
+  .admin-nav-right {
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .admin-nav-logo {
+    font-size: 1rem;
+  }
+
+  .flash-message {
+    max-width: 90%;
+    right: 5%;
+    top: 70px;
+    font-size: 0.9rem;
+    padding: 12px 15px;
+  }
+
+  .stat-box {
+    padding: 15px;
+  }
+
+  .stat-box .value {
+    font-size: 1.5rem;
+  }
+
+  .items-table {
+    font-size: 0.85rem;
+  }
+
+  .items-table th,
+  .items-table td {
+    padding: 8px 5px;
+  }
+}
+
+/* Mejoras de accesibilidad y usabilidad */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus visible mejorado para accesibilidad */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+  outline: 3px solid #667eea;
+  outline-offset: 2px;
+}
+
+/* Mejoras para inputs */
+input:invalid,
+select:invalid {
+  border-color: #ff4444;
+}
+
+input:valid:not(:placeholder-shown),
+select:valid:not(:placeholder-shown) {
+  border-color: #00ff00;
+}

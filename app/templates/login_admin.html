@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Login Administrador{% endblock %}
+
+{% block head_extra %}
+<style>
+    .login-container {
+        width: 100%;
+        margin: 50px 0;
+        padding: 30px;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        border-radius: 15px;
+        border: 2px solid rgba(102, 126, 234, 0.3);
+        box-sizing: border-box;
+    }
+    
+    .login-container h2 {
+        color: #e8e8e8;
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    
+    .login-container label {
+        display: block;
+        color: #aaa;
+        margin-bottom: 8px;
+        font-weight: 500;
+    }
+    
+    .login-container input {
+        width: 100%;
+        padding: 12px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        border: 1px solid #444;
+        background-color: #18181a;
+        color: #e8e8e8;
+        font-size: 1rem;
+        box-sizing: border-box;
+    }
+    
+    .login-container input:focus {
+        outline: none;
+        border-color: rgba(102, 126, 234, 0.6);
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+    }
+    
+    .login-container button {
+        width: 100%;
+        padding: 14px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 1.1rem;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .login-container button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="login-container">
+    <h2>🔐 Acceso Administrador</h2>
+
+<form method="POST" action="{{ url_for('routes.login_admin') }}">
+        <label for="username">Usuario:</label>
+        <input type="text" name="username" id="username" required autofocus placeholder="Ingresa tu usuario">
+
+    <label for="password">Contraseña:</label>
+        <input type="password" name="password" id="password" required placeholder="Ingresa tu contraseña">
+
+    <button type="submit">Ingresar</button>
+</form>
+    
+    <div style="margin-top: 30px; padding-top: 30px; border-top: 2px solid rgba(102, 126, 234, 0.5);">
+        <a href="/kiosk" 
+           style="display: block; width: 100%; padding: 16px; background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%); color: #1a1a2e; text-align: center; text-decoration: none; border-radius: 8px; font-size: 1.2rem; font-weight: bold; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);"
+           onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(255, 193, 7, 0.5)';"
+           onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(255, 193, 7, 0.3)';">
+            🖥️ Acceder al Kiosko
+        </a>
+        <p style="text-align: center; color: #aaa; font-size: 0.9rem; margin-top: 12px;">
+            Sistema de autoatención para clientes
+        </p>
+    </div>
+</div>
+
+{% endblock %}

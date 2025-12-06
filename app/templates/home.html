@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}BIMBA - Sistema{% endblock %}
+
+{% block head_extra %}
+<style>
+    .home-menu {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: calc(100vh - 120px);
+        padding: 0;
+    }
+    
+    .home-logo {
+        margin-bottom: 50px;
+        text-align: center;
+    }
+    
+    .home-logo img {
+        max-width: 300px;
+        height: auto;
+        display: block;
+        margin: 0 auto;
+    }
+    
+    .home-menu h1 {
+        color: #e8e8e8;
+        font-size: 2.5rem;
+        margin-bottom: 50px;
+        text-align: center;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .menu-options {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 30px;
+        max-width: 900px;
+        width: 100%;
+    }
+    
+    .menu-option {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        border: none;
+        border-radius: 20px;
+        padding: 0;
+        text-align: center;
+        text-decoration: none;
+        color: inherit;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 250px;
+    }
+    
+    .menu-option:hover {
+        transform: translateY(-10px);
+        border-color: rgba(102, 126, 234, 0.6);
+        box-shadow: 0 15px 40px rgba(102, 126, 234, 0.3);
+    }
+    
+    .menu-option.caja {
+        border-color: rgba(76, 175, 80, 0.3);
+    }
+    
+    .menu-option.caja:hover {
+        border-color: rgba(76, 175, 80, 0.6);
+        box-shadow: 0 15px 40px rgba(76, 175, 80, 0.3);
+    }
+    
+    .menu-option.barra {
+        border-color: rgba(255, 152, 0, 0.3);
+    }
+    
+    .menu-option.barra:hover {
+        border-color: rgba(255, 152, 0, 0.6);
+        box-shadow: 0 15px 40px rgba(255, 152, 0, 0.3);
+    }
+    
+    .menu-option.admin {
+        border-color: rgba(102, 126, 234, 0.3);
+    }
+    
+    .menu-option.admin:hover {
+        border-color: rgba(102, 126, 234, 0.6);
+        box-shadow: 0 15px 40px rgba(102, 126, 234, 0.3);
+    }
+    
+    .menu-option .icon {
+        font-size: 4rem;
+        margin-bottom: 20px;
+        display: block;
+    }
+    
+    .menu-option h2 {
+        color: #e8e8e8;
+        font-size: 1.8rem;
+        margin: 0 0 15px 0;
+        font-weight: bold;
+    }
+    
+    .menu-option p {
+        color: #aaa;
+        font-size: 1rem;
+        margin: 0;
+        line-height: 1.5;
+    }
+    
+    @media (max-width: 768px) {
+        .menu-options {
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+        
+        .home-menu h1 {
+            font-size: 2rem;
+            margin-bottom: 30px;
+        }
+        
+        .menu-option {
+            min-height: 200px;
+            padding: 0;
+        }
+        
+        .menu-option .icon {
+            font-size: 3rem;
+        }
+        
+        .menu-option h2 {
+            font-size: 1.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="home-menu">
+    <div class="home-logo">
+        <img src="{{ url_for('static', filename='img/bimba-logo.png') }}" alt="BIMBA" onerror="this.style.display='none';">
+    </div>
+    
+    <div class="menu-options">
+        <a href="/caja/login" class="menu-option caja">
+            <span class="icon">👄</span>
+            <h2>Abrir Caja</h2>
+            <p>Sistema de control de cajas y registro de operaciones</p>
+        </a>
+        
+        <a href="/bartender" class="menu-option barra">
+            <span class="icon">🍺</span>
+            <h2>Abrir Barra</h2>
+            <p>Control de entregas y registro de tickets escaneados</p>
+        </a>
+        
+        <a href="/login_admin" class="menu-option admin">
+            <span class="icon">⚙️</span>
+            <h2>Admin</h2>
+            <p>Panel de control y gestión administrativa del sistema</p>
+        </a>
+    </div>
+</div>
+
+{% endblock %}

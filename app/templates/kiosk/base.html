@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>{% block title %}Club Bimba - Tótem{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/kiosk.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="kiosk-body">
+    <div class="kiosk-container">
+        {% block content %}{% endblock %}
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/kiosk.js') }}"></script>
+    {% if config.get('GETNET_ENABLED', False) %}
+    <script>
+        const GETNET_CONFIG = {
+            HOST: "{{ config.get('GETNET_SERVER_HOST', 'localhost') }}",
+            PORT: "{{ config.get('GETNET_SERVER_PORT', '8020') }}"
+        };
+        
+        // Si es localhost, usar el mismo hostname del navegador
+        if (GETNET_CONFIG.HOST === 'localhost' || GETNET_CONFIG.HOST === '127.0.0.1') {
+            GETNET_CONFIG.HOST = window.location.hostname;
+        }
+        
+        // Exponer globalmente para compatibilidad
+        window.GETNET_SERVER_HOST = GETNET_CONFIG.HOST;
+        window.GETNET_SERVER_PORT = parseInt(GETNET_CONFIG.PORT);
+    </script>
+    <script src="{{ url_for('static', filename='js/getnet-pos.js') }}"></script>
+    {% endif %}
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>
+
+
+
+
+
+

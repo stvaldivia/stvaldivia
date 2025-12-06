@@ -1,0 +1,658 @@
+{% extends "base.html" %}
+{% block title %}Generar Pagos{% endblock %}
+
+{% block head_extra %}
+<style>
+    .generar-pagos-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    .page-header {
+        text-align: center;
+        margin-bottom: 40px;
+        padding: 30px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px;
+        color: white;
+    }
+    
+    .page-header h1 {
+        margin: 0;
+        font-size: 2.5rem;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .totals-section {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .total-card {
+        background: linear-gradient(135deg, rgba(26, 26, 46, 0.9) 0%, rgba(22, 33, 62, 0.9) 100%);
+        border: 2px solid rgba(102, 126, 234, 0.3);
+        border-radius: 15px;
+        padding: 25px;
+        text-align: center;
+    }
+    
+    .total-card h3 {
+        color: #aaa;
+        margin: 0 0 15px 0;
+        font-size: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .total-card .value {
+        color: #667eea;
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin: 10px 0;
+    }
+    
+    .total-card.total-pagar {
+        border-color: rgba(255, 193, 7, 0.5);
+    }
+    
+    .total-card.total-pagar .value {
+        color: #ffc107;
+    }
+    
+    .total-card.total-abonar {
+        border-color: rgba(76, 175, 80, 0.5);
+    }
+    
+    .total-card.total-abonar .value {
+        color: #4caf50;
+    }
+    
+    .total-card.saldos-pendientes {
+        border-color: rgba(255, 152, 0, 0.5);
+    }
+    
+    .total-card.saldos-pendientes .value {
+        color: #ff9800;
+    }
+    
+    .pagos-table-container {
+        background: linear-gradient(135deg, rgba(26, 26, 46, 0.9) 0%, rgba(22, 33, 62, 0.9) 100%);
+        border: 2px solid rgba(102, 126, 234, 0.3);
+        border-radius: 15px;
+        padding: 25px;
+        overflow-x: auto;
+        max-height: calc(100vh - 500px);
+        overflow-y: auto;
+    }
+    
+    .pagos-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 1400px;
+        font-size: 0.9rem;
+    }
+    
+    .pagos-table thead {
+        background: rgba(102, 126, 234, 0.2);
+    }
+    
+    .pagos-table th {
+        padding: 12px 10px;
+        text-align: left;
+        color: #e8e8e8;
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid rgba(102, 126, 234, 0.5);
+        position: sticky;
+        top: 0;
+        background: rgba(26, 26, 46, 0.95);
+        z-index: 10;
+    }
+    
+    .pagos-table td {
+        padding: 10px;
+        color: #aaa;
+        border-top: 1px solid rgba(102, 126, 234, 0.1);
+        font-size: 0.9rem;
+    }
+    
+    .pagos-table tbody tr {
+        transition: all 0.2s ease;
+    }
+    
+    .pagos-table tbody tr:hover {
+        background: rgba(102, 126, 234, 0.1);
+    }
+    
+    .pagos-table tbody tr:nth-child(even) {
+        background: rgba(0, 0, 0, 0.1);
+    }
+    
+    .money-value {
+        color: #4caf50;
+        font-weight: bold;
+        font-size: 1.1rem;
+    }
+    
+    .btn-action {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin: 0 5px;
+    }
+    
+    .btn-pagar-completo {
+        background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+        color: white;
+    }
+    
+    .btn-pagar-completo:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+    }
+    
+    .btn-abonar {
+        background: linear-gradient(135deg, #ffc107 0%, #ffb300 100%);
+        color: white;
+    }
+    
+    .btn-abonar:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(255, 193, 7, 0.4);
+    }
+    
+    .actions-cell {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #aaa;
+    }
+    
+    .empty-state .icon {
+        font-size: 4rem;
+        margin-bottom: 20px;
+        opacity: 0.5;
+    }
+    
+    .empty-state h3 {
+        color: #e8e8e8;
+        font-size: 1.5rem;
+        margin: 0 0 10px 0;
+    }
+    
+    .empty-state p {
+        font-size: 1rem;
+        margin: 0;
+    }
+    
+    /* Notificaciones mejoradas */
+    .notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 20px;
+        border-radius: 8px;
+        color: white;
+        font-weight: 600;
+        z-index: 10001;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        animation: slideIn 0.3s ease-out;
+        max-width: 400px;
+    }
+    
+    .notification.success {
+        background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+    }
+    
+    .notification.error {
+        background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+    }
+    
+    .notification.info {
+        background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+    }
+    
+    @keyframes slideIn {
+        from {
+            transform: translateX(400px);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    /* Loading state para botones */
+    .btn-action:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    
+    /* Mejora visual en tabla */
+    .pagos-table tbody tr {
+        transition: background-color 0.2s ease;
+    }
+    
+    .pagos-table tbody tr:hover {
+        background: rgba(102, 126, 234, 0.15);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="generar-pagos-container">
+    <div class="page-header">
+        <h1>💵 Generar Pagos</h1>
+        <p>Gestiona todos los pagos pendientes agrupados por trabajador</p>
+    </div>
+    
+    <!-- Totales -->
+    <div class="totals-section">
+        <div class="total-card total-pagar">
+            <h3>Total a Pagar</h3>
+            <div class="value">${{ "{:,.0f}".format(total_a_pagar or 0) }}</div>
+            <p style="color: #aaa; font-size: 0.9rem; margin: 10px 0 0 0;">
+                {{ total_turnos_pendientes }} turno(s) pendiente(s)
+            </p>
+        </div>
+        
+        <div class="total-card total-abonar">
+            <h3>Total Abonos Pendientes</h3>
+            <div class="value">${{ "{:,.0f}".format(total_abonos_pendientes or 0) }}</div>
+            <p style="color: #aaa; font-size: 0.9rem; margin: 10px 0 0 0;">
+                Abonos registrados
+            </p>
+        </div>
+        
+        <div class="total-card saldos-pendientes">
+            <h3>Saldos Pendientes</h3>
+            <div class="value">${{ "{:,.0f}".format(total_saldos_pendientes or 0) }}</div>
+            <p style="color: #aaa; font-size: 0.9rem; margin: 10px 0 0 0;">
+                Después de abonos
+            </p>
+        </div>
+    </div>
+    
+    <!-- Tabla Completa de Turnos Pendientes -->
+    <div class="pagos-table-container">
+        <h2 style="color: #e8e8e8; margin-top: 0; margin-bottom: 20px;">📋 Tabla Completa de Turnos Pendientes</h2>
+        {% if turnos_detallados and turnos_detallados|length > 0 %}
+        <table class="pagos-table">
+            <thead>
+                <tr>
+                    <th>ID Empleado</th>
+                    <th>Nombre</th>
+                    <th>Fecha Turno</th>
+                    <th>Cargo</th>
+                    <th>Tipo Turno</th>
+                    <th>Horas</th>
+                    <th>Sueldo Base</th>
+                    <th>Bonos</th>
+                    <th>Descuentos</th>
+                    <th>Sueldo Total</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set prev_employee_id = '' %}
+                {% for turno in turnos_detallados %}
+                    {% set is_first_for_employee = (prev_employee_id != turno.employee_id) %}
+                    {% set prev_employee_id = turno.employee_id %}
+                    {% set employee_total = 0 %}
+                    {% set employee_saldo = 0 %}
+                    {% for pago in pagos_por_empleado %}
+                        {% if pago.employee_id == turno.employee_id %}
+                            {% set employee_total = pago.total_adeudado %}
+                            {% set employee_saldo = pago.saldo_pendiente %}
+                        {% endif %}
+                    {% endfor %}
+                <tr id="row-turno-{{ turno.shift_id }}" data-employee-id="{{ turno.employee_id }}">
+                    <td style="font-weight: bold; color: #667eea;">{{ turno.employee_id }}</td>
+                    <td style="color: #e8e8e8; font-weight: 600;">
+                        <a href="{{ url_for('equipo.ficha_personal', employee_id=turno.employee_id) }}" 
+                           style="color: #667eea; text-decoration: none;">
+                            {{ turno.employee_name }}
+                        </a>
+                    </td>
+                    <td>{{ turno.fecha_turno }}</td>
+                    <td>{{ turno.cargo }}</td>
+                    <td>{{ turno.tipo_turno }}</td>
+                    <td style="text-align: center;">
+                        {% if turno.horas_trabajadas %}
+                            {{ "{:.1f}".format(turno.horas_trabajadas) }}h
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td class="money-value" style="text-align: right;">${{ "{:,.0f}".format(turno.sueldo_por_turno) }}</td>
+                    <td style="color: #4caf50; text-align: right;">${{ "{:,.0f}".format(turno.bonos) }}</td>
+                    <td style="color: #f44336; text-align: right;">${{ "{:,.0f}".format(turno.descuentos) }}</td>
+                    <td class="money-value" style="text-align: right; font-weight: bold;">${{ "{:,.0f}".format(turno.sueldo_turno) }}</td>
+                    <td class="actions-cell">
+                        {% if is_first_for_employee %}
+                            <button 
+                                class="btn-action btn-pagar-completo"
+                                onclick="pagarCompleto('{{ turno.employee_id }}', '{{ turno.employee_name }}', {{ employee_total }})"
+                                title="Pagar todos los turnos pendientes de {{ turno.employee_name }}">
+                                💰 Pagar Completo
+                            </button>
+                            <button 
+                                class="btn-action btn-abonar"
+                                onclick="abonarEmpleado('{{ turno.employee_id }}', '{{ turno.employee_name }}', {{ employee_saldo }})"
+                                title="Registrar un abono parcial para {{ turno.employee_name }}">
+                                💵 Abonar
+                            </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr style="background: rgba(102, 126, 234, 0.2); font-weight: bold;">
+                    <td colspan="6" style="text-align: right; color: #e8e8e8; padding: 15px;">TOTALES:</td>
+                    <td style="text-align: right; color: #e8e8e8;">
+                        {% set total_base = 0 %}
+                        {% for turno in turnos_detallados %}
+                            {% set total_base = total_base + turno.sueldo_por_turno %}
+                        {% endfor %}
+                        ${{ "{:,.0f}".format(total_base) }}
+                    </td>
+                    <td style="text-align: right; color: #4caf50;">
+                        {% set total_bonos = 0 %}
+                        {% for turno in turnos_detallados %}
+                            {% set total_bonos = total_bonos + turno.bonos %}
+                        {% endfor %}
+                        ${{ "{:,.0f}".format(total_bonos) }}
+                    </td>
+                    <td style="text-align: right; color: #f44336;">
+                        {% set total_descuentos = 0 %}
+                        {% for turno in turnos_detallados %}
+                            {% set total_descuentos = total_descuentos + turno.descuentos %}
+                        {% endfor %}
+                        ${{ "{:,.0f}".format(total_descuentos) }}
+                    </td>
+                    <td style="text-align: right; color: #e8e8e8; font-size: 1.1rem;">${{ "{:,.0f}".format(total_a_pagar) }}</td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <div class="icon">💰</div>
+            <h3>No hay pagos pendientes</h3>
+            <p>Todos los turnos han sido pagados</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal para Abonar -->
+<div id="abonar-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10000; align-items: center; justify-content: center;">
+    <div style="background: linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(22, 33, 62, 0.95) 100%); border: 2px solid rgba(255, 193, 7, 0.5); border-radius: 15px; padding: 30px; max-width: 500px; width: 90%;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="color: #e8e8e8; margin: 0;">💵 Abonar a Empleado</h2>
+            <button onclick="closeAbonarModal()" style="background: rgba(244, 67, 54, 0.3); border: 1px solid rgba(244, 67, 54, 0.5); color: #f44336; border-radius: 5px; padding: 8px 16px; cursor: pointer; font-size: 1.2rem; line-height: 1;">
+                ✕
+            </button>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+            <p style="color: #e8e8e8; margin: 0 0 10px 0;">
+                <strong>Empleado:</strong> <span id="abonar-employee-name"></span>
+            </p>
+            <p style="color: #aaa; margin: 0;">
+                <strong>Adeudado:</strong> <span id="abonar-total-adeudado" style="color: #ffc107; font-weight: bold;"></span>
+            </p>
+        </div>
+        
+        <form id="abonar-form" onsubmit="procesarAbono(event)">
+            <input type="hidden" id="abonar-employee-id" name="employee_id">
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; color: #e8e8e8; margin-bottom: 8px; font-weight: 600;">
+                    Monto a Abonar ($):
+                </label>
+                <input type="number" id="abonar-monto" name="monto" required step="0.01" min="0.01"
+                       style="width: 100%; padding: 12px; background: rgba(26, 26, 46, 0.5); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 8px; color: #e8e8e8; font-size: 1rem;"
+                       placeholder="0.00">
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="display: block; color: #e8e8e8; margin-bottom: 8px; font-weight: 600;">
+                    Descripción (opcional):
+                </label>
+                <textarea id="abonar-descripcion" name="descripcion" rows="3"
+                          style="width: 100%; padding: 12px; background: rgba(26, 26, 46, 0.5); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 8px; color: #e8e8e8; font-size: 0.95rem; resize: vertical;"
+                          placeholder="Ej: Abono parcial de sueldo"></textarea>
+            </div>
+            
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button type="button" onclick="closeAbonarModal()"
+                        style="padding: 12px 24px; background: rgba(102, 126, 234, 0.2); border: 1px solid rgba(102, 126, 234, 0.5); color: #667eea; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                    Cancelar
+                </button>
+                <button type="submit"
+                        style="padding: 12px 24px; background: linear-gradient(135deg, #ffc107 0%, #ffb300 100%); border: none; color: white; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                    💵 Registrar Abono
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function pagarCompleto(employeeId, employeeName, totalAdeudado) {
+    if (!confirm(`¿Pagar completo todos los turnos pendientes de ${employeeName}?\n\nTotal: $${totalAdeudado.toLocaleString('es-CL')}`)) {
+        return;
+    }
+    
+    // Mostrar indicador de carga
+    const button = event.target;
+    const originalText = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '⏳ Procesando...';
+    
+    const formData = new FormData();
+    formData.append('employee_id', employeeId);
+    
+    fetch('/admin/generar-pagos/pagar-completo', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Mostrar mensaje de éxito con mejor UX
+            showNotification(`✅ ${data.message}`, 'success');
+            // Recargar después de un breve delay para que se vea el mensaje
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showNotification(`❌ Error: ${data.message}`, 'error');
+            button.disabled = false;
+            button.innerHTML = originalText;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('❌ Error al procesar el pago completo', 'error');
+        button.disabled = false;
+        button.innerHTML = originalText;
+    });
+}
+
+function abonarEmpleado(employeeId, employeeName, totalAdeudado) {
+    document.getElementById('abonar-employee-id').value = employeeId;
+    document.getElementById('abonar-employee-name').textContent = employeeName;
+    document.getElementById('abonar-total-adeudado').textContent = `$${totalAdeudado.toLocaleString('es-CL')}`;
+    document.getElementById('abonar-monto').value = '';
+    document.getElementById('abonar-monto').max = totalAdeudado;
+    document.getElementById('abonar-descripcion').value = '';
+    document.getElementById('abonar-modal').style.display = 'flex';
+}
+
+function closeAbonarModal() {
+    document.getElementById('abonar-modal').style.display = 'none';
+}
+
+function procesarAbono(event) {
+    event.preventDefault();
+    
+    const employeeId = document.getElementById('abonar-employee-id').value;
+    const monto = parseFloat(document.getElementById('abonar-monto').value);
+    const descripcion = document.getElementById('abonar-descripcion').value || 'Abono desde Generar Pagos';
+    
+    if (!monto || monto <= 0) {
+        showNotification('❌ El monto debe ser mayor a 0', 'error');
+        return;
+    }
+    
+    // Mostrar indicador de carga
+    const submitButton = event.target.querySelector('button[type="submit"]');
+    const originalText = submitButton.innerHTML;
+    submitButton.disabled = true;
+    submitButton.innerHTML = '⏳ Procesando...';
+    
+    const formData = new FormData();
+    formData.append('employee_id', employeeId);
+    formData.append('monto', monto);
+    formData.append('descripcion', descripcion);
+    
+    fetch('/admin/generar-pagos/abonar', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(`✅ ${data.message}`, 'success');
+            closeAbonarModal();
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showNotification(`❌ Error: ${data.message}`, 'error');
+            submitButton.disabled = false;
+            submitButton.innerHTML = originalText;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('❌ Error al procesar el abono', 'error');
+        submitButton.disabled = false;
+        submitButton.innerHTML = originalText;
+    });
+}
+
+// Cerrar modal al hacer clic fuera
+document.getElementById('abonar-modal')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeAbonarModal();
+    }
+});
+
+// Sistema de notificaciones mejorado
+function showNotification(message, type = 'info') {
+    // Remover notificaciones anteriores
+    const existing = document.querySelectorAll('.notification');
+    existing.forEach(n => n.remove());
+    
+    // Crear nueva notificación
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    // Auto-remover después de 4 segundos
+    setTimeout(() => {
+        notification.style.animation = 'slideIn 0.3s ease-out reverse';
+        setTimeout(() => notification.remove(), 300);
+    }, 4000);
+}
+
+// Agregar tooltips mejorados
+document.addEventListener('DOMContentLoaded', function() {
+    // Agregar tooltips a botones
+    const buttons = document.querySelectorAll('.btn-action');
+    buttons.forEach(btn => {
+        if (btn.title) {
+            btn.addEventListener('mouseenter', function(e) {
+                // Tooltip ya está en el atributo title
+            });
+        }
+    });
+    
+    // Mejorar accesibilidad
+    const table = document.querySelector('.pagos-table');
+    if (table) {
+        // Agregar aria-labels
+        table.setAttribute('role', 'table');
+        table.setAttribute('aria-label', 'Tabla de turnos pendientes');
+    }
+});
+
+// Exportar a CSV
+function exportarCSV() {
+    const table = document.querySelector('.pagos-table');
+    if (!table) {
+        showNotification('No hay datos para exportar', 'error');
+        return;
+    }
+    
+    let csv = [];
+    const rows = table.querySelectorAll('tr');
+    
+    // Headers
+    const headers = [];
+    table.querySelectorAll('thead th').forEach(th => {
+        if (th.textContent.trim() !== 'Acciones') {
+            headers.push(th.textContent.trim());
+        }
+    });
+    csv.push(headers.join(','));
+    
+    // Data rows
+    table.querySelectorAll('tbody tr').forEach(tr => {
+        const row = [];
+        tr.querySelectorAll('td').forEach((td, index) => {
+            if (index < headers.length) { // Excluir columna de acciones
+                let text = td.textContent.trim();
+                // Limpiar formato de moneda y números
+                text = text.replace(/\$/g, '').replace(/,/g, '');
+                // Escapar comillas
+                text = text.replace(/"/g, '""');
+                row.push(`"${text}"`);
+            }
+        });
+        csv.push(row.join(','));
+    });
+    
+    // Crear y descargar archivo
+    const csvContent = csv.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `pagos_pendientes_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showNotification('✅ CSV exportado correctamente', 'success');
+}
+</script>
+{% endblock %}
+

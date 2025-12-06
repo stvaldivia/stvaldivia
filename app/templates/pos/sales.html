@@ -1,0 +1,2394 @@
+{% extends "base.html" %}
+{% block title %}Caja - Ventas{% endblock %}
+
+{% block head_extra %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+<style>
+    /* Ocultar menú superior en esta página */
+    .admin-top-nav {
+        display: none !important;
+    }
+    
+    /* Estilos para impresión de tickets en vertical */
+    @media print {
+        @page {
+            size: portrait;
+            margin: 0;
+        }
+        
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            background: white !important;
+        }
+        
+        /* Ocultar todo excepto el recibo/carrito */
+        .caja-header,
+        .caja-footer,
+        .products-section,
+        .payment-buttons,
+        .admin-top-nav,
+        .flash-container,
+        .titulo-sistema-principal,
+        .footer-bar,
+        .btn-clear-cart-secondary,
+        .toast-container,
+        .screen-lock-overlay {
+            display: none !important;
+        }
+        
+        /* Mostrar solo el recibo - Layout vertical optimizado */
+        .caja-container {
+            display: block !important;
+            grid-template-columns: none !important;
+            height: auto !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            background: white !important;
+        }
+        
+        .cart-section {
+            width: 80mm !important;
+            max-width: 80mm !important;
+            height: auto !important;
+            min-height: auto !important;
+            position: static !important;
+            background: white !important;
+            color: black !important;
+            padding: 10px !important;
+            margin: 0 auto !important;
+            box-shadow: none !important;
+            border: none !important;
+            border-radius: 0 !important;
+            display: block !important;
+            page-break-inside: avoid;
+        }
+        
+        .cart-logo {
+            max-width: 150px !important;
+            margin: 0 auto 10px auto !important;
+            display: block !important;
+        }
+        
+        .cart-section h2 {
+            text-align: center !important;
+            font-size: 1rem !important;
+            margin-bottom: 10px !important;
+            border-bottom: 1px solid #000 !important;
+            padding-bottom: 5px !important;
+            color: black !important;
+        }
+        
+        .cart-items {
+            max-height: none !important;
+            overflow: visible !important;
+            margin-bottom: 10px !important;
+        }
+        
+        .cart-item {
+            page-break-inside: avoid;
+            margin-bottom: 5px !important;
+            padding: 5px 0 !important;
+            border-bottom: 1px dashed #333 !important;
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+        }
+        
+        .cart-item-remove {
+            display: none !important;
+        }
+        
+        .cart-item-name {
+            font-size: 0.85rem !important;
+            font-weight: 500 !important;
+            color: black !important;
+        }
+        
+        .cart-item-price {
+            font-size: 0.85rem !important;
+            font-weight: 600 !important;
+            color: black !important;
+        }
+        
+        .cart-total {
+            font-size: 1.3rem !important;
+            font-weight: bold !important;
+            margin-top: 15px !important;
+            padding-top: 15px !important;
+            border-top: 2px solid #000 !important;
+            text-align: center !important;
+            color: black !important;
+        }
+    }
+    
+    /* Reset para usar toda la pantalla - solo para esta página */
+    body.caja-page {
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        width: 100vw !important;
+        height: 100vh !important;
+    }
+    
+    body.caja-page .container, 
+    body.caja-page .main-container {
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+    }
+    
+    /* Asegurar que el contenido del POS ocupe toda la pantalla */
+    body.caja-page #content {
+        width: 100vw !important;
+        height: 100vh !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    /* Ocultar título del sistema en POS */
+    body.caja-page .titulo-sistema-principal {
+        display: none !important;
+    }
+    
+    /* Ocultar footer del sistema en POS */
+    body.caja-page .footer-bar {
+        display: none !important;
+    }
+    
+    /* Header ultra compacto - sin scroll */
+    .caja-header {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 4px 10px;
+        background: var(--card-bg, #1a1a2e);
+        border-bottom: 2px solid var(--primary-color, #667eea);
+        height: 35px;
+        box-sizing: border-box;
+        flex-shrink: 0;
+    }
+    
+    .caja-header-info {
+        color: white;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+    
+    /* Footer sticky para información y botones */
+    .caja-footer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 15px;
+        background: #0f0f0f;
+        border-top: 1px solid #333;
+        min-height: 45px;
+        box-sizing: border-box;
+        z-index: 1000;
+    }
+    
+    .caja-footer-info {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        color: #ffffff;
+        font-size: 0.8rem;
+    }
+    
+    .caja-footer-info span {
+        color: #ab47bc;
+        font-weight: 600;
+    }
+    
+    .caja-footer-actions {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: nowrap;
+    }
+    
+    /* Estilo unificado para todos los botones del footer */
+   .caja-footer-actions button,
+   .caja-footer-actions button[type="submit"],
+   .caja-footer-actions form,
+   .btn-close-shift,
+   .btn-lock-screen,
+   .btn-refresh,
+   .btn-logout,
+   .btn-sos-drawer,
+   .btn-test-print {
+       margin: 0;
+       padding: 0;
+       display: inline-flex;
+       align-items: center;
+       justify-content: center;
+   }
+   
+   .btn-sos-drawer {
+       background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%) !important;
+       animation: pulse-sos 2s infinite;
+   }
+   
+   .btn-sos-drawer:hover {
+       background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+       transform: translateY(-1px);
+       box-shadow: 0 3px 8px rgba(245, 87, 108, 0.4);
+   }
+   
+   @keyframes pulse-sos {
+       0%, 100% {
+           opacity: 1;
+       }
+       50% {
+           opacity: 0.8;
+       }
+   }
+    
+    .caja-footer-actions form {
+        display: inline-flex;
+        margin: 0;
+    }
+    
+   .caja-footer-actions button,
+   .caja-footer-actions button[type="submit"],
+   .caja-footer-actions a,
+   .btn-close-shift,
+   .btn-lock-screen,
+   .btn-refresh,
+   .btn-logout,
+   .btn-sos-drawer,
+   .btn-test-print {
+       padding: 6px 14px;
+       background: #4a4a4a;
+       color: white;
+       border: none;
+       border-radius: 6px;
+       cursor: pointer;
+       font-size: 0.75rem;
+       font-weight: 600;
+       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+       transition: all 0.2s ease;
+       white-space: nowrap;
+       line-height: 1.3;
+       height: 32px;
+       display: inline-flex;
+       align-items: center;
+       justify-content: center;
+       vertical-align: middle;
+       text-decoration: none;
+   }
+    
+    .caja-footer-actions button:hover,
+    .caja-footer-actions button[type="submit"]:hover,
+    .caja-footer-actions a:hover,
+    .btn-close-shift:hover,
+    .btn-lock-screen:hover,
+    .btn-refresh:hover,
+    .btn-logout:hover,
+    .btn-test-print:hover {
+        background: #5a5a5a;
+        transform: translateY(-1px);
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+    }
+    
+    /* Overlay de bloqueo de pantalla */
+    .screen-lock-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.95);
+        z-index: 10000;
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: white;
+    }
+    
+    /* Modal de cierre de caja */
+    .close-register-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.9);
+        z-index: 10001;
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+        overflow-y: auto;
+    }
+    
+    .close-register-modal.active {
+        display: flex;
+    }
+    
+    .close-register-modal-content {
+        background: #1a1a1a;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
+        max-width: 900px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+        position: relative;
+        margin: auto;
+    }
+    
+    .close-register-modal-header {
+        position: sticky;
+        top: 0;
+        background: #1a1a1a;
+        padding: 15px 20px;
+        border-bottom: 2px solid #ab47bc;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 10;
+    }
+    
+    .close-register-modal-header h2 {
+        color: #ab47bc;
+        font-size: 1.5rem;
+        margin: 0;
+    }
+    
+    .close-register-modal-close {
+        background: #4a4a4a;
+        border: none;
+        color: white;
+        font-size: 1.5rem;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+    
+    .close-register-modal-close:hover {
+        background: #5a5a5a;
+        transform: rotate(90deg);
+    }
+    
+    .close-register-modal-body {
+        padding: 0;
+        overflow: hidden;
+    }
+    
+    .close-register-modal-body iframe {
+        width: 100%;
+        height: calc(90vh - 70px);
+        border: none;
+        display: block;
+    }
+    
+    .screen-lock-overlay.active {
+        display: flex;
+    }
+    
+    .screen-lock-content {
+        text-align: center;
+        padding: 40px;
+        background: #1a1a1a;
+        border-radius: 12px;
+        border: 2px solid #ab47bc;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8), 0 0 20px rgba(171, 71, 188, 0.3);
+        min-width: 400px;
+    }
+    
+    .screen-lock-content h2 {
+        font-size: 2rem;
+        margin-bottom: 20px;
+        color: #ab47bc;
+    }
+    
+    .screen-lock-content p {
+        font-size: 1.1rem;
+        margin-bottom: 30px;
+        color: #ccc;
+    }
+    
+    .pin-input-container {
+        margin-bottom: 25px;
+    }
+    
+    .pin-display-lock {
+        font-size: 2rem;
+        letter-spacing: 8px;
+        padding: 15px 20px;
+        background: #2a2a2a;
+        border: 2px solid #444;
+        border-radius: 8px;
+        color: white;
+        min-height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 20px;
+        font-family: monospace;
+    }
+    
+    .pin-display-lock.empty {
+        color: #666;
+    }
+    
+    .numeric-keyboard-lock {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-bottom: 15px;
+        max-width: 400px;
+        margin-left: auto;
+        margin-right: auto;
+        overflow: hidden;
+        flex-shrink: 0;
+    }
+    
+    .keyboard-btn-lock {
+        padding: 12px 20px;
+        background: #4a4a4a;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 1.2rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        aspect-ratio: 2 / 1;
+        min-height: 50px;
+    }
+    
+    .keyboard-btn-lock:hover {
+        background: #5a5a5a;
+        transform: scale(1.05);
+    }
+    
+    .keyboard-btn-lock:active {
+        transform: scale(0.95);
+    }
+    
+    .keyboard-actions-lock {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        max-width: 400px;
+        margin: 0 auto;
+    }
+    
+    .btn-unlock {
+        padding: 12px 30px;
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1rem;
+        font-weight: 600;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        transition: all 0.2s ease;
+    }
+    
+    .btn-unlock:hover {
+        background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+    }
+    
+    .btn-unlock:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
+    .btn-clear-pin {
+        padding: 12px 20px;
+        background: #4a4a4a;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+    
+    .btn-clear-pin:hover {
+        background: #5a5a5a;
+    }
+    
+    .error-message {
+        color: #f5576c;
+        font-size: 0.9rem;
+        margin-top: 10px;
+        min-height: 20px;
+    }
+    
+    .btn-clear-cart {
+        padding: 6px 15px;
+        background: #dc3545;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    
+    .btn-clear-cart:hover {
+        background: #c82333;
+    }
+    
+    /* Contenedor principal - Layout tipo POS profesional, sin scroll */
+    .caja-container {
+        display: grid;
+        grid-template-columns: 300px 1fr; /* Carrito con pago | Productos */
+        gap: 8px;
+        height: calc(100vh - 45px); /* 45px footer sticky */
+        padding: 8px 8px 53px 8px; /* padding-bottom: 53px para evitar que el footer cubra contenido */
+        box-sizing: border-box;
+        overflow: hidden;
+        background: #0f0f0f;
+    }
+    
+    /* Sección de productos - Centro, grid tipo POS profesional */
+    .products-section {
+        background: #1a1a1a;
+        border-radius: 12px;
+        padding: 12px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        border: none;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+    
+    .products-section h2 {
+        display: none; /* Ocultar "Productos Disponibles" */
+    }
+    
+    .products-scrollable {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        min-height: 0;
+        padding: 4px;
+    }
+    
+    .category-section {
+        margin-bottom: 4px;
+        display: block;
+        width: 100%;
+    }
+    
+    .category-title {
+        color: #ffffff;
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin: 0 0 8px 0;
+        padding: 8px 12px;
+        display: block;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 8px;
+        text-align: left;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    /* Grid de productos - botones cuadrados tipo POS profesional */
+    .products-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 1px;
+        width: 100%;
+    }
+    
+    .product-card {
+        background: #252525;
+        border-radius: 10px;
+        padding: 8px 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: 1px solid #444;
+        min-height: 75px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+    
+    /* Todos los productos del mismo color */
+    .products-grid .product-card {
+        background: #252525;
+        border: 1px solid #444;
+    }
+    
+    .product-card:hover {
+        background: #2d2d2d;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+    }
+    
+    .product-card:active {
+        transform: translateY(0px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+    
+    .product-name {
+        font-weight: normal;
+        color: #ffffff;
+        font-size: 0.9rem;
+        margin-bottom: 0px;
+        line-height: 1.0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        min-height: 28px;
+    }
+    
+    .product-price {
+        color: #ffffff;
+        font-size: 1rem;
+        font-weight: bold;
+        margin-top: 2px;
+    }
+    
+    /* Sección de carrito - Panel izquierdo tipo recibo POS */
+    .cart-section {
+        background: #1a1a1a;
+        border-radius: 12px;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        border: none;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+    
+    .cart-logo {
+        width: 100%;
+        max-width: 200px;
+        height: auto;
+        margin: 0 auto 12px auto;
+        display: block;
+    }
+    
+    .cart-section h2 {
+        margin: 0 0 12px 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #ffffff;
+        flex-shrink: 0;
+        padding: 0;
+        text-align: left;
+        background: transparent;
+        border-bottom: 1px solid #333;
+        padding-bottom: 8px;
+    }
+    
+    /* Botones de pago - Debajo del carrito */
+    .payment-buttons {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 3px;
+        flex-shrink: 0;
+        margin-top: 4px;
+        width: 100%;
+    }
+    
+    .payment-btn {
+        padding: 18px;
+        border: none;
+        border-radius: 12px;
+        font-size: 1.2rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        width: 100%;
+        min-height: 70px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        letter-spacing: 0.5px;
+    }
+    
+    .payment-btn.cash {
+        background: #4a4a4a;
+        color: #fff;
+    }
+    
+    .payment-btn.debit {
+        background: #4a4a4a;
+        color: #fff;
+    }
+    
+    .payment-btn.credit {
+        background: #4a4a4a;
+        color: #fff;
+    }
+    
+    .payment-btn:hover:not(:disabled) {
+        background: #5a5a5a;
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+    }
+    
+    .payment-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+    
+    /* Modal de confirmación de pago */
+    .payment-confirm-modal {
+        display: none;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        top: 0;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 10000;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.2s ease;
+    }
+    
+    .payment-confirm-modal::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: transparent;
+        cursor: pointer;
+    }
+    
+    .payment-confirm-modal.active {
+        display: flex;
+    }
+    
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+    
+    .payment-confirm-content {
+        background: #1a1a1a;
+        border-radius: 16px;
+        padding: 30px;
+        max-width: 400px;
+        width: 90%;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        border: 2px solid #ab47bc;
+        animation: slideUp 0.3s ease;
+        text-align: center;
+        position: relative;
+        z-index: 10001;
+        cursor: default;
+    }
+    
+    @keyframes slideUp {
+        from {
+            transform: translateY(20px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+    
+    .payment-confirm-icon {
+        font-size: 4rem;
+        margin-bottom: 15px;
+    }
+    
+    .payment-confirm-title {
+        font-size: 1.5rem;
+        color: #ab47bc;
+        margin: 0 0 15px 0;
+        font-weight: 700;
+    }
+    
+    .payment-confirm-message {
+        font-size: 1.1rem;
+        color: #ccc;
+        margin: 0 0 20px 0;
+        line-height: 1.5;
+    }
+    
+    .payment-confirm-message span {
+        color: #fff;
+        font-weight: 600;
+    }
+    
+    .payment-confirm-total {
+        font-size: 1.8rem;
+        color: #38ef7d;
+        font-weight: 700;
+        margin: 0 0 25px 0;
+        padding: 15px;
+        background: rgba(56, 239, 125, 0.1);
+        border-radius: 8px;
+        border: 1px solid rgba(56, 239, 125, 0.3);
+    }
+    
+    .payment-confirm-buttons {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+    }
+    
+    .payment-confirm-cancel,
+    .payment-confirm-ok {
+        padding: 14px 32px;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        min-width: 120px;
+    }
+    
+    .payment-confirm-cancel {
+        background: #4a4a4a;
+        color: #fff;
+    }
+    
+    .payment-confirm-cancel:hover {
+        background: #5a5a5a;
+        transform: translateY(-2px);
+    }
+    
+    .payment-confirm-ok {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        color: #fff;
+    }
+    
+    .payment-confirm-ok:hover {
+        background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+    }
+    
+    /* Items del carrito - estilo recibo POS */
+    .cart-items {
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        margin-bottom: 4px;
+        min-height: 0;
+        background: transparent;
+        padding: 3px;
+    }
+    
+    .cart-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 4px;
+        border-bottom: 1px solid #999;
+        font-size: 1rem;
+        margin-bottom: 2px;
+    }
+    
+    .cart-item:nth-child(odd) {
+        background: #252525;
+    }
+    
+    .cart-item:nth-child(even) {
+        background: #1f1f1f;
+    }
+    
+    .cart-item:last-child {
+        border-bottom: none;
+    }
+    
+    .cart-item-info {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .cart-item-name {
+        font-weight: normal;
+        color: #ffffff;
+        font-size: 1rem;
+        line-height: 1.3;
+    }
+    
+    .cart-item-price {
+        color: #ffffff;
+        font-weight: bold;
+        font-size: 1rem;
+        margin-right: 4px;
+        text-align: right;
+        min-width: 60px;
+    }
+    
+    .cart-item-remove {
+        background: #dc3545;
+        color: white;
+        border: none;
+        border-radius: 2px;
+        padding: 2px 6px;
+        cursor: pointer;
+        font-size: 0.75rem;
+        font-weight: bold;
+        min-width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .cart-item-remove:hover {
+        background: #c82333;
+    }
+    
+    /* Total - estilo recibo POS */
+    .cart-total {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #ffffff;
+        text-align: left;
+        padding: 12px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        margin-bottom: 8px;
+        flex-shrink: 0;
+        border-radius: 8px;
+        border: none;
+    }
+    
+    .btn-clear-cart-secondary {
+        padding: 8px;
+        background: #dc3545;
+        color: white;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 0.95rem;
+        font-weight: bold;
+        width: 100%;
+        margin-top: 4px;
+        flex-shrink: 0;
+        min-height: 38px;
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
+    }
+    
+    .btn-clear-cart-secondary:hover {
+        background: #c82333;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    /* Scrollbar personalizado */
+    .products-section::-webkit-scrollbar,
+    .cart-items::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    .products-section::-webkit-scrollbar-track,
+    .cart-items::-webkit-scrollbar-track {
+        background: #1a1a2e;
+    }
+    
+    .products-section::-webkit-scrollbar-thumb,
+    .cart-items::-webkit-scrollbar-thumb {
+        background: #667eea;
+        border-radius: 4px;
+    }
+    
+    /* Notificaciones toast (no modales) */
+    .toast-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 10000;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .toast-container.center {
+        top: 50%;
+        left: 50%;
+        right: auto;
+        transform: translate(-50%, -50%);
+    }
+    
+    .toast {
+        background: #2a2a2a;
+        color: #fff;
+        padding: 12px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        min-width: 250px;
+        max-width: 400px;
+        animation: slideIn 0.3s ease;
+        border-left: 4px solid #667eea;
+    }
+    
+    .toast-container.center .toast {
+        animation: fadeIn 0.3s ease;
+        min-width: 400px;
+        padding: 20px 24px;
+        font-size: 1.1rem;
+        background: #1a1a1a;
+        border: 2px solid #4facfe;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.8), 0 0 20px rgba(79, 172, 254, 0.3);
+    }
+    
+    .toast-container.center .toast button {
+        padding: 14px 24px;
+        font-size: 1.1rem;
+        min-width: 120px;
+    }
+    
+    .toast.success {
+        border-left-color: #38ef7d;
+    }
+    
+    .toast.error {
+        border-left-color: #f5576c;
+    }
+    
+    .toast.info {
+        border-left-color: #4facfe;
+    }
+    
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes slideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+    
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+    
+    .toast.hiding {
+        animation: slideOut 0.3s ease forwards;
+    }
+    
+    .toast-container.center .toast.hiding {
+        animation: fadeIn 0.3s ease reverse forwards;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<script>
+    // ============================================
+    // FUNCIONES CRÍTICAS - DEFINIR PRIMERO
+    // ============================================
+    
+    // Función showToast (deshabilitada pero disponible para evitar errores)
+    function showToast(message, type = 'info') {
+        // Función deshabilitada para ahorrar recursos
+        return;
+    }
+    window.showToast = showToast;
+    
+    // Variables globales
+    let selectedPaymentType = null;
+    let paymentConfirmCallback = null;
+    
+    // Estado local del carrito
+    let localCart = [];
+    let localCartTotal = 0;
+    let pendingOperations = new Map();
+    let syncTimeout = null;
+    let isSyncing = false;
+    
+    // ============================================
+    // FUNCIONES DE SOPORTE - DEFINIR ANTES DE addToCart
+    // ============================================
+    
+    // Función para actualizar visualmente el carrito
+    function updateCartDisplay(cart, total) {
+        const cartItemsDiv = document.getElementById('cart-items');
+        const cartTotalDiv = document.getElementById('cart-total');
+        const motivationalBadge = document.getElementById('motivational-badge');
+        
+        if (!cartItemsDiv || !cartTotalDiv) {
+            console.warn('Elementos del carrito no encontrados aún');
+            return;
+        }
+        
+        // Actualizar badge motivacional
+        if (motivationalBadge) {
+            if (cart.length === 0) {
+                motivationalBadge.textContent = '💪 ¡Vamos a vender!';
+            } else if (cart.length < 3) {
+                motivationalBadge.textContent = '⭐ ¡Sigue así!';
+            } else if (cart.length < 6) {
+                motivationalBadge.textContent = '🚀 ¡Excelente!';
+            } else {
+                motivationalBadge.textContent = '🔥 ¡Increíble!';
+            }
+        }
+        
+        // Actualizar items del carrito
+        if (cart.length === 0) {
+            const emptyCartMessages = [
+                { icon: '🛒', text: 'Tu carrito está esperando productos', subtext: '¡Agrega productos para comenzar a vender! 💪' },
+                { icon: '✨', text: 'Listo para comenzar', subtext: '¡Selecciona productos y vamos a vender! 🚀' },
+                { icon: '🎯', text: 'Carrito vacío', subtext: '¡Agrega productos y haz que suceda! ⭐' },
+            ];
+            const randomMsg = emptyCartMessages[Math.floor(Math.random() * emptyCartMessages.length)];
+            cartItemsDiv.innerHTML = `
+                <div style="text-align: center; padding: 30px 20px; color: #888;">
+                    <div style="font-size: 3rem; margin-bottom: 10px;">${randomMsg.icon}</div>
+                    <p style="font-size: 0.95rem; margin: 0; line-height: 1.5;">
+                        ${randomMsg.text}<br>
+                        <span style="color: #667eea; font-size: 0.85rem;">${randomMsg.subtext}</span>
+                    </p>
+                </div>
+            `;
+        } else {
+            cartItemsDiv.innerHTML = cart.map(item => `
+                <div class="cart-item" data-item-id="${item.item_id}">
+                    <div class="cart-item-info">
+                        <div class="cart-item-name">${item.quantity} ${item.name}</div>
+                    </div>
+                    <div class="cart-item-price">$${parseFloat(item.subtotal || 0).toLocaleString('es-CL', {maximumFractionDigits: 0})}</div>
+                    <button onclick="removeFromCart('${item.item_id}')" class="cart-item-remove">✕</button>
+                </div>
+            `).join('');
+        }
+        
+        // Actualizar total
+        if (cart.length > 0) {
+            cartTotalDiv.innerHTML = `Total $${parseFloat(total || 0).toLocaleString('es-CL', {maximumFractionDigits: 0})}`;
+        } else {
+            cartTotalDiv.innerHTML = 'Total $0';
+        }
+        
+        // Habilitar/deshabilitar botones de pago
+        const paymentButtons = document.querySelectorAll('.payment-btn');
+        paymentButtons.forEach(btn => {
+            btn.disabled = cart.length === 0 || total === 0;
+        });
+    }
+    window.updateCartDisplay = updateCartDisplay;
+    
+    // Función para sincronizar carrito desde el servidor
+    async function syncCartFromServer() {
+        try {
+            const response = await fetch('/caja/api/cart');
+            const data = await response.json();
+            if (data.success) {
+                localCart = data.cart || [];
+                localCartTotal = data.total || 0;
+                updateCartDisplay(localCart, localCartTotal);
+            }
+        } catch (error) {
+            console.error('Error al sincronizar carrito:', error);
+        }
+    }
+    window.syncCartFromServer = syncCartFromServer;
+    
+    // Función para sincronizar operaciones pendientes con el servidor
+    async function syncPendingOperations() {
+        if (isSyncing || pendingOperations.size === 0) {
+            return;
+        }
+        
+        isSyncing = true;
+        const operations = new Map(pendingOperations);
+        pendingOperations.clear();
+        
+        try {
+            const promises = [];
+            for (const [itemId, quantity] of operations.entries()) {
+                promises.push(
+                    fetch('/caja/api/cart/add', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            item_id: itemId,
+                            quantity: quantity
+                        })
+                    }).then(async response => {
+                        const data = await response.json();
+                        return { success: data.success, itemId, error: data.error };
+                    }).catch(error => {
+                        return { success: false, itemId, error: error.message };
+                    })
+                );
+            }
+            
+            const results = await Promise.all(promises);
+            const failed = results.filter(r => !r.success);
+            if (failed.length > 0) {
+                console.error('Algunas operaciones fallaron:', failed);
+            }
+            
+            if (results.some(r => r.success)) {
+                await syncCartFromServer();
+            }
+        } catch (error) {
+            console.error('Error al sincronizar operaciones:', error);
+            await syncCartFromServer();
+        } finally {
+            isSyncing = false;
+            if (pendingOperations.size > 0) {
+                setTimeout(() => syncPendingOperations(), 50);
+            }
+        }
+    }
+    window.syncPendingOperations = syncPendingOperations;
+    
+    // ============================================
+    // FIN DE FUNCIONES DE SOPORTE
+    // ============================================
+    
+    // Función addToCart - DEFINIR INMEDIATAMENTE
+    async function addToCart(itemId, name, price) {
+        console.log('addToCart llamado:', { itemId, name, price });
+        try {
+            if (!itemId) {
+                console.error('Error: itemId no proporcionado');
+                return;
+            }
+            
+            const existingItem = localCart.find(item => item.item_id == itemId || item.item_id === itemId);
+            if (existingItem) {
+                existingItem.quantity += 1;
+                existingItem.subtotal = (existingItem.subtotal || 0) + (price || 0);
+            } else {
+                localCart.push({
+                    item_id: String(itemId),
+                    name: name || 'Producto',
+                    quantity: 1,
+                    subtotal: price || 0
+                });
+            }
+            
+            localCartTotal = localCart.reduce((sum, item) => sum + (item.subtotal || 0), 0);
+            // Actualizar visualización inmediatamente
+            updateCartDisplay(localCart, localCartTotal);
+            
+            // Acumular cantidad para sincronización con servidor
+            const currentPending = pendingOperations.get(itemId) || 0;
+            pendingOperations.set(itemId, currentPending + 1);
+            
+            // Cancelar timeout anterior si existe
+            if (syncTimeout) {
+                clearTimeout(syncTimeout);
+            }
+            
+            // Sincronizar con servidor después de un breve delay (debounce)
+            syncTimeout = setTimeout(async () => {
+                await syncPendingOperations();
+            }, 100);
+        } catch (error) {
+            console.error('Error en addToCart:', error);
+            alert('Error al agregar producto: ' + error.message);
+        }
+    }
+    window.addToCart = addToCart;
+    
+    // ============================================
+    // FUNCIONES DE PAGO Y LIMPIAR CARRO - DEFINIR INMEDIATAMENTE
+    // ============================================
+    
+    // Función para mostrar modal de confirmación de pago
+    function showPaymentConfirm(paymentType) {
+        if (!paymentType || (typeof paymentType === 'string' && paymentType.trim() === '')) {
+            console.error('Tipo de pago no especificado:', paymentType);
+            alert('Error: Tipo de pago no especificado');
+            return;
+        }
+        
+        selectedPaymentType = String(paymentType).trim();
+        console.log('Guardando tipo de pago:', selectedPaymentType);
+        
+        const modal = document.getElementById('payment-confirm-modal');
+        const typeDisplay = document.getElementById('payment-type-display');
+        const totalDisplay = document.getElementById('payment-confirm-total');
+        
+        if (!modal) {
+            console.error('Modal de confirmación no encontrado');
+            return;
+        }
+        
+        const paymentTypes = {
+            'Efectivo': 'Efectivo',
+            'Débito': 'Débito',
+            'Crédito': 'Crédito',
+            'Cash': 'Efectivo',
+            'Debit': 'Débito',
+            'Credit': 'Crédito'
+        };
+        const paymentTypeSpanish = paymentTypes[selectedPaymentType] || selectedPaymentType;
+        
+        if (typeDisplay) {
+            typeDisplay.textContent = paymentTypeSpanish;
+        }
+        
+        if (totalDisplay) {
+            totalDisplay.textContent = `Total: $${parseFloat(localCartTotal || 0).toLocaleString('es-CL', {maximumFractionDigits: 0})}`;
+        }
+        
+        modal.classList.add('active');
+        
+        const confirmBtn = document.getElementById('payment-confirm-ok');
+        if (confirmBtn) {
+            confirmBtn.setAttribute('data-payment-type', selectedPaymentType);
+            setTimeout(() => confirmBtn.focus(), 100);
+        }
+    }
+    window.showPaymentConfirm = showPaymentConfirm;
+    
+    // Función para procesar pago
+    async function processPayment(paymentType) {
+        if (!paymentType || (typeof paymentType === 'string' && paymentType.trim() === '')) {
+            console.error('Error: Tipo de pago no especificado en processPayment:', paymentType);
+            alert('Error: Tipo de pago no especificado');
+            return;
+        }
+        
+        if (localCart.length === 0 || localCartTotal === 0) {
+            alert('El carrito está vacío. Agrega productos antes de procesar el pago.');
+            return;
+        }
+        
+        console.log('processPayment llamado con:', paymentType);
+        showPaymentConfirm(paymentType);
+    }
+    window.processPayment = processPayment;
+    
+    // Función para limpiar carro
+    async function clearCart() {
+        if (localCart.length === 0) {
+            return;
+        }
+        showClearCartConfirm();
+    }
+    window.clearCart = clearCart;
+    
+    // Función para mostrar modal de confirmación de limpiar carro
+    function showClearCartConfirm() {
+        const modal = document.getElementById('clear-cart-confirm-modal');
+        if (!modal) return;
+        
+        modal.classList.add('active');
+        
+        setTimeout(() => {
+            const cancelBtn = modal.querySelector('.payment-confirm-cancel');
+            if (cancelBtn) {
+                cancelBtn.focus();
+            }
+        }, 100);
+    }
+    window.showClearCartConfirm = showClearCartConfirm;
+    
+    // Función para cerrar modal de limpiar carro
+    function closeClearCartConfirm() {
+        const modal = document.getElementById('clear-cart-confirm-modal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
+    }
+    window.closeClearCartConfirm = closeClearCartConfirm;
+    
+    // Función para confirmar y limpiar el carrito
+    async function confirmClearCart() {
+        closeClearCartConfirm();
+        
+        localCart = [];
+        localCartTotal = 0;
+        pendingOperations.clear();
+        updateCartDisplay([], 0);
+        
+        try {
+            const response = await fetch('/caja/api/cart/clear', {
+                method: 'POST'
+            });
+            const data = await response.json();
+            if (data.success) {
+                localCart = [];
+                localCartTotal = 0;
+                updateCartDisplay([], 0);
+            } else {
+                await syncCartFromServer();
+                alert('Error: ' + data.error);
+            }
+        } catch (error) {
+            await syncCartFromServer();
+            alert('Error al limpiar carrito: ' + error);
+        }
+    }
+    window.confirmClearCart = confirmClearCart;
+    
+    // Función para cerrar modal de confirmación de pago
+    function closePaymentConfirm() {
+        const modal = document.getElementById('payment-confirm-modal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
+    }
+    window.closePaymentConfirm = closePaymentConfirm;
+    
+    // Función para confirmar y procesar el pago
+    function confirmPaymentProcess() {
+        console.log('confirmPaymentProcess llamado');
+        
+        const confirmBtn = document.getElementById('payment-confirm-ok');
+        const paymentTypeFromBtn = confirmBtn?.getAttribute('data-payment-type');
+        const paymentType = paymentTypeFromBtn || selectedPaymentType;
+        
+        console.log('paymentType final:', paymentType);
+        
+        if (!paymentType || String(paymentType).trim() === '') {
+            console.error('Error: Tipo de pago no encontrado');
+            alert('Error: Tipo de pago no encontrado. Por favor, selecciona el medio de pago nuevamente.');
+            return;
+        }
+        
+        closePaymentConfirm();
+        processPaymentInternal(String(paymentType).trim());
+    }
+    window.confirmPaymentProcess = confirmPaymentProcess;
+    
+    // Función para procesar el pago internamente
+    async function processPaymentInternal(paymentType) {
+        console.log('processPaymentInternal llamado con:', paymentType);
+        
+        if (!paymentType || String(paymentType).trim() === '') {
+            alert('Error: Tipo de pago no especificado');
+            return;
+        }
+        
+        const paymentTypes = {
+            'Efectivo': 'Efectivo',
+            'Débito': 'Débito',
+            'Crédito': 'Crédito',
+            'Cash': 'Efectivo',
+            'Debit': 'Débito',
+            'Credit': 'Crédito'
+        };
+        
+        const normalizedType = String(paymentType).trim();
+        let paymentTypeSpanish = paymentTypes[normalizedType] || normalizedType;
+        
+        if (!paymentTypeSpanish || paymentTypeSpanish.trim() === '') {
+            alert('Error: Tipo de pago inválido: ' + paymentType);
+            return;
+        }
+        
+        if (localCart.length === 0 || localCartTotal === 0) {
+            alert('El carrito está vacío. Agrega productos antes de procesar el pago.');
+            return;
+        }
+        
+        await syncCartFromServer();
+        
+        try {
+            const paymentTypeToSend = paymentTypeSpanish.trim();
+            
+            const response = await fetch('/caja/api/sale/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    payment_type: paymentTypeToSend
+                })
+            });
+            
+            // Verificar Content-Type antes de parsear JSON
+            const contentType = response.headers.get('content-type') || '';
+            if (!contentType.includes('application/json')) {
+                const text = await response.text();
+                console.error('Error: El servidor devolvió HTML en lugar de JSON');
+                console.error('Status:', response.status);
+                console.error('Content-Type:', contentType);
+                console.error('Respuesta (primeros 500 caracteres):', text.substring(0, 500));
+                alert('Error: El servidor devolvió una respuesta no válida. Por favor, verifica la configuración de la API.');
+                return;
+            }
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                localCart = [];
+                localCartTotal = 0;
+                pendingOperations.clear();
+                updateCartDisplay([], 0);
+                setTimeout(() => location.reload(), 500);
+            } else {
+                console.error('Error del servidor:', data);
+                alert('Error: ' + (data.error || 'Error desconocido'));
+            }
+        } catch (error) {
+            console.error('Error al procesar venta:', error);
+            // Mostrar mensaje más descriptivo
+            if (error.message && error.message.includes('JSON')) {
+                alert('Error al procesar venta: El servidor devolvió una respuesta no válida. Por favor, verifica la configuración de la API.');
+            } else {
+                alert('Error al procesar venta: ' + error.message);
+            }
+        }
+    }
+    window.processPaymentInternal = processPaymentInternal;
+    
+    // Función para remover producto del carrito
+    async function removeFromCart(itemId) {
+        // Actualización optimista inmediata
+        const itemIndex = localCart.findIndex(item => item.item_id == itemId || item.item_id === itemId);
+        if (itemIndex !== -1) {
+            const item = localCart[itemIndex];
+            if (item.quantity > 1) {
+                item.quantity -= 1;
+                item.subtotal = item.quantity * (item.price || 0);
+            } else {
+                localCart.splice(itemIndex, 1);
+            }
+            
+            localCartTotal = localCart.reduce((sum, item) => sum + (item.subtotal || 0), 0);
+            updateCartDisplay(localCart, localCartTotal);
+        }
+        
+        try {
+            const response = await fetch('/caja/api/cart/remove', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    item_id: itemId,
+                    quantity: 1
+                })
+            });
+            
+            const data = await response.json();
+            if (data.success) {
+                localCart = data.cart || [];
+                localCartTotal = data.total || 0;
+                updateCartDisplay(localCart, localCartTotal);
+            } else {
+                await syncCartFromServer();
+            }
+        } catch (error) {
+            await syncCartFromServer();
+        }
+    }
+    window.removeFromCart = removeFromCart;
+    
+    // ============================================
+    // FIN DE FUNCIONES DE PAGO Y LIMPIAR CARRO
+    // ============================================
+    
+    // ============================================
+    // FIN DE FUNCIONES CRÍTICAS
+    // ============================================
+    
+    // Agregar clase al body para estilos específicos del POS
+    if (document.body) {
+        document.body.classList.add('caja-page');
+    } else {
+        document.addEventListener('DOMContentLoaded', function() {
+            document.body.classList.add('caja-page');
+        });
+    }
+    
+    // Mostrar mensaje de bienvenida al cargar la página
+    document.addEventListener('DOMContentLoaded', function() {
+        setTimeout(() => {
+            const welcomeMessages = [
+                '💪 ¡Listo para vender! ¡Vamos a hacer un excelente trabajo!',
+                '🚀 ¡Bienvenido! ¡Hoy será un día exitoso!',
+                '⭐ ¡Hola! ¡Estamos contigo para brillar!',
+                '🔥 ¡Vamos a superar todas las metas hoy!',
+            ];
+            const randomMsg = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
+            showToast(randomMsg, 'info', 4000);
+        }, 500);
+    });
+</script>
+<div class="caja-container">
+    <!-- Panel Izquierdo: Carrito/Recibo -->
+    <div class="cart-section">
+        <img src="{{ url_for('static', filename='img/bimba-logo.png') }}" alt="BIMBA Logo" class="cart-logo" onerror="this.style.display='none'">
+        
+        <!-- Items del carrito -->
+        <div class="cart-items" id="cart-items">
+            {% if cart %}
+                {% for item in cart %}
+                <div class="cart-item" data-item-id="{{ item.item_id }}">
+                    <div class="cart-item-info">
+                        <div class="cart-item-name">{{ item.quantity }} {{ item.name }}</div>
+                    </div>
+                    <div class="cart-item-price">${{ "{:,.0f}".format(item.subtotal|float) }}</div>
+                    <button onclick="removeFromCart('{{ item.item_id }}')" class="cart-item-remove">✕</button>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div style="text-align: center; padding: 30px 20px; color: #888;">
+                    <div style="font-size: 3rem; margin-bottom: 10px;">🛒</div>
+                    <p style="font-size: 0.95rem; margin: 0; line-height: 1.5;">
+                        Tu carrito está esperando productos<br>
+                        <span style="color: #667eea; font-size: 0.85rem;">¡Agrega productos para comenzar a vender! 💪</span>
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Total -->
+        <div class="cart-total" id="cart-total">
+            {% if cart %}
+            Total ${{ "{:,.0f}".format(total|float) }}
+            {% else %}
+            Total $0
+            {% endif %}
+        </div>
+        
+        <!-- Botones de pago debajo del carrito -->
+        <div class="payment-buttons">
+            <button 
+                class="payment-btn cash" 
+                onclick="processPayment('Efectivo')"
+                {% if not cart or total == 0 %}disabled{% endif %}>
+                💵 EFECTIVO
+            </button>
+            <button 
+                class="payment-btn debit" 
+                onclick="processPayment('Débito')"
+                {% if not cart or total == 0 %}disabled{% endif %}>
+                💳 DÉBITO
+            </button>
+            <button 
+                class="payment-btn credit" 
+                onclick="processPayment('Crédito')"
+                {% if not cart or total == 0 %}disabled{% endif %}>
+                💳 CRÉDITO
+            </button>
+        </div>
+        
+        <button 
+            class="btn-clear-cart-secondary" 
+            onclick="clearCart()">
+            LIMPIAR CARRO
+        </button>
+        
+        <!-- Modal de confirmación de pago -->
+        <div id="payment-confirm-modal" class="payment-confirm-modal">
+            <div class="payment-confirm-content">
+                <div class="payment-confirm-icon">💰</div>
+                <h3 class="payment-confirm-title">Confirmar Pago</h3>
+                <p class="payment-confirm-message" id="payment-confirm-message">¿Confirmar venta por <span id="payment-type-display"></span>?</p>
+                <div class="payment-confirm-total" id="payment-confirm-total">Total: $0</div>
+                <div class="payment-confirm-buttons">
+                    <button class="payment-confirm-cancel" onclick="closePaymentConfirm()">Cancelar</button>
+                    <button class="payment-confirm-ok" id="payment-confirm-ok" onclick="confirmPaymentProcess()" data-payment-type="">Confirmar</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal de confirmación para limpiar carrito -->
+        <div id="clear-cart-confirm-modal" class="payment-confirm-modal">
+            <div class="payment-confirm-content">
+                <div class="payment-confirm-icon">🗑️</div>
+                <h3 class="payment-confirm-title">Limpiar Carrito</h3>
+                <p class="payment-confirm-message">¿Estás seguro de que deseas limpiar el carrito?</p>
+                <p class="payment-confirm-message" style="font-size: 0.9rem; color: #888; margin-top: 10px;">Se eliminarán todos los productos agregados</p>
+                <div class="payment-confirm-buttons">
+                    <button class="payment-confirm-cancel" onclick="closeClearCartConfirm()">Cancelar</button>
+                    <button class="payment-confirm-ok" id="clear-cart-confirm-ok" onclick="confirmClearCart()" style="background: linear-gradient(135deg, #f5576c 0%, #c82333 100%);">Limpiar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Panel Central: Productos -->
+    <div class="products-section">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h2 style="margin: 0;">🛍️ Productos Disponibles</h2>
+            <div id="motivational-badge" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">
+                💪 ¡Vamos a vender!
+            </div>
+        </div>
+        <div class="products-scrollable">
+            {% if categorized_products %}
+                {% for category_name, products_in_category in categorized_products %}
+                    <div class="category-section">
+                        <h3 class="category-title">{{ category_name }}</h3>
+                        <div class="products-grid">
+                            {% for product in products_in_category %}
+                                {% set item_id = product.get('item_id') or product.get('item_kit_id') or product.get('id') %}
+                                {% set name = product.get('name') or product.get('kit_name', 'Producto') %}
+                                {% set price_raw = product.get('unit_price') or product.get('price') or product.get('kit_price') or 0 %}
+                                {% set price = price_raw|float if price_raw else 0 %}
+                                
+                                {% if item_id and price %}
+                                <div class="product-card" onclick="addToCart('{{ item_id }}', '{{ name|e }}', {{ price }})">
+                                    <div class="product-name">{{ name }}</div>
+                                    <div class="product-price">${{ "{:,.0f}".format(price) }}</div>
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+            <div style="text-align: center; padding: 20px; color: #aaa;">
+                <p>No hay kits disponibles</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+</div>
+
+<div class="caja-footer">
+    <div class="caja-footer-info">
+        <div>Caja: <span>{{ register_name }}</span></div>
+        <div>Cajero: <span>{{ employee_name }}</span> - Llevas <span>{{ employee_sales_count }}</span> ventas</div>
+        {% if app_version %}
+        <div style="color: #888; font-size: 0.7rem; margin-left: 10px;">{{ app_version }}</div>
+        {% endif %}
+    </div>
+           <div class="caja-footer-actions">
+               <button type="button" class="btn-refresh" onclick="refreshProducts()" title="Actualizar productos">🔄 Actualizar</button>
+               <button type="button" class="btn-lock-screen" onclick="lockScreen()" title="Bloquear pantalla">🔒 Bloquear</button>
+               <button type="button" class="btn-sos-drawer" onclick="requestSOSDrawer()" title="Solicitar Apertura de Cajón (Requiere autorización)">💰 Solicitar Apertura</button>
+               <a href="{{ url_for('caja.test_print') }}" class="btn-test-print" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center;" title="Imprimir Ticket de Prueba">🖨️ Prueba Impresión</a>
+               <button type="button" class="btn-close-shift" onclick="openCloseRegisterModal()" style="text-decoration: none; display: inline-flex; align-items: center; justify-content: center;">💰 Cerrar Caja</button>
+           </div>
+</div>
+
+<!-- Modal de cierre de caja -->
+<div class="close-register-modal" id="close-register-modal">
+    <div class="close-register-modal-content">
+        <div class="close-register-modal-header">
+            <h2>💰 Cierre de Caja</h2>
+            <button type="button" class="close-register-modal-close" onclick="closeCloseRegisterModal()" title="Cerrar">×</button>
+        </div>
+        <div class="close-register-modal-body" id="close-register-modal-body">
+            <iframe id="close-register-iframe" src="about:blank" frameborder="0"></iframe>
+        </div>
+    </div>
+</div>
+
+<!-- Overlay de bloqueo de pantalla -->
+<div class="screen-lock-overlay" id="screen-lock-overlay">
+    <div class="screen-lock-content">
+        <h2>🔒 Pantalla Bloqueada</h2>
+        <p>Ingresa tu PIN para desbloquear</p>
+        
+        <div class="pin-input-container">
+            <div class="pin-display-lock empty" id="pin-display-lock">Ingresa tu PIN</div>
+            <div class="error-message" id="pin-error-message"></div>
+            
+            <div class="numeric-keyboard-lock">
+                <button type="button" class="keyboard-btn-lock" onclick="appendPinDigit('1')">1</button>
+                <button type="button" class="keyboard-btn-lock" onclick="appendPinDigit('2')">2</button>
+                <button type="button" class="keyboard-btn-lock" onclick="appendPinDigit('3')">3</button>
+                <button type="button" class="keyboard-btn-lock" onclick="appendPinDigit('4')">4</button>
+                <button type="button" class="keyboard-btn-lock" onclick="appendPinDigit('5')">5</button>
+                <button type="button" class="keyboard-btn-lock" onclick="appendPinDigit('6')">6</button>
+                <button type="button" class="keyboard-btn-lock" onclick="appendPinDigit('7')">7</button>
+                <button type="button" class="keyboard-btn-lock" onclick="appendPinDigit('8')">8</button>
+                <button type="button" class="keyboard-btn-lock" onclick="appendPinDigit('9')">9</button>
+                <button type="button" class="keyboard-btn-lock" onclick="clearPinLock()">C</button>
+                <button type="button" class="keyboard-btn-lock" onclick="appendPinDigit('0')">0</button>
+                <button type="button" class="keyboard-btn-lock" onclick="deletePinDigit()">⌫</button>
+            </div>
+            
+            <div class="keyboard-actions-lock">
+                <button type="button" class="btn-clear-pin" onclick="clearPinLock()">Limpiar</button>
+                <button type="button" class="btn-unlock" id="btn-unlock-lock" onclick="verifyPinAndUnlock()" disabled>Desbloquear</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Contenedor de notificaciones toast - Oculto para ahorrar recursos -->
+<div class="toast-container" id="toast-container" style="display: none !important;"></div>
+
+<script>
+// Sistema de notificaciones toast (no modales) - Deshabilitado para ahorrar recursos
+// Variables y funciones ya definidas al inicio del script - NO DUPLICAR
+
+function showConfirm(message, onConfirm, onCancel = null) {
+    // Usar confirm nativo del navegador para ahorrar recursos
+    if (confirm(message)) {
+        onConfirm();
+    } else {
+        if (onCancel) onCancel();
+    }
+}
+
+// Mostrar modal de confirmación de pago
+// Funciones showPaymentConfirm y closePaymentConfirm ya están definidas al inicio - NO DUPLICAR
+// Solo mantener el event listener para cerrar con ESC
+
+// Cerrar modal al hacer clic fuera o presionar ESC
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('payment-confirm-modal');
+    if (modal) {
+        // Cerrar al hacer clic en el fondo
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal || e.target.classList.contains('payment-confirm-modal')) {
+                closePaymentConfirm();
+            }
+        });
+        
+        // Cerrar con ESC
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && modal.classList.contains('active')) {
+                closePaymentConfirm();
+            }
+        });
+    }
+});
+
+// Todas las funciones de pago y limpiar carro ya están definidas al inicio - NO DUPLICAR
+
+// Inicializar carrito local al cargar la página (solo este event listener se mantiene)
+document.addEventListener('DOMContentLoaded', async function() {
+    await syncCartFromServer();
+});
+
+
+// Variable para almacenar el PIN ingresado
+let lockPin = '';
+
+// Verificar si la pantalla debe estar bloqueada al cargar la página
+function checkScreenLock() {
+    const isLocked = sessionStorage.getItem('screenLocked') === 'true';
+    if (isLocked) {
+        const overlay = document.getElementById('screen-lock-overlay');
+        if (overlay) {
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            lockPin = '';
+            clearPinLock();
+        }
+    }
+}
+
+// Función para bloquear la pantalla
+function lockScreen() {
+    const overlay = document.getElementById('screen-lock-overlay');
+    if (overlay) {
+        // Guardar estado de bloqueo en sessionStorage
+        sessionStorage.setItem('screenLocked', 'true');
+        
+        lockPin = '';
+        clearPinLock();
+        overlay.classList.add('active');
+        // Prevenir interacción con el contenido de fondo
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+// Función para agregar dígito al PIN
+function appendPinDigit(digit) {
+    if (lockPin.length < 10) { // Limitar a 10 dígitos
+        lockPin += digit;
+        updatePinDisplay();
+    }
+}
+
+// Función para eliminar último dígito del PIN
+function deletePinDigit() {
+    if (lockPin.length > 0) {
+        lockPin = lockPin.slice(0, -1);
+        updatePinDisplay();
+    }
+}
+
+// Función para limpiar el PIN
+function clearPinLock() {
+    lockPin = '';
+    updatePinDisplay();
+    const errorMsg = document.getElementById('pin-error-message');
+    if (errorMsg) {
+        errorMsg.textContent = '';
+    }
+}
+
+// Función para actualizar la visualización del PIN
+function updatePinDisplay() {
+    const pinDisplay = document.getElementById('pin-display-lock');
+    const unlockBtn = document.getElementById('btn-unlock-lock');
+    
+    if (pinDisplay) {
+        if (lockPin.length === 0) {
+            pinDisplay.textContent = 'Ingresa tu PIN';
+            pinDisplay.classList.add('empty');
+        } else {
+            pinDisplay.textContent = '•'.repeat(lockPin.length);
+            pinDisplay.classList.remove('empty');
+        }
+    }
+    
+    if (unlockBtn) {
+        unlockBtn.disabled = lockPin.length === 0;
+    }
+}
+
+// Función para verificar PIN y desbloquear
+async function verifyPinAndUnlock() {
+    if (lockPin.length === 0) {
+        return;
+    }
+    
+    const errorMsg = document.getElementById('pin-error-message');
+    const unlockBtn = document.getElementById('btn-unlock-lock');
+    
+    // Deshabilitar botón mientras se verifica
+    if (unlockBtn) {
+        unlockBtn.disabled = true;
+        unlockBtn.textContent = 'Verificando...';
+    }
+    
+    try {
+        const response = await fetch('/caja/api/verify-pin', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                pin: lockPin
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // PIN correcto, desbloquear
+            unlockScreen();
+            showToast('✅ Pantalla desbloqueada', 'success');
+        } else {
+            // PIN incorrecto
+            if (errorMsg) {
+                errorMsg.textContent = data.error || 'PIN incorrecto. Intenta nuevamente.';
+            }
+            lockPin = '';
+            updatePinDisplay();
+            
+            // Re-habilitar botón
+            if (unlockBtn) {
+                unlockBtn.disabled = false;
+                unlockBtn.textContent = 'Desbloquear';
+            }
+        }
+    } catch (error) {
+        console.error('Error al verificar PIN:', error);
+        if (errorMsg) {
+            errorMsg.textContent = 'Error al verificar PIN. Intenta nuevamente.';
+        }
+        lockPin = '';
+        updatePinDisplay();
+        
+        // Re-habilitar botón
+        if (unlockBtn) {
+            unlockBtn.disabled = false;
+            unlockBtn.textContent = 'Desbloquear';
+        }
+    }
+}
+
+// Función para desbloquear la pantalla
+function unlockScreen() {
+    const overlay = document.getElementById('screen-lock-overlay');
+    if (overlay) {
+        // Remover estado de bloqueo de sessionStorage
+        sessionStorage.removeItem('screenLocked');
+        
+        overlay.classList.remove('active');
+        document.body.style.overflow = '';
+        lockPin = '';
+        clearPinLock();
+    }
+}
+
+// Función para actualizar/cargar nuevos productos
+async function refreshProducts() {
+    showToast('Consultando productos disponibles...', 'info');
+    
+    try {
+        const response = await fetch('/caja/api/products', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success && data.categorized_products) {
+            // Actualizar la sección de productos
+            updateProductsDisplay(data.categorized_products);
+            showToast('✅ Productos actualizados correctamente', 'success');
+        } else {
+            showToast('Error: ' + (data.error || 'No se pudieron cargar los productos'), 'error');
+        }
+    } catch (error) {
+        logger.error('Error al actualizar productos:', error);
+        showToast('Error al actualizar productos: ' + error, 'error');
+    }
+}
+
+// Función para actualizar el display de productos
+function updateProductsDisplay(categorizedProducts) {
+    const productsSection = document.querySelector('.products-scrollable');
+    if (!productsSection) return;
+    
+    // Construir HTML de productos
+    let html = '';
+    
+    for (const [categoryName, productsInCategory] of Object.entries(categorizedProducts)) {
+        html += `<div class="category-section">
+            <h3 class="category-title">${categoryName}</h3>
+            <div class="products-grid">`;
+        
+        for (const product of productsInCategory) {
+            const itemId = product.item_id || product.item_kit_id || product.id;
+            const name = product.name || product.kit_name || 'Producto';
+            const price = product.price || product.unit_price || product.kit_price || 0;
+            const priceFormatted = parseFloat(price).toLocaleString('es-CL', {maximumFractionDigits: 0});
+            
+            if (itemId && price) {
+                html += `
+                <div class="product-card" onclick="addToCart('${itemId}', '${name.replace(/'/g, "\\'")}', ${price})">
+                    <div class="product-name">${name}</div>
+                    <div class="product-price">$${priceFormatted}</div>
+                </div>`;
+            }
+        }
+        
+        html += `</div></div>`;
+    }
+    
+    if (html === '') {
+        html = '<div style="text-align: center; padding: 20px; color: #aaa;"><p>No hay kits disponibles</p></div>';
+    }
+    
+    productsSection.innerHTML = html;
+}
+
+// Verificar bloqueo al cargar la página
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', checkScreenLock);
+} else {
+    // DOM ya está cargado
+    checkScreenLock();
+}
+
+// Función para solicitar apertura del cajón
+async function requestSOSDrawer() {
+    showConfirm('¿Solicitar apertura del cajón? Esto requiere autorización del superadmin.', async () => {
+        try {
+            const response = await fetch('/caja/api/request-sos-drawer', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                if (data.requires_authorization) {
+                    showToast('Solicitud enviada. Esperando autorización del superadmin...', 'info');
+                    // Mostrar opción de autorización presencial
+                    showPresentialAuthOption(data.request_id);
+                } else {
+                    showToast('✅ Cajón abierto', 'success');
+                }
+            } else {
+                showToast('Error: ' + data.error, 'error');
+            }
+        } catch (error) {
+            console.error('Error al solicitar apertura:', error);
+            showToast('Error de conexión', 'error');
+        }
+    });
+}
+
+// Función para mostrar opción de autorización presencial
+function showPresentialAuthOption(requestId) {
+    showConfirm('¿El superadmin está presente? Puede autorizar con su PIN.', async () => {
+        // Mostrar teclado para PIN del superadmin
+        showSuperAdminPinDialog(requestId);
+    }, () => {
+        showToast('Solicitud pendiente de autorización remota', 'info');
+    });
+}
+
+// Función para mostrar diálogo de PIN del superadmin
+function showSuperAdminPinDialog(requestId) {
+    // Crear overlay para PIN
+    const overlay = document.createElement('div');
+    overlay.id = 'sos-pin-overlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.95);
+        z-index: 20000;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: white;
+    `;
+    
+    overlay.innerHTML = `
+        <div style="text-align: center; padding: 30px; background: #1a1a1a; border-radius: 12px; max-width: 400px;">
+            <h2 style="color: #f5576c; margin-bottom: 20px;">🔐 Autorización Superadmin</h2>
+            <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 15px;">Apertura de Cajón</p>
+            <p style="color: #ccc; margin-bottom: 20px;">Ingresa el PIN del superadmin</p>
+            <div class="pin-display-lock empty" id="sos-pin-display">Ingresa PIN</div>
+            <div class="numeric-keyboard-lock" id="sos-keyboard"></div>
+            <div id="sos-pin-error" style="color: #f5576c; margin-top: 15px; min-height: 20px;"></div>
+            <div style="margin-top: 20px;">
+                <button onclick="verifySuperAdminPin('${requestId}')" id="sos-verify-btn" disabled style="padding: 12px 24px; background: #4facfe; color: white; border: none; border-radius: 8px; cursor: pointer; margin-right: 10px;">Verificar</button>
+                <button onclick="closeSOSPinDialog()" style="padding: 12px 24px; background: #4a4a4a; color: white; border: none; border-radius: 8px; cursor: pointer;">Cancelar</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(overlay);
+    
+    // Crear teclado numérico
+    const keyboard = document.getElementById('sos-keyboard');
+    const numbers = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '⌫'];
+    numbers.forEach(num => {
+        const btn = document.createElement('button');
+        btn.className = 'keyboard-btn-lock';
+        btn.textContent = num;
+        if (num === 'C' || num === '⌫') {
+            btn.classList.add('action');
+        }
+        btn.onclick = () => {
+            if (num === 'C') {
+                window.sosPin = '';
+            } else if (num === '⌫') {
+                window.sosPin = (window.sosPin || '').slice(0, -1);
+            } else {
+                window.sosPin = (window.sosPin || '') + num;
+            }
+            updateSOSPinDisplay();
+        };
+        keyboard.appendChild(btn);
+    });
+    
+    window.sosPin = '';
+    updateSOSPinDisplay();
+}
+
+function updateSOSPinDisplay() {
+    const display = document.getElementById('sos-pin-display');
+    const verifyBtn = document.getElementById('sos-verify-btn');
+    
+    if (display) {
+        if (!window.sosPin || window.sosPin.length === 0) {
+            display.textContent = 'Ingresa PIN';
+            display.classList.add('empty');
+        } else {
+            display.textContent = '•'.repeat(window.sosPin.length);
+            display.classList.remove('empty');
+        }
+    }
+    
+    if (verifyBtn) {
+        verifyBtn.disabled = !window.sosPin || window.sosPin.length === 0;
+    }
+}
+
+async function verifySuperAdminPin(requestId) {
+    if (!window.sosPin || window.sosPin.length === 0) {
+        return;
+    }
+    
+    const errorMsg = document.getElementById('sos-pin-error');
+    const verifyBtn = document.getElementById('sos-verify-btn');
+    
+    verifyBtn.disabled = true;
+    verifyBtn.textContent = 'Verificando...';
+    
+    try {
+        const response = await fetch('/caja/api/authorize-sos-drawer', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                request_id: requestId,
+                pin: window.sosPin
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast('✅ Autorizado. Cajón abierto', 'success');
+            closeSOSPinDialog();
+        } else {
+            if (errorMsg) {
+                errorMsg.textContent = data.error || 'PIN incorrecto';
+            }
+            window.sosPin = '';
+            updateSOSPinDisplay();
+        }
+    } catch (error) {
+        console.error('Error al verificar PIN:', error);
+        if (errorMsg) {
+            errorMsg.textContent = 'Error de conexión';
+        }
+    } finally {
+        verifyBtn.disabled = false;
+        verifyBtn.textContent = 'Verificar';
+    }
+}
+
+function closeSOSPinDialog() {
+    const overlay = document.getElementById('sos-pin-overlay');
+    if (overlay) {
+        overlay.remove();
+    }
+    window.sosPin = '';
+}
+
+// Funciones para el modal de cierre de caja
+function openCloseRegisterModal() {
+    const modal = document.getElementById('close-register-modal');
+    const iframe = document.getElementById('close-register-iframe');
+    
+    if (!modal || !iframe) return;
+    
+    // Cargar la URL del cierre de caja en el iframe
+    iframe.src = '{{ url_for("caja.close_register_view") }}';
+    
+    // Mostrar modal
+    modal.classList.add('active');
+    
+    // Escuchar mensajes del iframe para cerrar el modal cuando se complete el cierre
+    window.addEventListener('message', handleCloseRegisterMessage);
+}
+// Asegurar disponibilidad global
+window.openCloseRegisterModal = openCloseRegisterModal;
+
+function closeCloseRegisterModal() {
+    const modal = document.getElementById('close-register-modal');
+    const iframe = document.getElementById('close-register-iframe');
+    
+    if (modal) {
+        modal.classList.remove('active');
+    }
+    
+    if (iframe) {
+        iframe.src = 'about:blank';
+    }
+    
+    // Remover listener de mensajes
+    window.removeEventListener('message', handleCloseRegisterMessage);
+}
+
+function handleCloseRegisterMessage(event) {
+    // Verificar que el mensaje viene del iframe de cierre de caja
+    // IMPORTANTE: Verificar el origen para seguridad
+    if (event.data && event.data.type === 'close_register_complete') {
+        console.log('✅ Mensaje de cierre recibido, cerrando modal y redirigiendo...');
+        
+        // El iframe ya muestra el mensaje de éxito durante 3 segundos
+        // Esperar a que el iframe complete su countdown antes de cerrar y redirigir
+        // Esto permite que el usuario vea el mensaje de éxito completo
+        const redirectUrl = event.data.redirect || '{{ url_for("routes.index") }}';
+        
+        // Cerrar el modal después de que el iframe haya mostrado el mensaje (3 segundos)
+        setTimeout(() => {
+            closeCloseRegisterModal();
+            // Redirigir al home después de cerrar el modal
+            // La sesión de caja ya fue limpiada en el backend
+            window.location.href = redirectUrl;
+        }, 3000); // Esperar 3 segundos para que el usuario vea el mensaje en el iframe
+    }
+}
+
+// Cerrar modal al hacer clic fuera
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('close-register-modal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeCloseRegisterModal();
+            }
+        });
+    }
+    
+    // Cerrar con ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            const modal = document.getElementById('close-register-modal');
+            if (modal && modal.classList.contains('active')) {
+                closeCloseRegisterModal();
+            }
+        }
+    });
+});
+</script>
+{% endblock %}
+
