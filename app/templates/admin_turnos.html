@@ -3,11 +3,25 @@
 
 {% block head_extra %}
 <style>
+    /* Forzar ancho completo para la página de turnos */
+    /* Sobrescribir el max-width del contenedor principal */
+    .container {
+        max-width: 100% !important;
+    }
+    
+    .main-container {
+        max-width: 100% !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+    
     /* Optimizado para pantalla de 52" - Fuentes y elementos grandes para mejor legibilidad */
     .admin-turnos {
         width: 100%;
+        max-width: 100%;
         padding: 30px;
         box-sizing: border-box;
+        margin: 0;
     }
     
     .turnos-header {
