@@ -19,147 +19,70 @@ class PosService:
     
     def get_products(self, category: Optional[str] = None, limit: int = 1000, use_cache: bool = True) -> List[Dict[str, Any]]:
         """
-        Obtiene Item Kits desde PHP POS API (con cache optimizado)
-        
-        Args:
-            category: Categoría a filtrar (opcional)
-            limit: Límite de resultados
-            use_cache: Si usar cache (default: True)
-            
-        Returns:
-            Lista de Item Kits
-        """
-        if use_cache:
-            from app.helpers.cache import cached
-            
-            # Usar cache con clave única
-            cache_key = f"pos_products|{category}|{limit}"
-            from app.helpers.cache import get_cache_key, _cache, _cache_config
-            import time
-            
-            cache_full_key = get_cache_key('pos_products', category, limit)
-            cache_ttl = _cache_config.get('pos_products', 300)
-            
-            # Verificar cache
-            if cache_full_key in _cache:
-                cached_value, cached_time = _cache[cache_full_key]
-                if time.time() - cached_time < cache_ttl:
-                    logger.debug("✅ Usando productos desde cache")
-                    return cached_value
-        
-        return self._fetch_products(category, limit)
-    
-    def _fetch_products(self, category: Optional[str] = None, limit: int = 1000) -> List[Dict[str, Any]]:
-        """
-        Obtiene productos directamente desde la API (sin cache)
+        Obtiene productos desde la base de datos LOCAL
         """
         try:
-            # Intentar obtener Item Kits desde endpoint específico
-            item_kits = self.php_pos_client.get_item_kits(limit=limit)
+            from app.models.product_models import Product
             
-            if item_kits:
-                # Normalizar categorías: eliminar prefijos como "Barra >" y usar solo la categoría principal
-                for product in item_kits:
-                    category = product.get('category_name') or product.get('category') or ''
-                    # Si tiene ">", tomar solo la última parte (categoría principal)
-                    if '>' in category:
-                        category = category.split('>')[-1].strip()
-                    # Eliminar "Barra" si está al inicio
-                    if category.lower().startswith('barra'):
-                        category = category.replace('Barra', '').replace('barra', '').strip()
-                        if category.startswith('>'):
-                            category = category[1:].strip()
-                    # Guardar categoría normalizada
-                    product['category_normalized'] = category
-                    product['category_display'] = category.upper()  # Para mostrar en mayúsculas
-                
-                # Ordenar por categoría normalizada
-                item_kits.sort(key=lambda x: (x.get('category_normalized') or x.get('category_name') or x.get('category') or '').lower())
-                
-                logger.info(f"✅ Obtenidos {len(item_kits)} Item Kits desde PHP POS")
-                return item_kits
+            query = Product.query.filter_by(is_active=True)
             
-            # Si no hay endpoint de Item Kits, buscar en items normales
-            # que tengan características de kits (variaciones, paquetes, etc.)
-            logger.warning("⚠️  No se encontró endpoint de Item Kits. Buscando en items normales...")
-            all_products = self.php_pos_client.get_items(limit=limit, category=category)
+            if category:
+                # Búsqueda case-insensitive parcial
+                query = query.filter(Product.category.ilike(f"%{category}%"))
             
-            # Filtrar items que puedan ser kits (tienen variaciones o son paquetes)
-            kits_products = []
-            for product in all_products:
-                variations = product.get('variations', [])
-                unit_variations = product.get('unit_variations', [])
-                is_series_package = product.get('is_series_package', False)
-                
-                # Si tiene variaciones o es un paquete, considerarlo un kit
-                if variations or unit_variations or is_series_package:
-                    kits_products.append(product)
+            products_db = query.limit(limit).all()
             
-            # Si aún no hay nada, mostrar todos (temporal)
-            if not kits_products:
-                logger.warning(f"⚠️  No se encontraron Item Kits. Mostrando todos los productos ({len(all_products)} totales)")
-                kits_products = all_products
+            products_list = []
+            for p in products_db:
+                # Formato compatible con el frontend existente
+                products_list.append({
+                    'item_id': str(p.id),
+                    'name': p.name,
+                    'category': p.category,
+                    'category_normalized': p.category,
+                    'category_display': p.category.upper() if p.category else 'GENERAL',
+                    'price': float(p.price),
+                    'cost_price': float(p.cost_price),
+                    'quantity': p.stock_quantity,
+                    'is_kit': False, # Por ahora todo es producto simple
+                    'description': '',
+                    'image_id': None
+                })
             
-            # Normalizar categorías: eliminar prefijos como "Barra >" y usar solo la categoría principal
-            for product in kits_products:
-                category = product.get('category_name') or product.get('category') or ''
-                # Si tiene ">", tomar solo la última parte (categoría principal)
-                if '>' in category:
-                    category = category.split('>')[-1].strip()
-                # Eliminar "Barra" si está al inicio
-                if category.lower().startswith('barra'):
-                    category = category.replace('Barra', '').replace('barra', '').strip()
-                    if category.startswith('>'):
-                        category = category[1:].strip()
-                # Guardar categoría normalizada
-                product['category_normalized'] = category
-                product['category_display'] = category.upper()  # Para mostrar en mayúsculas
+            # Ordenar por categoría
+            products_list.sort(key=lambda x: (x.get('category_display') or '').lower())
             
-            # Ordenar por categoría normalizada
-            kits_products.sort(key=lambda x: (x.get('category_normalized') or x.get('category_name') or x.get('category') or '').lower())
+            logger.info(f"✅ Obtenidos {len(products_list)} productos desde BD Local")
+            return products_list
             
-            logger.info(f"✅ Obtenidos {len(kits_products)} productos desde PHP POS")
-            return kits_products
         except Exception as e:
-            logger.error(f"Error al obtener productos: {e}")
+            logger.error(f"Error al obtener productos locales: {e}")
             return []
     
     def get_product(self, item_id: str) -> Optional[Dict[str, Any]]:
-        """
-        Obtiene un producto específico desde PHP POS API
-        
-        Args:
-            item_id: ID del producto
-            
-        Returns:
-            Información del producto o None
-        """
+        """Obtiene un producto específico desde BD Local"""
         try:
-            product = self.php_pos_client.get_item(item_id)
-            return product
+            from app.models.product_models import Product
+            p = Product.query.get(int(item_id))
+            
+            if not p:
+                return None
+                
+            return {
+                'item_id': str(p.id),
+                'name': p.name,
+                'category': p.category,
+                'price': float(p.price),
+                'cost_price': float(p.cost_price),
+                'quantity': p.stock_quantity
+            }
         except Exception as e:
-            logger.error(f"Error al obtener producto {item_id}: {e}")
+            logger.error(f"Error al obtener producto local {item_id}: {e}")
             return None
     
     def get_item_kit(self, kit_id: str) -> Optional[Dict[str, Any]]:
-        """
-        Obtiene un Item Kit específico desde PHP POS API
-        
-        Args:
-            kit_id: ID del item kit
-            
-        Returns:
-            Información del item kit o None
-        """
-        try:
-            all_kits = self.php_pos_client.get_item_kits(limit=10000)
-            for kit in all_kits:
-                if str(kit.get('item_kit_id')) == str(kit_id):
-                    return kit
-            return None
-        except Exception as e:
-            logger.error(f"Error al obtener item kit {kit_id}: {e}")
-            return None
+        """Compatibilidad: trata kits como productos normales"""
+        return self.get_product(kit_id)
     
     def create_sale(
         self,
@@ -171,85 +94,176 @@ class PosService:
         customer_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Crea una venta en PHP POS
-        
-        Args:
-            items: Lista de items con formato:
-                [
-                    {
-                        'item_id': '123',
-                        'quantity': 2,
-                        'price': 5000.0
-                    },
-                    ...
-                ]
-            total: Total de la venta
-            payment_type: Tipo de pago ('Cash', 'Debit', 'Credit')
-            employee_id: ID del empleado
-            register_id: ID de la caja
-            customer_id: ID del cliente (opcional)
-            
-        Returns:
-            Dict con 'success', 'sale_id', 'error', etc.
+        Crea una venta LOCALMENTE y actualiza inventario
         """
         try:
-            # Mapear tipos de pago a formato PHP POS
-            payment_type_map = {
-                'Cash': 'Cash',
-                'Efectivo': 'Cash',
-                'Debit': 'Debit',
-                'Débito': 'Debit',
-                'Credit': 'Credit',
-                'Crédito': 'Credit'
-            }
-            
-            php_payment_type = payment_type_map.get(payment_type, payment_type)
+            from app.models import db, PosSale, PosSaleItem
+            from app.models.product_models import Product
+            from app.application.services.service_factory import get_inventory_service
+            from datetime import datetime
             
             # Obtener employee_id y register_id de la sesión si no se proporcionan
             if not employee_id:
                 employee_id = session.get('bartender_id') or session.get('employee_id')
+                # Si es un ID numérico de empleado, intentar obtener el nombre
+                if employee_id and employee_id.isdigit():
+                    from app.models import Employee
+                    emp = Employee.query.get(int(employee_id))
+                    employee_name = f"{emp.first_name} {emp.last_name}" if emp else "Unknown"
+                else:
+                    employee_name = session.get('pos_employee_name', 'Unknown')
+            else:
+                employee_name = "Unknown" # Deberíamos buscarlo si tenemos el ID
             
             if not register_id:
-                register_id = session.get('register_id')
+                register_id = session.get('register_id', '1')
             
-            logger.info(f"Creando venta: total={total}, payment_type={php_payment_type}, items={len(items)}")
+            # Mapear tipos de pago
+            payment_type_map = {
+                'Cash': 'cash',
+                'Efectivo': 'cash',
+                'Debit': 'debit',
+                'Débito': 'debit',
+                'Credit': 'credit',
+                'Crédito': 'credit'
+            }
+            normalized_payment = payment_type_map.get(payment_type, 'cash')
             
-            # Crear venta en PHP POS
-            result = self.php_pos_client.create_sale(
-                items=items,
-                total=total,
-                payment_type=php_payment_type,
-                employee_id=employee_id,
+            # Crear venta
+            sale = PosSale(
+                sale_time=datetime.now(),
+                customer_id=int(customer_id) if customer_id and customer_id.isdigit() else None,
+                employee_id=int(employee_id) if employee_id and employee_id.isdigit() else None,
+                employee_name=employee_name,
                 register_id=register_id,
-                customer_id=customer_id
+                payment_type=normalized_payment,
+                total_amount=total,
+                payment_cash=total if normalized_payment == 'cash' else 0,
+                payment_debit=total if normalized_payment == 'debit' else 0,
+                payment_credit=total if normalized_payment == 'credit' else 0,
+                status='completed'
             )
             
-            if result.get('success'):
-                sale_id = result.get('sale_id')
-                logger.info(f"✅ Venta creada exitosamente en PHP POS: sale_id={sale_id}")
-                
-                # Obtener información completa de la venta para impresión
-                sale_info = self.php_pos_client.get_sale(sale_id)
-                
-                return {
-                    'success': True,
-                    'sale_id': sale_id,
-                    'receipt_code': result.get('receipt_code'),
-                    'receipt_url': result.get('receipt_url'),
-                    'sale_info': sale_info,
-                    'message': 'Venta creada exitosamente'
-                }
+            # Obtener turno actual para asociar fecha
+            from app.application.services.service_factory import get_shift_service
+            shift_service = get_shift_service()
+            shift_status = shift_service.get_current_shift_status()
+            if shift_status.is_open:
+                sale.shift_date = shift_status.shift_date
             else:
-                error = result.get('error', 'Error desconocido')
-                logger.error(f"❌ Error al crear venta: {error}")
-                return {
-                    'success': False,
-                    'error': error,
-                    'sale_id': None
-                }
+                sale.shift_date = datetime.now().strftime('%Y-%m-%d')
+
+            db.session.add(sale)
+            db.session.flush() # Para obtener ID
+            
+            # Procesar items
+            inventory_service = get_inventory_service()
+            
+            # Mapeo de nombres de barra para inventario
+            # Asumimos que el register_id o nombre nos dice qué barra es
+            # Por ahora hardcodeamos una lógica simple o usamos 'Barra Principal' por defecto
+            barra_name = session.get('pos_register_name', 'Barra Principal')
+            if 'Terraza' in barra_name:
+                barra_name = 'Barra Terraza'
+            elif 'VIP' in barra_name:
+                barra_name = 'Barra VIP'
+            else:
+                barra_name = 'Barra Principal'
+
+            for item in items:
+                item_id = item.get('item_id')
+                quantity = float(item.get('quantity', 1))
+                price = float(item.get('price', 0))
+                
+                # Buscar producto para obtener nombre correcto
+                product = Product.query.get(int(item_id))
+                product_name = product.name if product else f"Item {item_id}"
+                
+                sale_item = PosSaleItem(
+                    sale_id=sale.id,
+                    product_id=int(item_id) if item_id and item_id.isdigit() else None,
+                    product_name=product_name,
+                    quantity=quantity,
+                    item_price=price,
+                    total_price=quantity * price
+                )
+                db.session.add(sale_item)
+                
+                # Actualizar inventario (registrar entrega/consumo)
+                # Si el producto es un KIT (tiene receta), descontar sus ingredientes
+                if product and product.is_kit and product.recipe_items:
+                    for recipe_item in product.recipe_items:
+                        # Calcular cantidad a descontar
+                        # Si la receta define cantidad en "unidades de botella" (ej: 0.09), usamos eso.
+                        # Pero si queremos ser precisos con el volumen:
+                        # Asumimos que recipe_item.quantity está en la misma unidad que el inventario (botellas)
+                        # O implementamos lógica de conversión si recipe_item.quantity fuera en ML.
+                        
+                        # Por ahora, mantenemos la lógica de que la receta define FRACCIÓN DE BOTELLA.
+                        # Si el usuario definió 0.09 para 90cc de una botella de 1L, está bien.
+                        # Si la botella es de 750cc, 90cc sería 0.12.
+                        
+                        # Si queremos soportar que la receta se defina en ML (ej: 90.0),
+                        # entonces: deduction = 90.0 / ingredient.volume_ml
+                        
+                        qty_in_recipe = float(recipe_item.quantity)
+                        
+                        # DETECCIÓN AUTOMÁTICA DE UNIDAD DE RECETA:
+                        # Si la cantidad es > 1.0 (ej: 90, 200), asumimos que son ML y convertimos a botellas.
+                        # Si es <= 1.0 (ej: 0.09), asumimos que ya es fracción de botella.
+                        # Excepción: Garnish (unidad), Bebidas (unidad o fracción).
+                        
+                        deduction = 0.0
+                        
+                        if ingredient.volume_ml and qty_in_recipe > 5.0 and "unidad" not in (ingredient.unit or "").lower():
+                            # Caso: Receta en ML (ej: 90cc), Ingrediente con volumen (ej: 750ml)
+                            deduction = (qty_in_recipe / ingredient.volume_ml) * float(quantity)
+                        else:
+                            # Caso: Receta en fracción o unidades (ej: 1 Garnish, 0.2 Bebida)
+                            deduction = qty_in_recipe * float(quantity)
+                        
+                        # Registrar consumo del ingrediente
+                        inventory_service.record_delivery(
+                            barra=barra_name,
+                            product_name=ingredient.name, 
+                            quantity=deduction # Ahora pasamos float
+                        )
+                        
+                        # Actualizar stock del ingrediente
+                        ingredient.stock_quantity -= deduction
+                else:
+                    # Si es producto simple, descontar directamente
+                    inventory_service.record_delivery(
+                        barra=barra_name,
+                        product_name=product_name,
+                        quantity=int(quantity)
+                    )
+                    
+                    # Actualizar stock del producto
+                    if product:
+                        product.stock_quantity -= int(quantity)
+
+            db.session.commit()
+            
+            logger.info(f"✅ Venta LOCAL creada exitosamente: ID={sale.id}")
+            
+            return {
+                'success': True,
+                'sale_id': str(sale.id),
+                'receipt_code': f"POS-{sale.id}",
+                'receipt_url': None, # No generamos URL externa
+                'sale_info': { # Info mínima para el frontend
+                    'sale_id': str(sale.id),
+                    'date': sale.sale_time.isoformat(),
+                    'total': total,
+                    'items': items
+                },
+                'message': 'Venta registrada localmente'
+            }
                 
         except Exception as e:
-            logger.error(f"Error inesperado al crear venta: {e}", exc_info=True)
+            db.session.rollback()
+            logger.error(f"Error inesperado al crear venta local: {e}", exc_info=True)
             return {
                 'success': False,
                 'error': f'Error inesperado: {str(e)}',
@@ -258,67 +272,16 @@ class PosService:
     
     def get_registers(self) -> List[Dict[str, Any]]:
         """
-        Obtiene lista de cajas/registers desde PHP POS API (con cache de 30 minutos)
-        
-        Returns:
-            Lista de registers con 'id' y 'name'
+        Obtiene lista de cajas locales
         """
-        try:
-            api_key = current_app.config.get('API_KEY')
-            base_url = current_app.config.get('BASE_API_URL')
-            
-            if not api_key:
-                logger.warning("API_KEY no configurada para obtener registers")
-                return []
-            
-            # Asegurar que base_url no termine en /
-            base_url = base_url.rstrip('/')
-            url = f"{base_url}/registers"
-            headers = {
-                "x-api-key": api_key,
-                "accept": "application/json"
-            }
-            
-            import requests
-            response = requests.get(url, headers=headers, timeout=10)
-            response.raise_for_status()
-            data = response.json()
-            
-            # La API puede devolver un objeto con una lista o directamente una lista
-            if isinstance(data, dict):
-                registers = data.get('registers', data.get('data', []))
-            else:
-                registers = data
-            
-            # Formatear registers para el template
-            formatted_registers = []
-            for reg in registers:
-                if isinstance(reg, dict):
-                    reg_id = reg.get('register_id') or reg.get('id')
-                    name = reg.get('name') or reg.get('register_name') or f'Caja {reg_id}'
-                    # Filtrar solo registros activos (no eliminados)
-                    deleted = reg.get('deleted', '0')
-                    if deleted == '0' or not deleted:
-                        formatted_registers.append({
-                            'id': str(reg_id),
-                            'name': name
-                        })
-            
-            # Ordenar por ID
-            formatted_registers.sort(key=lambda x: int(x['id']) if x['id'].isdigit() else 999)
-            
-            logger.info(f"✅ Obtenidos {len(formatted_registers)} registers desde PHP POS")
-            return formatted_registers
-            
-        except Exception as e:
-            logger.error(f"Error al obtener registers desde PHP POS: {e}")
-            # Fallback a lista básica si falla la API
-            return [
-                {'id': '1', 'name': 'Caja 1'},
-                {'id': '2', 'name': 'Caja 2'},
-                {'id': '3', 'name': 'Caja 3'},
-                {'id': '4', 'name': 'Caja 4'},
-            ]
+        # Por ahora definimos las cajas estáticamente, luego podrían ir a BD
+        return [
+            {'id': '1', 'name': 'Barra Principal'},
+            {'id': '2', 'name': 'Barra Terraza'},
+            {'id': '3', 'name': 'Barra VIP'},
+            {'id': '4', 'name': 'Barra Exterior'},
+            {'id': '5', 'name': 'Caja Entrada'},
+        ]
     
     def calculate_total(self, items: List[Dict[str, Any]]) -> float:
         """

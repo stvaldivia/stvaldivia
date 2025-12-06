@@ -19,6 +19,7 @@ from app.infrastructure.repositories.sql_delivery_repository import SqlDeliveryR
 from app.infrastructure.repositories.survey_repository import CsvSurveyRepository
 from app.infrastructure.repositories.social_media_repository import CsvSocialMediaRepository
 from app.infrastructure.repositories.inventory_repository import JsonInventoryRepository
+from app.infrastructure.repositories.sql_inventory_repository import SqlInventoryRepository
 from app.infrastructure.external.pos_api_client import PhpPosApiClient
 from app.infrastructure.external.openai_client import OpenAIAPIClient
 from app.infrastructure.events.socketio_publisher import SocketIOEventPublisher, NoOpEventPublisher
@@ -309,7 +310,10 @@ def create_inventory_service(
         InventoryService: Instancia configurada
     """
     if inventory_repository is None:
-        inventory_repository = JsonInventoryRepository()
+        try:
+            inventory_repository = SqlInventoryRepository()
+        except:
+            inventory_repository = JsonInventoryRepository()
     
     if shift_repository is None:
         shift_repository = JsonShiftRepository()

@@ -7164,15 +7164,28 @@ def register_inventory():
             registered_by = session.get('admin_logged_in', 'admin')
             
             # Obtener items del formulario
-            # Los campos vienen como: product_Nombre_Producto = cantidad
+            # Los campos vienen como: product_name_X y quantity_X
             items = {}
-            for key, value in request.form.items():
-                if key.startswith('product_') and value:
-                    # Extraer el nombre del producto (remover prefijo y convertir _ a espacios)
-                    product_name = key.replace('product_', '').replace('_', ' ').strip()
+            
+            # Buscar índices
+            indices = set()
+            for key in request.form.keys():
+                if key.startswith('product_name_'):
                     try:
-                        quantity = int(value)
-                        if quantity > 0 and product_name:
+                        idx = key.split('_')[-1]
+                        indices.add(idx)
+                    except:
+                        pass
+            
+            # Procesar cada índice
+            for idx in indices:
+                product_name = request.form.get(f'product_name_{idx}', '').strip()
+                quantity_str = request.form.get(f'quantity_{idx}', '0').strip()
+                
+                if product_name:
+                    try:
+                        quantity = int(quantity_str)
+                        if quantity > 0:
                             items[product_name] = quantity
                     except ValueError:
                         pass
@@ -7204,10 +7217,16 @@ def register_inventory():
     # Obtener inventario actual para mostrar qué ya está registrado
     current_inventory = inventory_service.get_shift_inventory_summary()
     
+    # Obtener lista de INGREDIENTES (botellas/insumos) para autocompletado
+    # En el inventario contamos ingredientes, no productos de venta (tragos)
+    from app.models.recipe_models import Ingredient
+    all_ingredients = Ingredient.query.order_by(Ingredient.name).all()
+    
     return render_template(
         'admin/register_inventory.html',
         barras_disponibles=barras_disponibles,
-        current_inventory=current_inventory
+        current_inventory=current_inventory,
+        all_products=all_ingredients # Pasamos ingredientes pero mantenemos el nombre de variable para no romper el template
     )
 
 @bp.route('/admin/inventory')

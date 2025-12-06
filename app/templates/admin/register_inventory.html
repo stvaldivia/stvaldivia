@@ -242,23 +242,19 @@
                 <h3 style="color: #ccc; margin-bottom: 20px;">Productos</h3>
                 <div id="products-container">
                     <div class="product-item">
-                        <input 
-                            type="text" 
-                            name="product_1" 
-                            placeholder="Ej: Botella Vodka, Botella Ron, etc."
-                            required
-                            class="product-name-input"
-                        >
-                        <input 
-                            type="number" 
-                            name="qty_1" 
-                            placeholder="Cantidad"
-                            min="0"
-                            required
-                            class="product-qty-input"
-                        >
+                        <input type="text" name="product_1" placeholder="Ej: Botella Vodka, Botella Ron, etc." required
+                            class="product-name-input" list="products-list">
+                        <input type="number" name="qty_1" placeholder="Cantidad" min="0" required
+                            class="product-qty-input">
                     </div>
                 </div>
+
+                <datalist id="products-list">
+                    {% for product in all_products %}
+                    <option value="{{ product.name }}">
+                        {% endfor %}
+                </datalist>
+
                 <button type="button" class="btn-add-product" onclick="addProduct()">
                     + Agregar Producto
                 </button>
@@ -278,25 +274,26 @@
 </div>
 
 <script>
-let productCount = 1;
+    let productCount = 1;
 
-function addProduct() {
-    productCount++;
-    const container = document.getElementById('products-container');
-    const productDiv = document.createElement('div');
-    productDiv.className = 'product-item';
-    productDiv.innerHTML = `
-        <input 
-            type="text" 
-            name="product_${productCount}" 
-            placeholder="Ej: Botella Vodka, Botella Ron, etc."
+    function addProduct() {
+        productCount++;
+        const container = document.getElementById('products-container');
+        const productDiv = document.createElement('div');
+        productDiv.className = 'product-item';
+        productDiv.innerHTML = `
+        <input
+            type="text"
+            name="product_${productCount}"
+            placeholder="Ej: Botella Vodka, Ron, Jarabe, etc."
             required
             class="product-name-input"
+            list="products-list"
         >
         <div style="display: flex; gap: 10px;">
-            <input 
-                type="number" 
-                name="qty_${productCount}" 
+            <input
+                type="number"
+                name="qty_${productCount}"
                 placeholder="Cantidad"
                 min="0"
                 required
@@ -308,110 +305,109 @@ function addProduct() {
             </button>
         </div>
     `;
-    container.appendChild(productDiv);
-}
+        container.appendChild(productDiv);
+    }
 
-function removeProduct(button) {
-    if (document.querySelectorAll('.product-item').length > 1) {
-        button.closest('.product-item').remove();
-    } else {
-        showError('Debe haber al menos un producto');
-    }
-}
-
-// Validación y conversión de nombres de productos al formato esperado
-document.getElementById('inventoryForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const barra = document.getElementById('barra').value;
-    const productNameInputs = document.querySelectorAll('.product-name-input');
-    const productQtyInputs = document.querySelectorAll('.product-qty-input');
-    
-    // Validar barra seleccionada
-    if (!barra) {
-        showError('Debes seleccionar una barra');
-        document.getElementById('barra').focus();
-        return;
-    }
-    
-    // Validar que haya al menos un producto válido
-    let validProducts = 0;
-    const errors = [];
-    
-    productNameInputs.forEach((nameInput, index) => {
-        const productName = nameInput.value.trim();
-        const quantityInput = productQtyInputs[index];
-        const quantity = parseInt(quantityInput?.value) || 0;
-        
-        // Validar nombre de producto
-        if (productName && quantity > 0) {
-            validProducts++;
-        } else if (productName && quantity <= 0) {
-            errors.push(`"${productName}" tiene cantidad inválida (debe ser mayor a 0)`);
-            quantityInput?.focus();
-        } else if (!productName && quantity > 0) {
-            errors.push(`El producto #${index + 1} necesita un nombre`);
-            nameInput.focus();
-        }
-    });
-    
-    if (validProducts === 0) {
-        showError('Debes ingresar al menos un producto con cantidad mayor a 0');
-        return;
-    }
-    
-    if (errors.length > 0) {
-        showError(errors.join('<br>'));
-        return;
-    }
-    
-    // Mostrar loading
-    showLoading('Registrando inventario...');
-    
-    // Crear FormData y convertir al formato esperado
-    const formData = new FormData();
-    formData.append('barra', barra);
-    
-    productNameInputs.forEach((nameInput, index) => {
-        const productName = nameInput.value.trim();
-        const quantityInput = productQtyInputs[index];
-        const quantity = quantityInput?.value;
-        
-        if (productName && quantity) {
-            // Formato esperado: product_name_<index> y quantity_<index>
-            formData.append(`product_name_${index + 1}`, productName);
-            formData.append(`quantity_${index + 1}`, quantity);
-        }
-    });
-    
-    try {
-        const response = await fetch('{{ url_for("routes.register_inventory") }}', {
-            method: 'POST',
-            body: formData
-        });
-        
-        hideLoading();
-        
-        if (response.ok) {
-            showSuccess('✅ Inventario registrado correctamente');
-            setTimeout(() => {
-                window.location.href = '{{ url_for("routes.view_inventory") }}';
-            }, 1500);
+    function removeProduct(button) {
+        if (document.querySelectorAll('.product-item').length > 1) {
+            button.closest('.product-item').remove();
         } else {
-            const text = await response.text();
-            try {
-                const data = JSON.parse(text);
-                showError(data.message || 'Error al registrar inventario');
-            } catch {
-                showError('Error al registrar inventario. Por favor, intenta nuevamente.');
-            }
+            showError('Debe haber al menos un producto');
         }
-    } catch (error) {
-        hideLoading();
-        console.error('Error:', error);
-        showError('Error de conexión. Por favor, verifica tu conexión e intenta nuevamente.');
     }
-});
+
+    // Validación y conversión de nombres de productos al formato esperado
+    document.getElementById('inventoryForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const barra = document.getElementById('barra').value;
+        const productNameInputs = document.querySelectorAll('.product-name-input');
+        const productQtyInputs = document.querySelectorAll('.product-qty-input');
+
+        // Validar barra seleccionada
+        if (!barra) {
+            showError('Debes seleccionar una barra');
+            document.getElementById('barra').focus();
+            return;
+        }
+
+        // Validar que haya al menos un producto válido
+        let validProducts = 0;
+        const errors = [];
+
+        productNameInputs.forEach((nameInput, index) => {
+            const productName = nameInput.value.trim();
+            const quantityInput = productQtyInputs[index];
+            const quantity = parseInt(quantityInput?.value) || 0;
+
+            // Validar nombre de producto
+            if (productName && quantity > 0) {
+                validProducts++;
+            } else if (productName && quantity <= 0) {
+                errors.push(`"${productName}" tiene cantidad inválida (debe ser mayor a 0)`);
+                quantityInput?.focus();
+            } else if (!productName && quantity > 0) {
+                errors.push(`El producto #${index + 1} necesita un nombre`);
+                nameInput.focus();
+            }
+        });
+
+        if (validProducts === 0) {
+            showError('Debes ingresar al menos un producto con cantidad mayor a 0');
+            return;
+        }
+
+        if (errors.length > 0) {
+            showError(errors.join('<br>'));
+            return;
+        }
+
+        // Mostrar loading
+        showLoading('Registrando inventario...');
+
+        // Crear FormData y convertir al formato esperado
+        const formData = new FormData();
+        formData.append('barra', barra);
+
+        productNameInputs.forEach((nameInput, index) => {
+            const productName = nameInput.value.trim();
+            const quantityInput = productQtyInputs[index];
+            const quantity = quantityInput?.value;
+
+            if (productName && quantity) {
+                // Formato esperado: product_name_<index> y quantity_<index>
+                formData.append(`product_name_${index + 1}`, productName);
+                formData.append(`quantity_${index + 1}`, quantity);
+            }
+        });
+
+        try {
+            const response = await fetch('{{ url_for("routes.register_inventory") }}', {
+                method: 'POST',
+                body: formData
+            });
+
+            hideLoading();
+
+            if (response.ok) {
+                showSuccess('✅ Inventario registrado correctamente');
+                setTimeout(() => {
+                    window.location.href = '{{ url_for("routes.view_inventory") }}';
+                }, 1500);
+            } else {
+                const text = await response.text();
+                try {
+                    const data = JSON.parse(text);
+                    showError(data.message || 'Error al registrar inventario');
+                } catch {
+                    showError('Error al registrar inventario. Por favor, intenta nuevamente.');
+                }
+            }
+        } catch (error) {
+            hideLoading();
+            console.error('Error:', error);
+            showError('Error de conexión. Por favor, verifica tu conexión e intenta nuevamente.');
+        }
+    });
 </script>
 {% endblock %}
-

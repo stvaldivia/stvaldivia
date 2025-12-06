@@ -348,104 +348,22 @@ def api_get_products():
         return jsonify({'success': False, 'error': 'No autenticado'}), 401
     
     try:
-        # Obtener nombre del cajero para filtrar categorías
+        # Obtener nombre del cajero para filtrar categorías (opcional)
         employee_name = session.get('pos_employee_name', '')
         is_david = employee_name and 'David' in employee_name
         
-        # Obtener Item Kits desde PHP POS
+        # Obtener productos desde servicio local
         products = pos_service.get_products()
         
-        # Si el cajero es David, también obtener items normales (no solo kits) de ENTRADAS
-        if is_david:
-            try:
-                from app.infrastructure.external.phppos_kiosk_client import PHPPosKioskClient
-                php_pos_client = PHPPosKioskClient()
-                normal_items = php_pos_client.get_items(limit=1000)
-                
-                # Normalizar y agregar items normales que sean de ENTRADAS
-                for item in normal_items:
-                    category_raw = item.get('category') or item.get('category_name') or ''
-                    
-                    # Normalizar categoría
-                    if '>' in category_raw:
-                        category = category_raw.split('>')[-1].strip()
-                    elif category_raw.lower() == 'puerta':
-                        category = 'Entradas'  # Mapear "Puerta" a "Entradas"
-                    else:
-                        category = category_raw.strip()
-                    
-                    # Normalizar: eliminar "Barra" si está al inicio
-                    if category.lower().startswith('barra'):
-                        category = category.replace('Barra', '').replace('barra', '').strip()
-                        if category.startswith('>'):
-                            category = category[1:].strip()
-                    
-                    category_upper = category.upper()
-                    
-                    # Solo agregar si es ENTRADAS (o variaciones)
-                    if category_upper in ['ENTRADAS', 'ENTRADA'] or 'entrada' in category.lower():
-                        # Verificar si ya existe en products (para evitar duplicados)
-                        item_id = str(item.get('item_id') or item.get('id') or '')
-                        exists = False
-                        for existing_product in products:
-                            existing_id = str(existing_product.get('item_id') or existing_product.get('item_kit_id') or '')
-                            if existing_id == item_id:
-                                exists = True
-                                break
-                        
-                        if not exists and item_id:
-                            # Normalizar categoría y agregar
-                            item['category_normalized'] = 'Entradas'
-                            item['category_display'] = 'ENTRADAS'
-                            item['is_kit'] = False
-                            products.append(item)
-                
-                logger.info(f"✅ Agregados items normales de ENTRADAS para David en API")
-            except Exception as e:
-                logger.error(f"Error al obtener items normales para David en API: {e}")
-        
-        # Asegurar que los precios sean números y normalizar IDs
-        for product in products:
-            price = product.get('unit_price') or product.get('price') or 0
-            try:
-                product['price'] = float(price) if price else 0.0
-            except (ValueError, TypeError):
-                product['price'] = 0.0
-            
-            # Normalizar ID: usar item_kit_id si existe, sino item_id
-            if 'item_kit_id' in product:
-                product['item_id'] = str(product['item_kit_id'])
-                product['is_kit'] = True
-            elif 'item_id' in product:
-                product['item_id'] = str(product['item_id'])
-                if 'is_kit' not in product:
-                    product['is_kit'] = False
-        
-        # Agrupar productos por categoría normalizada
+        # Agrupar productos por categoría
         categorized_products = {}
         for product in products:
-            category = product.get('category_normalized') or product.get('category_display')
-            if not category:
-                category = product.get('category_name') or product.get('category') or 'Sin categoría'
-                # Normalizar: eliminar "Barra >" y tomar solo la categoría principal
-                if '>' in category:
-                    category = category.split('>')[-1].strip()
-                if category.lower().startswith('barra'):
-                    category = category.replace('Barra', '').replace('barra', '').strip()
-                    if category.startswith('>'):
-                        category = category[1:].strip()
-                
-                # Mapear "Puerta" a "Entradas"
-                if category.lower() == 'puerta':
-                    category = 'Entradas'
-                
-                category = category.upper()  # Mostrar en mayúsculas
+            category = product.get('category_display') or 'GENERAL'
             
             # Si el cajero es David, solo mostrar productos de la categoría "ENTRADAS"
             if is_david:
-                category_upper = category.upper()
-                if category_upper not in ['ENTRADAS', 'ENTRADA'] and 'entrada' not in category.lower():
-                    continue  # Saltar productos que no sean de ENTRADAS
+                if category not in ['ENTRADAS', 'ENTRADA'] and 'ENTRADA' not in category:
+                    continue
             
             if category not in categorized_products:
                 categorized_products[category] = []

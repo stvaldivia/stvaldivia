@@ -40,7 +40,10 @@ from .employee_advance_models import EmployeeAdvance
 from .audit_log_models import AuditLog
 
 # Importar modelo de notificaciones
-from .notification_models import Notification
+# Importar modelos de inventario y recetas
+from .inventory_models import InventoryItem
+from .product_models import Product
+from .recipe_models import Ingredient, ProductRecipe
 
 __all__ = [
     'db', 
@@ -54,6 +57,8 @@ __all__ = [
     'Cargo',
     'EmployeeAdvance',
     'AuditLog',
-    'Notification'
+    'Notification',
+    'InventoryItem', 'Product',
+    'Ingredient', 'ProductRecipe'
 ]
 

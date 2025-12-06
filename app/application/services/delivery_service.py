@@ -55,16 +55,7 @@ class DeliveryService:
     
     def scan_sale(self, request: ScanSaleRequest) -> Dict[str, Any]:
         """
-        Escanea una venta y obtiene sus detalles.
-        
-        Args:
-            request: DTO con sale_id
-            
-        Returns:
-            dict: Información de la venta (items, fecha, etc.)
-            
-        Raises:
-            ValueError: Si el sale_id es inválido
+        Escanea una venta LOCAL y obtiene sus detalles.
         """
         # Validar request
         request.validate()
@@ -74,59 +65,51 @@ class DeliveryService:
         if not numeric_id:
             raise ValueError("sale_id inválido o vacío")
         
-        # Obtener información de la venta desde POS API
-        sale_data = self.pos_client.get_sale(request.sale_id)
-        if not sale_data:
+        try:
+            from app.models import PosSale, PosSaleItem
+            
+            # Buscar venta local
+            sale = PosSale.query.get(int(numeric_id))
+            
+            if not sale:
+                return {
+                    'error': f'No se encontró la venta {numeric_id} en el sistema local.',
+                    'items': []
+                }
+            
+            # Formatear items
+            items = []
+            for item in sale.items:
+                items.append({
+                    'item_id': str(item.product_id),
+                    'name': item.product_name,
+                    'quantity': float(item.quantity),
+                    'price': float(item.item_price),
+                    'total': float(item.total_price),
+                    'category': 'General' # Podríamos buscar la categoría del producto si es necesario
+                })
+            
             return {
-                'error': f'No se encontró la venta {request.sale_id} en el sistema.',
+                'venta_id': str(sale.id),
+                'fecha_venta': sale.sale_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'items': items,
+                'vendedor': sale.employee_name,
+                'comprador': f"Cliente {sale.customer_id}" if sale.customer_id else "Cliente General",
+                'caja': f"Caja {sale.register_id}",
+                'sale_data': { # Datos crudos para compatibilidad
+                    'sale_id': str(sale.id),
+                    'sale_time': sale.sale_time.isoformat(),
+                    'register_id': sale.register_id,
+                    'employee_id': sale.employee_id
+                }
+            }
+            
+        except Exception as e:
+            current_app.logger.error(f"Error al escanear venta local: {e}")
+            return {
+                'error': f'Error al procesar venta: {str(e)}',
                 'items': []
             }
-        
-        # Obtener items de la venta
-        items, error, canonical_id = self.pos_client.get_sale_items(numeric_id)
-        
-        if error:
-            return {
-                'error': error,
-                'items': []
-            }
-        
-        # Preparar respuesta
-        sale_time = sale_data.get('sale_time', 'Fecha no disponible')
-        
-        # Obtener detalles adicionales (vendedor, cliente, caja)
-        employee_id = sale_data.get('employee_id')
-        customer_id = sale_data.get('customer_id')
-        register_id = sale_data.get('register_id')
-        
-        vendedor = "Desconocido"
-        comprador = "N/A"
-        caja = "Caja desconocida"
-        
-        if employee_id:
-            emp = self.pos_client.get_entity_details("employees", employee_id)
-            if emp:
-                vendedor = f"{emp.get('first_name', '')} {emp.get('last_name', '')}".strip()
-        
-        if customer_id:
-            cli = self.pos_client.get_entity_details("customers", customer_id)
-            if cli:
-                comprador = f"{cli.get('first_name', '')} {cli.get('last_name', '')}".strip()
-        
-        if register_id:
-            reg = self.pos_client.get_entity_details("registers", register_id)
-            if reg:
-                caja = reg.get("name", f"Caja ID {register_id}")
-        
-        return {
-            'venta_id': canonical_id or request.sale_id,
-            'fecha_venta': sale_time,
-            'items': items,
-            'vendedor': vendedor,
-            'comprador': comprador,
-            'caja': caja,
-            'sale_data': sale_data
-        }
     
     def register_delivery(self, request: DeliveryRequest) -> Tuple[bool, str]:
         """
