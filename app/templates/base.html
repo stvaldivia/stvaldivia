@@ -7,7 +7,9 @@
     <meta name="description" content="Sistema de Gestión de Entregas BIMBA">
     <title>{% block title %}POS{% endblock %}</title>
 
-    <!-- Estilos principales -->
+    <!-- Sistema de Diseño (Design System) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/design-system.css') }}">
+    <!-- Estilos principales (Legacy) -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
 
     <!-- Sistema de Notificaciones -->
