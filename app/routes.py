@@ -2215,22 +2215,73 @@ def deploy_to_production():
     try:
         import subprocess
         import os
+        import shutil
         
         # Verificar que estamos en el directorio correcto
         project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
         
         current_app.logger.info(f"🚀 Deployment iniciado por {session.get('admin_username', 'unknown')}")
         
+        # Buscar gcloud en PATH o ubicaciones comunes
+        gcloud_path = shutil.which('gcloud')
+        if not gcloud_path:
+            # Buscar en ubicaciones comunes de macOS
+            common_paths = [
+                '/opt/homebrew/bin/gcloud',
+                '/usr/local/bin/gcloud',
+                '/usr/bin/gcloud',
+                os.path.expanduser('~/google-cloud-sdk/bin/gcloud')
+            ]
+            for path in common_paths:
+                if os.path.exists(path) and os.access(path, os.X_OK):
+                    gcloud_path = path
+                    current_app.logger.info(f"✅ gcloud encontrado en: {gcloud_path}")
+                    break
+        
+        if not gcloud_path:
+            current_app.logger.error("❌ gcloud CLI no encontrado en PATH ni ubicaciones comunes")
+            return jsonify({
+                'success': False,
+                'error': 'gcloud CLI no está instalado o no está en el PATH. Instala desde: https://cloud.google.com/sdk/docs/install'
+            }), 500
+        
+        # Determinar nombre del servicio (verificar cuál existe)
+        service_name = 'bimba-system'  # Nombre por defecto
+        try:
+            # Verificar si existe bimba-system
+            check_result = subprocess.run(
+                [gcloud_path, 'run', 'services', 'describe', 'bimba-system', '--region', 'us-central1'],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            if check_result.returncode != 0:
+                # Si no existe, intentar con bimba-pos
+                check_result2 = subprocess.run(
+                    [gcloud_path, 'run', 'services', 'describe', 'bimba-pos', '--region', 'us-central1'],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+                if check_result2.returncode == 0:
+                    service_name = 'bimba-pos'
+        except:
+            # Si hay error, usar el nombre por defecto
+            pass
+        
+        current_app.logger.info(f"📦 Desplegando servicio: {service_name}")
+        
         # Ejecutar deployment en background
         result = subprocess.run(
-            ['gcloud', 'run', 'deploy', 'bimba-pos', 
+            [gcloud_path, 'run', 'deploy', service_name, 
              '--source', '.', 
              '--region', 'us-central1',
              '--quiet'],  # No pedir confirmación
             cwd=project_root,
             capture_output=True,
             text=True,
-            timeout=300  # 5 minutos máximo
+            timeout=300,  # 5 minutos máximo
+            env=dict(os.environ, PATH=os.environ.get('PATH', '') + ':/opt/homebrew/bin:/usr/local/bin')
         )
         
         if result.returncode == 0:
