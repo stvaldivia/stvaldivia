@@ -228,6 +228,11 @@ def create_app():
     else:
         app.register_blueprint(equipo_bp)
     
+    # Registrar blueprint de notificaciones
+    from .blueprints.notifications import bp as notifications_bp
+    app.register_blueprint(notifications_bp)
+    app.logger.info("✅ Blueprint de notificaciones registrado")
+    
     # Registrar blueprint de Instagram webhooks
     try:
         from .routes_instagram import instagram_bp

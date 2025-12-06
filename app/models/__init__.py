@@ -39,6 +39,9 @@ from .employee_advance_models import EmployeeAdvance
 # Importar modelo de auditoría
 from .audit_log_models import AuditLog
 
+# Importar modelo de notificaciones
+from .notification_models import Notification
+
 __all__ = [
     'db', 
     'Pago', 'PagoItem',
@@ -50,6 +53,7 @@ __all__ = [
     'CargoSalaryConfig',
     'Cargo',
     'EmployeeAdvance',
-    'AuditLog'
+    'AuditLog',
+    'Notification'
 ]
 

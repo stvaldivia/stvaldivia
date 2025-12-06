@@ -10,6 +10,11 @@
     <!-- Estilos principales -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
 
+    <!-- Sistema de Notificaciones -->
+    {% if session.get('admin_logged_in') %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/notifications.css') }}">
+    {% endif %}
+
     {% block head_extra %}{% endblock %}
 </head>
 
@@ -20,7 +25,8 @@
         <div class="admin-nav-container">
             <div class="admin-nav-left">
                 <a href="/admin" class="admin-nav-logo">
-                    <img src="{{ url_for('static', filename='img/bimba-logo.png') }}" alt="BIMBA" class="logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                    <img src="{{ url_for('static', filename='img/bimba-logo.png') }}" alt="BIMBA" class="logo-img"
+                        onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                     <span class="logo-text">BIMBA</span>
                 </a>
             </div>
@@ -132,7 +138,8 @@
         <!-- Información del turno (izquierda) -->
         <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
             {% set shift_status_actual = shift_status if shift_status else (g.shift_status if g.shift_status else {}) %}
-            {% set shift_metrics_actual = shift_metrics if shift_metrics else (g.shift_metrics if g.shift_metrics else {}) %}
+            {% set shift_metrics_actual = shift_metrics if shift_metrics else (g.shift_metrics if g.shift_metrics else
+            {}) %}
             {% if shift_status_actual.get('is_open', False) %}
             <div style="display: flex; align-items: center; gap: 10px;">
                 <span
@@ -143,10 +150,12 @@
                 <strong>Tiempo:</strong> {{ shift_metrics_actual.get('tiempo_transcurrido', 'N/A') }}
             </div>
             <div style="color: #aaa; font-size: 0.9rem;">
-                <strong>Entregas:</strong> <span style="color: #4caf50; font-weight: bold;">{{ shift_metrics_actual.get('total_entregas', 0) }}</span>
+                <strong>Entregas:</strong> <span style="color: #4caf50; font-weight: bold;">{{
+                    shift_metrics_actual.get('total_entregas', 0) }}</span>
             </div>
             <div style="color: #aaa; font-size: 0.9rem;">
-                <strong>Entradas:</strong> <span style="color: #667eea; font-weight: bold;">{{ shift_metrics_actual.get('total_entradas', 0) }}</span>
+                <strong>Entradas:</strong> <span style="color: #667eea; font-weight: bold;">{{
+                    shift_metrics_actual.get('total_entradas', 0) }}</span>
             </div>
             {% else %}
             <div style="display: flex; align-items: center; gap: 10px;">
@@ -160,7 +169,8 @@
         <!-- Información del sistema (centro/derecha) -->
         <div style="color: #888; font-size: 0.85rem; display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
             <span>
-                <strong>Usuario:</strong> <span style="color: #667eea; font-weight: bold;">{{ session.get('admin_username', 'admin') }}</span>
+                <strong>Usuario:</strong> <span style="color: #667eea; font-weight: bold;">{{
+                    session.get('admin_username', 'admin') }}</span>
             </span>
             <span>|</span>
             <span>
@@ -194,13 +204,16 @@
         </div>
         {% endif %}
     </footer>
-    
+
     <style>
         @keyframes pulse {
-            0%, 100% {
+
+            0%,
+            100% {
                 opacity: 1;
                 transform: scale(1);
             }
+
             50% {
                 opacity: 0.7;
                 transform: scale(1.1);
@@ -208,10 +221,13 @@
         }
 
         @keyframes countdownPulse {
-            0%, 100% {
+
+            0%,
+            100% {
                 opacity: 1;
                 transform: scale(1);
             }
+
             50% {
                 opacity: 0.5;
                 transform: scale(1.2);
@@ -219,13 +235,19 @@
         }
 
         /* Ajustar padding del contenido cuando hay footer admin */
-        {% if session.get('admin_logged_in') %}
+            {
+            % if session.get('admin_logged_in') %
+        }
+
         .main-container {
             padding-bottom: 70px;
         }
-        {% endif %}
+
+            {
+            % endif %
+        }
     </style>
-    
+
     <script>
         // Actualizar hora en el footer unificado
         function updateFooterTime() {
@@ -241,7 +263,7 @@
         // Actualizar inmediatamente y luego cada segundo
         updateFooterTime();
         setInterval(updateFooterTime, 1000);
-        
+
         // Countdown solo en /admin/logs
         {% if request.endpoint == 'routes.admin_logs' %}
         let countdown = 5;
@@ -253,7 +275,7 @@
             }
         }
         setInterval(updateCountdown, 1000);
-        
+
         // Estado de actualización automática
         window.autoUpdatePaused = false;
         window.countdownInterval = null;
@@ -401,7 +423,12 @@
     <script src="{{ url_for('static', filename='js/utils/dateFormatter.js') }}"></script>
     <script src="{{ url_for('static', filename='js/utils/currencyFormatter.js') }}"></script>
     <script src="{{ url_for('static', filename='js/components/Modal.js') }}"></script>
-    
+
+    <!-- Sistema de Notificaciones (solo para admin) -->
+    {% if session.get('admin_logged_in') %}
+    <script src="{{ url_for('static', filename='js/notifications.js') }}" defer></script>
+    {% endif %}
+
     <!-- Utilidades JavaScript -->
     <script src="{{ url_for('static', filename='js/utils.js') }}" defer></script>
     <!-- Sistema de Confirmaciones -->

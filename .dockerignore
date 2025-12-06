@@ -1,0 +1,66 @@
+# .dockerignore - Archivos a excluir del build de Docker
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+venv/
+env/
+ENV/
+
+# Base de datos local (no incluir en imagen)
+instance/
+*.db
+*.sqlite
+*.sqlite3
+
+# Backups
+backups/
+*.bak
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Documentación (no necesaria en runtime)
+*.md
+!README.md
+
+# Scripts de desarrollo
+scripts/
+*.sh
+
+# Archivos de configuración local
+.env.local
+.env.development
+
+# Tests
+tests/
+test_*.py
+*_test.py
+
+# Archivos temporales
+tmp/
+temp/
+*.tmp
