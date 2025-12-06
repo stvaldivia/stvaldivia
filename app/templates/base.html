@@ -31,10 +31,10 @@
                 </a>
             </div>
             <div class="admin-nav-right">
-                <a href="{{ url_for('routes.admin_panel_control') }}"
-                    class="admin-nav-btn {% if request.endpoint == 'routes.admin_panel_control' %}active{% endif %}"
-                    aria-label="Panel de Control">
-                    🎛️ Panel de Control
+                <a href="/admin"
+                    class="admin-nav-btn {% if request.endpoint == 'routes.admin_dashboard' %}active{% endif %}"
+                    aria-label="Inicio">
+                    🏠 Home
                 </a>
                 <a href="{{ url_for('routes.admin_logs') }}"
                     class="admin-nav-btn {% if request.endpoint == 'routes.admin_logs' %}active{% endif %}"
@@ -65,6 +65,11 @@
                     class="admin-nav-btn {% if request.endpoint and request.endpoint.startswith('equipo.') %}active{% endif %}"
                     aria-label="Gestionar Equipo">
                     👥 Equipo
+                </a>
+                <a href="{{ url_for('routes.admin_panel_control') }}"
+                    class="admin-nav-btn {% if request.endpoint == 'routes.admin_panel_control' %}active{% endif %}"
+                    aria-label="Panel de Control">
+                    🎛️ Panel de Control
                 </a>
                 <a href="{{ url_for('routes.logout_admin') }}" class="admin-nav-btn logout-btn"
                     aria-label="Cerrar Sesión de Administrador">🔓 Salir</a>
