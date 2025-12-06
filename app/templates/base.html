@@ -29,7 +29,8 @@
                 <a href="/admin" class="admin-nav-logo">
                     <img src="{{ url_for('static', filename='img/bimba-logo.png') }}" alt="BIMBA" class="logo-img"
                         onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                    <span class="logo-text">BIMBA</span>
+                    <!-- Texto de respaldo solo si falla la imagen -->
+                    <span class="logo-text" style="display: none;">BIMBA</span>
                 </a>
             </div>
             <div class="admin-nav-right">
