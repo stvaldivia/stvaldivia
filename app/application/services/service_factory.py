@@ -310,10 +310,59 @@ def create_inventory_service(
         InventoryService: Instancia configurada
     """
     if inventory_repository is None:
-        try:
-            inventory_repository = SqlInventoryRepository()
-        except:
-            inventory_repository = JsonInventoryRepository()
+        import os
+        from flask import current_app
+        
+        # Detectar si estamos en Cloud Run
+        is_cloud_run = bool(
+            os.environ.get('K_SERVICE') or 
+            os.environ.get('GAE_ENV') or 
+            os.environ.get('CLOUD_RUN_SERVICE')
+        )
+        
+        # En Cloud Run, SIEMPRE usar SQL (JSON no funciona con sistema de archivos efímero)
+        if is_cloud_run:
+            try:
+                inventory_repository = SqlInventoryRepository()
+                try:
+                    current_app.logger.info("✅ SqlInventoryRepository inicializado correctamente en Cloud Run")
+                except RuntimeError:
+                    # Si no hay contexto de Flask, usar logging estándar
+                    import logging
+                    logging.getLogger(__name__).info("✅ SqlInventoryRepository inicializado correctamente en Cloud Run")
+            except Exception as e:
+                # En Cloud Run, NO hacer fallback a JSON - fallar explícitamente
+                error_msg = f"❌ Error crítico: No se pudo inicializar SqlInventoryRepository en Cloud Run: {e}"
+                try:
+                    current_app.logger.error(error_msg, exc_info=True)
+                except RuntimeError:
+                    import logging
+                    logging.getLogger(__name__).error(error_msg, exc_info=True)
+                raise RuntimeError(
+                    "No se pudo inicializar el repositorio de inventario SQL. "
+                    "Verifica la conexión a la base de datos y que la tabla 'inventory_items' exista."
+                ) from e
+        else:
+            # En desarrollo local, intentar SQL primero, luego JSON como fallback
+            try:
+                inventory_repository = SqlInventoryRepository()
+                try:
+                    current_app.logger.info("✅ SqlInventoryRepository inicializado (desarrollo local)")
+                except RuntimeError:
+                    import logging
+                    logging.getLogger(__name__).info("✅ SqlInventoryRepository inicializado (desarrollo local)")
+            except Exception as e:
+                # En desarrollo, permitir fallback a JSON
+                try:
+                    current_app.logger.warning(
+                        f"⚠️ No se pudo inicializar SqlInventoryRepository, usando JsonInventoryRepository: {e}"
+                    )
+                except RuntimeError:
+                    import logging
+                    logging.getLogger(__name__).warning(
+                        f"⚠️ No se pudo inicializar SqlInventoryRepository, usando JsonInventoryRepository: {e}"
+                    )
+                inventory_repository = JsonInventoryRepository()
     
     if shift_repository is None:
         shift_repository = JsonShiftRepository()

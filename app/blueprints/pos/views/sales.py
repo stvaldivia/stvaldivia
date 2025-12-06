@@ -618,6 +618,56 @@ def api_create_sale():
             # Si llegamos aquí, la transacción fue exitosa
             logger.info(f"✅ Venta guardada localmente (ID local: {local_sale.id}, ID venta: {local_sale_id})")
             
+            # ==========================================
+            # APLICAR CONSUMO DE INVENTARIO
+            # ==========================================
+            # Después de confirmar la venta, aplicar el consumo automático de ingredientes
+            try:
+                from app.application.services.inventory_stock_service import InventoryStockService
+                inventory_service = InventoryStockService()
+                
+                # Inferir ubicación desde register_id o usar la sesión
+                location = None
+                register_name = session.get('pos_register_name', '').lower()
+                if 'principal' in register_name or 'main' in register_name:
+                    location = 'barra_principal'
+                elif 'terraza' in register_name:
+                    location = 'barra_terraza'
+                elif 'vip' in register_name:
+                    location = 'barra_vip'
+                elif 'exterior' in register_name:
+                    location = 'barra_exterior'
+                else:
+                    # Intentar inferir desde register_id
+                    location = inventory_service._infer_location_from_register(register_id)
+                
+                # Aplicar consumo de inventario
+                success, message, consumos = inventory_service.apply_inventory_for_sale(
+                    sale=local_sale,
+                    location=location
+                )
+                
+                if success:
+                    if consumos:
+                        logger.info(
+                            f"✅ Inventario aplicado para venta #{local_sale.id}: "
+                            f"{len(consumos)} ingredientes consumidos"
+                        )
+                    else:
+                        logger.debug(f"ℹ️ Venta #{local_sale.id} sin consumo de inventario (producto sin receta)")
+                else:
+                    # No fallar la venta si hay error en inventario, solo loggear
+                    logger.warning(
+                        f"⚠️ Venta #{local_sale.id} guardada pero error al aplicar inventario: {message}"
+                    )
+                    
+            except Exception as e:
+                # No fallar la venta si hay error en inventario
+                logger.error(
+                    f"❌ Error al aplicar inventario para venta #{local_sale.id}: {e}",
+                    exc_info=True
+                )
+            
             # Registrar auditoría
             sale_data_for_audit = {
                 'total_amount': float(total),

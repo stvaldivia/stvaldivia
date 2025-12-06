@@ -19,12 +19,61 @@ class SqlInventoryRepository(InventoryRepository):
     Usa el modelo InventoryItem.
     """
     
+    def __init__(self):
+        """
+        Inicializa el repositorio.
+        La verificación de la tabla se hace de forma lazy en el primer uso
+        para evitar problemas con el contexto de Flask.
+        """
+        # No hacer verificación aquí - se hará en el primer uso cuando haya contexto Flask
+        pass
+    
+    def _ensure_table_exists(self):
+        """Verifica que la tabla existe, creándola si es necesario"""
+        try:
+            from flask import has_app_context, current_app
+            from app.models import db
+            
+            if not has_app_context():
+                # Si no hay contexto, no podemos verificar ahora
+                return
+            
+            # Intentar una consulta simple para verificar que la tabla existe
+            try:
+                InventoryItem.query.limit(1).all()
+                current_app.logger.debug("✅ Tabla inventory_items verificada")
+            except Exception as e:
+                # Si la tabla no existe, intentar crearla
+                current_app.logger.warning(f"⚠️ Tabla inventory_items no encontrada, intentando crear: {e}")
+                try:
+                    db.create_all()
+                    current_app.logger.info("✅ Tabla inventory_items creada exitosamente")
+                except Exception as create_error:
+                    current_app.logger.error(f"❌ Error al crear tabla inventory_items: {create_error}")
+                    raise RuntimeError(
+                        f"No se pudo crear la tabla inventory_items. "
+                        f"Verifica la conexión a la base de datos: {create_error}"
+                    ) from create_error
+        except RuntimeError:
+            raise  # Re-lanzar RuntimeError
+        except Exception as e:
+            # Otros errores - loggear pero no fallar
+            try:
+                from flask import current_app
+                current_app.logger.warning(f"⚠️ Advertencia al verificar tabla inventory_items: {e}")
+            except RuntimeError:
+                import logging
+                logging.getLogger(__name__).warning(f"⚠️ Advertencia al verificar tabla inventory_items: {e}")
+    
     def save_shift_inventory(self, inventory: ShiftInventory) -> bool:
         """
         Guarda el inventario de un turno.
         Actualiza o crea los items en la base de datos.
         """
         try:
+            # Asegurar que la tabla existe
+            self._ensure_table_exists()
+            
             shift_date = datetime.strptime(inventory.shift_date, '%Y-%m-%d').date()
             
             # Procesar cada barra
@@ -72,12 +121,20 @@ class SqlInventoryRepository(InventoryRepository):
             
         except Exception as e:
             db.session.rollback()
-            current_app.logger.error(f"Error al guardar inventario SQL: {e}")
+            error_msg = f"Error al guardar inventario SQL: {e}"
+            try:
+                current_app.logger.error(error_msg, exc_info=True)
+            except RuntimeError:
+                import logging
+                logging.getLogger(__name__).error(error_msg, exc_info=True)
             return False
     
     def get_shift_inventory(self, shift_date: str) -> Optional[ShiftInventory]:
         """Obtiene el inventario de un turno"""
         try:
+            # Asegurar que la tabla existe
+            self._ensure_table_exists()
+            
             # Convertir string a date
             date_obj = datetime.strptime(shift_date, '%Y-%m-%d').date()
             
@@ -123,7 +180,12 @@ class SqlInventoryRepository(InventoryRepository):
             return shift_inventory
             
         except Exception as e:
-            current_app.logger.error(f"Error al obtener inventario SQL: {e}")
+            error_msg = f"Error al obtener inventario SQL para fecha {shift_date}: {e}"
+            try:
+                current_app.logger.error(error_msg, exc_info=True)
+            except RuntimeError:
+                import logging
+                logging.getLogger(__name__).error(error_msg, exc_info=True)
             return None
     
     def get_current_shift_inventory(self) -> Optional[ShiftInventory]:
@@ -160,6 +222,9 @@ class SqlInventoryRepository(InventoryRepository):
         Optimizado para SQL: actualiza directamente la base de datos.
         """
         try:
+            # Asegurar que la tabla existe
+            self._ensure_table_exists()
+            
             # Obtener fecha del turno actual
             from app.infrastructure.repositories.shift_repository import JsonShiftRepository
             shift_repo = JsonShiftRepository()
@@ -180,7 +245,15 @@ class SqlInventoryRepository(InventoryRepository):
             if item:
                 # Actualizar cantidad entregada
                 item.delivered_quantity += quantity
+                item.updated_at = datetime.utcnow()  # Actualizar timestamp
                 db.session.commit()
+                try:
+                    current_app.logger.debug(
+                        f"✅ Inventario actualizado: {barra} - {product_name} "
+                        f"(entregado: {item.delivered_quantity})"
+                    )
+                except RuntimeError:
+                    pass
                 return True
             
             # Si el item no existe en el inventario inicial, podríamos crearlo o ignorarlo.
@@ -192,5 +265,10 @@ class SqlInventoryRepository(InventoryRepository):
             
         except Exception as e:
             db.session.rollback()
-            current_app.logger.error(f"Error al registrar entrega SQL: {e}")
+            error_msg = f"Error al registrar entrega SQL: {barra} - {product_name} x{quantity}: {e}"
+            try:
+                current_app.logger.error(error_msg, exc_info=True)
+            except RuntimeError:
+                import logging
+                logging.getLogger(__name__).error(error_msg, exc_info=True)
             return False

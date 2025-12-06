@@ -45,6 +45,12 @@ from .inventory_models import InventoryItem
 from .product_models import Product
 from .recipe_models import Ingredient, ProductRecipe
 
+# Importar modelos de inventario de stock (nuevo sistema)
+from .inventory_stock_models import (
+    IngredientCategory, Ingredient as StockIngredient, IngredientStock,
+    Recipe, RecipeIngredient, InventoryMovement
+)
+
 __all__ = [
     'db', 
     'Pago', 'PagoItem',
@@ -59,6 +65,9 @@ __all__ = [
     'AuditLog',
     'Notification',
     'InventoryItem', 'Product',
-    'Ingredient', 'ProductRecipe'
+    'Ingredient', 'ProductRecipe',
+    # Nuevos modelos de inventario de stock
+    'IngredientCategory', 'StockIngredient', 'IngredientStock',
+    'Recipe', 'RecipeIngredient', 'InventoryMovement'
 ]
 
