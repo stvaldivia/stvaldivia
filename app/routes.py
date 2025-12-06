@@ -2245,29 +2245,31 @@ def deploy_to_production():
                 'error': 'gcloud CLI no está instalado o no está en el PATH. Instala desde: https://cloud.google.com/sdk/docs/install'
             }), 500
         
-        # Determinar nombre del servicio (verificar cuál existe)
-        service_name = 'bimba-system'  # Nombre por defecto
+        # Determinar nombre del servicio (usar bimba-system como predeterminado)
+        # Verificar cuál servicio existe y usar el correcto
+        service_name = 'bimba-system'  # Nombre predeterminado según deploy.sh
         try:
             # Verificar si existe bimba-system
             check_result = subprocess.run(
-                [gcloud_path, 'run', 'services', 'describe', 'bimba-system', '--region', 'us-central1'],
+                [gcloud_path, 'run', 'services', 'describe', 'bimba-system', '--region', 'us-central1', '--quiet'],
                 capture_output=True,
                 text=True,
                 timeout=10
             )
             if check_result.returncode != 0:
-                # Si no existe, intentar con bimba-pos
+                # Si no existe, intentar con bimba-pos (servicio legacy)
                 check_result2 = subprocess.run(
-                    [gcloud_path, 'run', 'services', 'describe', 'bimba-pos', '--region', 'us-central1'],
+                    [gcloud_path, 'run', 'services', 'describe', 'bimba-pos', '--region', 'us-central1', '--quiet'],
                     capture_output=True,
                     text=True,
                     timeout=10
                 )
                 if check_result2.returncode == 0:
                     service_name = 'bimba-pos'
-        except:
+                    current_app.logger.info("⚠️ Usando servicio legacy: bimba-pos")
+        except Exception as e:
             # Si hay error, usar el nombre por defecto
-            pass
+            current_app.logger.warning(f"⚠️ No se pudo verificar servicio, usando {service_name}: {e}")
         
         current_app.logger.info(f"📦 Desplegando servicio: {service_name}")
         
