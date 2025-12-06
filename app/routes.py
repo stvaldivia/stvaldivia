@@ -2206,6 +2206,99 @@ def api_restart_everything():
             'message': f'Error al reiniciar todo: {str(e)}'
         }), 500
 
+@bp.route('/admin/api/deploy', methods=['POST'])
+def deploy_to_production():
+    """Despliega la aplicación a Cloud Run desde el panel de control"""
+    if not session.get('admin_logged_in'):
+        return jsonify({'success': False, 'error': 'No autorizado'}), 401
+    
+    try:
+        import subprocess
+        import os
+        
+        # Verificar que estamos en el directorio correcto
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        
+        current_app.logger.info(f"🚀 Deployment iniciado por {session.get('admin_username', 'unknown')}")
+        
+        # Ejecutar deployment en background
+        result = subprocess.run(
+            ['gcloud', 'run', 'deploy', 'bimba-pos', 
+             '--source', '.', 
+             '--region', 'us-central1',
+             '--quiet'],  # No pedir confirmación
+            cwd=project_root,
+            capture_output=True,
+            text=True,
+            timeout=300  # 5 minutos máximo
+        )
+        
+        if result.returncode == 0:
+            # Extraer información de la salida
+            output = result.stdout
+            revision = 'N/A'
+            
+            # Intentar extraer el nombre de la revisión
+            for line in output.split('\n'):
+                if 'revision' in line.lower() and 'has been deployed' in line.lower():
+                    parts = line.split('[')
+                    if len(parts) > 1:
+                        revision = parts[1].split(']')[0]
+                    break
+            
+            current_app.logger.info(f"✅ Deployment exitoso. Revisión: {revision}")
+            
+            # Registrar en auditoría
+            try:
+                from app.models.audit_log_models import AuditLog
+                audit_log = AuditLog(
+                    action='deployment',
+                    entity_type='system',
+                    entity_id=revision,
+                    ip_address=request.remote_addr,
+                    user_agent=request.headers.get('User-Agent', ''),
+                    request_method=request.method,
+                    request_path=request.path,
+                    success=True,
+                    details=f"Deployment a producción. Revisión: {revision}"
+                )
+                db.session.add(audit_log)
+                db.session.commit()
+            except Exception as e:
+                current_app.logger.warning(f"⚠️ Error al registrar auditoría de deployment: {e}")
+            
+            return jsonify({
+                'success': True,
+                'message': 'Deployment iniciado correctamente. El sitio se actualizará en 2-3 minutos.',
+                'revision': revision
+            })
+        else:
+            error_msg = result.stderr[:200] if result.stderr else 'Error desconocido'
+            current_app.logger.error(f"❌ Error en deployment: {error_msg}")
+            return jsonify({
+                'success': False,
+                'error': f'Error en deployment: {error_msg}'
+            }), 500
+            
+    except subprocess.TimeoutExpired:
+        current_app.logger.error("❌ Timeout en deployment")
+        return jsonify({
+            'success': False,
+            'error': 'Timeout: El deployment tomó más de 5 minutos'
+        }), 500
+    except FileNotFoundError:
+        current_app.logger.error("❌ gcloud CLI no encontrado")
+        return jsonify({
+            'success': False,
+            'error': 'gcloud CLI no está instalado o no está en el PATH'
+        }), 500
+    except Exception as e:
+        current_app.logger.error(f"❌ Error inesperado en deployment: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': f'Error inesperado: {str(e)}'
+        }), 500
+
 @bp.route('/admin/api/employees', methods=['GET', 'POST'])
 def api_employees_legacy():
     """API: Listar o crear empleados"""
