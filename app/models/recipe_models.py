@@ -4,8 +4,8 @@ Modelos para recetas y productos compuestos.
 from . import db
 
 class Ingredient(db.Model):
-    """Modelo de Ingrediente (lo que se descuenta del inventario)"""
-    __tablename__ = 'ingredients'
+    """Modelo de Ingrediente (lo que se descuenta del inventario) - LEGACY"""
+    __tablename__ = 'recipe_ingredients_legacy'  # Renombrado para evitar conflicto con inventory_stock_models
     
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False, unique=True, index=True)
@@ -23,7 +23,7 @@ class ProductRecipe(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
-    ingredient_id = db.Column(db.Integer, db.ForeignKey('ingredients.id'), nullable=False)
+    ingredient_id = db.Column(db.Integer, db.ForeignKey('recipe_ingredients_legacy.id'), nullable=False)
     quantity = db.Column(db.Float, nullable=False) # Cantidad de ingrediente usada
     
     # Relaciones
