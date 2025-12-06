@@ -4,12 +4,12 @@
 {% block head_extra %}
 <style>
     /* Forzar ancho completo para la página de turnos */
-    /* Sobrescribir el max-width del contenedor principal */
-    .container {
+    /* Sobrescribir el max-width del contenedor principal solo en esta página */
+    body .container {
         max-width: 100% !important;
     }
     
-    .main-container {
+    body .main-container {
         max-width: 100% !important;
         padding-left: 0 !important;
         padding-right: 0 !important;
