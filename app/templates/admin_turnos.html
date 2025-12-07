@@ -3,63 +3,68 @@
 
 {% block head_extra %}
 <style>
-    /* Eliminar scroll horizontal - Reglas estrictas */
+    /* Layout adaptable para evitar problemas de scroll y renderizado */
     html,
     body {
-        overflow-x: hidden !important;
-        max-width: 100% !important;
-        width: 100% !important;
-        position: relative;
         margin: 0 !important;
         padding: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: hidden !important;
+        min-height: 100vh;
+        background-color: #1a1a2e;
+        /* Fondo base para asegurar consistencia */
     }
 
-    /* Forzar ancho completo para la página de turnos */
-    /* Sobrescribir el max-width del contenedor principal solo en esta página */
+    /* Contenedores principales */
     body .container {
-        max-width: 100% !important;
         width: 100% !important;
-        padding-left: 0 !important;
-        padding-right: 0 !important;
+        max-width: 100% !important;
+        padding: 0 !important;
         margin: 0 !important;
         overflow-x: hidden !important;
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
     }
 
     body .main-container {
-        max-width: 100% !important;
-        padding-left: 0 !important;
-        padding-right: 0 !important;
-        margin: 0 !important;
-        overflow-x: hidden !important;
         width: 100% !important;
-    }
-
-    /* Asegurar que todos los elementos hijos no excedan el ancho */
-    .admin-turnos *,
-    .admin-turnos *::before,
-    .admin-turnos *::after {
+        max-width: 100% !important;
+        padding: 20px !important;
+        /* Padding seguro para el contenido */
+        margin: 0 !important;
+        flex: 1;
+        /* Ocupar el espacio restante */
+        overflow-x: hidden !important;
         box-sizing: border-box;
     }
 
-    /* Asegurar que contenedores principales no excedan el ancho */
-    .admin-turnos>*,
-    .flujo-container>*,
-    .step-card>*,
-    .planilla-table-container,
-    .historial-section {
+    /* Reset global de box-sizing para esta página */
+    .admin-turnos,
+    .admin-turnos * {
+        box-sizing: border-box;
+    }
+
+    /* Estilo del contenedor principal del módulo */
+    .admin-turnos {
+        width: 100%;
+        max-width: 1400px;
+        /* Limitar ancho en pantallas muy grandes para legibilidad */
+        margin: 0 auto;
+        /* Centrar contenido */
+        padding: 0 15px;
+        /* Padding interno seguro */
+    }
+
+    /* Asegurar que las secciones no desborden */
+    .flujo-container,
+    .historial-section,
+    .turnos-header {
+        width: 100%;
         max-width: 100%;
         margin-left: 0;
         margin-right: 0;
-    }
-
-    /* Optimizado para pantalla de 52" - Fuentes y elementos grandes para mejor legibilidad */
-    .admin-turnos {
-        width: 100%;
-        max-width: 100%;
-        padding: 30px;
-        box-sizing: border-box;
-        margin: 0;
-        overflow-x: hidden !important;
     }
 
     /* ... skipped unchanged ... */
