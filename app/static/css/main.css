@@ -363,3 +363,8 @@ form button[type="submit"]:hover {
     transform: translateY(0);
   }
 }
+
+/* Ocultar números de paso en página de turnos */
+.step-number {
+  display: none !important;
+}

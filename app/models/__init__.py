@@ -43,7 +43,7 @@ from .audit_log_models import AuditLog
 # Importar modelos de inventario y recetas
 from .inventory_models import InventoryItem
 from .product_models import Product
-from .recipe_models import Ingredient, ProductRecipe
+from .recipe_models import LegacyIngredient, ProductRecipe
 
 # Importar modelos de inventario de stock (nuevo sistema)
 from .inventory_stock_models import (
@@ -65,7 +65,7 @@ __all__ = [
     'AuditLog',
     'Notification',
     'InventoryItem', 'Product',
-    'Ingredient', 'ProductRecipe',
+    'LegacyIngredient', 'ProductRecipe',
     # Nuevos modelos de inventario de stock
     'IngredientCategory', 'StockIngredient', 'IngredientStock',
     'Recipe', 'RecipeIngredient', 'InventoryMovement'

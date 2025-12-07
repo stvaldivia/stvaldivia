@@ -3,7 +3,7 @@ Modelos para recetas y productos compuestos.
 """
 from . import db
 
-class Ingredient(db.Model):
+class LegacyIngredient(db.Model):
     """Modelo de Ingrediente (lo que se descuenta del inventario) - LEGACY"""
     __tablename__ = 'recipe_ingredients_legacy'  # Renombrado para evitar conflicto con inventory_stock_models
     
@@ -15,7 +15,7 @@ class Ingredient(db.Model):
     stock_quantity = db.Column(db.Float, default=0.0)
     
     def __repr__(self):
-        return f'<Ingredient {self.name}>'
+        return f'<LegacyIngredient {self.name}>'
 
 class ProductRecipe(db.Model):
     """Relación entre Producto (Kit) e Ingredientes"""
@@ -28,7 +28,7 @@ class ProductRecipe(db.Model):
     
     # Relaciones
     product = db.relationship('Product', backref=db.backref('recipe_items', lazy=True))
-    ingredient = db.relationship('Ingredient', backref=db.backref('used_in', lazy=True))
+    ingredient = db.relationship('LegacyIngredient', backref=db.backref('used_in', lazy=True))
     
     def __repr__(self):
         return f'<Recipe {self.product.name} uses {self.quantity} of {self.ingredient.name}>'

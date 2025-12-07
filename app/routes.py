@@ -7331,8 +7331,8 @@ def register_inventory():
     
     # Obtener lista de INGREDIENTES (botellas/insumos) para autocompletado
     # En el inventario contamos ingredientes, no productos de venta (tragos)
-    from app.models.recipe_models import Ingredient
-    all_ingredients = Ingredient.query.order_by(Ingredient.name).all()
+    from app.models.recipe_models import LegacyIngredient
+    all_ingredients = LegacyIngredient.query.order_by(LegacyIngredient.name).all()
     current_app.logger.info(f"Cargando página de inventario con {len(all_ingredients)} ingredientes")
     
     return render_template(

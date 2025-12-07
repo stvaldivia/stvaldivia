@@ -1,4 +1,5 @@
 
+# BIMBA POS System - Dashboard Rewritten v4.0
 import os
 from flask import Flask
 from flask_socketio import SocketIO
@@ -581,4 +582,4 @@ def create_app():
 
     # Configurar headers de seguridad
 
-    return app
+    return app# Version bump Sun Dec  7 02:37:54 -03 2025
