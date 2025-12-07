@@ -548,3 +548,188 @@ def session_stats(session_date):
     
     return jsonify(summary)
 
+
+@survey_bp.route('/api/all-responses')
+def api_all_responses():
+    """API para obtener todas las respuestas de encuestas con filtros opcionales"""
+    if not session.get('admin_logged_in'):
+        return jsonify({'success': False, 'error': 'No autorizado'}), 401
+    
+    try:
+        survey_service = get_survey_service()
+        
+        # Obtener todas las respuestas
+        all_responses = survey_service.get_all_responses()
+        
+        # Convertir a formato JSON
+        responses_data = []
+        for response in all_responses:
+            responses_data.append({
+                'id': response.id if hasattr(response, 'id') else None,
+                'timestamp': response.timestamp if isinstance(response.timestamp, str) else response.timestamp.isoformat() if hasattr(response.timestamp, 'isoformat') else str(response.timestamp),
+                'barra': response.barra,
+                'rating': response.rating,
+                'comment': response.comment or '',
+                'fiesta_nombre': response.fiesta_nombre or '',
+                'djs': response.djs or '',
+                'bartender_nombre': response.bartender_nombre or '',
+                'fecha_sesion': response.fecha_sesion if isinstance(response.fecha_sesion, str) else response.fecha_sesion.isoformat() if hasattr(response.fecha_sesion, 'isoformat') else str(response.fecha_sesion)
+            })
+        
+        # Ordenar por fecha más reciente primero
+        responses_data.sort(key=lambda x: x['timestamp'], reverse=True)
+        
+        return jsonify({
+            'success': True,
+            'responses': responses_data,
+            'total': len(responses_data)
+        })
+    except Exception as e:
+        current_app.logger.error(f"Error obteniendo todas las respuestas: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': 'Error interno al obtener respuestas'}), 500
+
+
+@survey_bp.route('/api/export/csv')
+def api_export_csv():
+    """API para exportar respuestas en formato CSV"""
+    if not session.get('admin_logged_in'):
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    try:
+        from flask import Response
+        import csv
+        from io import StringIO
+        
+        survey_service = get_survey_service()
+        
+        # Obtener filtros
+        date_from = request.args.get('date_from')
+        date_to = request.args.get('date_to')
+        barra = request.args.get('barra')
+        
+        # Obtener todas las respuestas
+        all_responses = survey_service.get_all_responses()
+        
+        # Aplicar filtros
+        filtered_responses = []
+        for response in all_responses:
+            # Filtro por fecha
+            if date_from:
+                response_date = response.fecha_sesion if isinstance(response.fecha_sesion, str) else response.fecha_sesion.isoformat() if hasattr(response.fecha_sesion, 'isoformat') else str(response.fecha_sesion)
+                if response_date < date_from:
+                    continue
+            
+            if date_to:
+                response_date = response.fecha_sesion if isinstance(response.fecha_sesion, str) else response.fecha_sesion.isoformat() if hasattr(response.fecha_sesion, 'isoformat') else str(response.fecha_sesion)
+                if response_date > date_to:
+                    continue
+            
+            # Filtro por barra
+            if barra and response.barra != barra:
+                continue
+            
+            filtered_responses.append(response)
+        
+        # Crear CSV
+        output = StringIO()
+        writer = csv.writer(output)
+        
+        # Header
+        writer.writerow([
+            'Fecha/Hora', 'Barra', 'Calificación', 'Comentario',
+            'Fiesta', 'DJs', 'Bartender', 'Fecha Sesión'
+        ])
+        
+        # Datos
+        for response in filtered_responses:
+            timestamp = response.timestamp if isinstance(response.timestamp, str) else response.timestamp.isoformat() if hasattr(response.timestamp, 'isoformat') else str(response.timestamp)
+            fecha_sesion = response.fecha_sesion if isinstance(response.fecha_sesion, str) else response.fecha_sesion.isoformat() if hasattr(response.fecha_sesion, 'isoformat') else str(response.fecha_sesion)
+            
+            writer.writerow([
+                timestamp,
+                response.barra,
+                response.rating,
+                response.comment or '',
+                response.fiesta_nombre or '',
+                response.djs or '',
+                response.bartender_nombre or '',
+                fecha_sesion
+            ])
+        
+        # Preparar respuesta
+        output.seek(0)
+        filename = f'encuestas_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+        
+        return Response(
+            output.getvalue(),
+            mimetype='text/csv',
+            headers={
+                'Content-Disposition': f'attachment; filename={filename}'
+            }
+        )
+    except Exception as e:
+        current_app.logger.error(f"Error exportando CSV: {e}", exc_info=True)
+        return jsonify({'error': 'Error al exportar CSV'}), 500
+
+
+@survey_bp.route('/api/export/stats')
+def api_export_stats():
+    """API para exportar estadísticas de sesiones"""
+    if not session.get('admin_logged_in'):
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    try:
+        from flask import Response
+        import csv
+        from io import StringIO
+        
+        survey_service = get_survey_service()
+        
+        # Obtener todas las sesiones
+        sessions_file = ensure_sessions_file()
+        sessions = []
+        
+        if os.path.exists(sessions_file):
+            with open(sessions_file, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                sessions = list(reader)
+        
+        # Crear CSV
+        output = StringIO()
+        writer = csv.writer(output)
+        
+        # Header
+        writer.writerow([
+            'Fecha Sesión', 'Fiesta', 'DJs', 'Bartenders',
+            'Hora Inicio', 'Hora Fin', 'Total Respuestas', 'Promedio Rating', 'Estado'
+        ])
+        
+        # Datos
+        for session in sessions:
+            writer.writerow([
+                session.get('fecha_sesion', ''),
+                session.get('fiesta_nombre', ''),
+                session.get('djs', ''),
+                session.get('bartenders', ''),
+                session.get('hora_inicio', ''),
+                session.get('hora_fin', ''),
+                session.get('total_respuestas', '0'),
+                session.get('promedio_rating', '0.0'),
+                session.get('estado', '')
+            ])
+        
+        # Preparar respuesta
+        output.seek(0)
+        filename = f'estadisticas_encuestas_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+        
+        return Response(
+            output.getvalue(),
+            mimetype='text/csv',
+            headers={
+                'Content-Disposition': f'attachment; filename={filename}'
+            }
+        )
+    except Exception as e:
+        current_app.logger.error(f"Error exportando estadísticas: {e}", exc_info=True)
+        return jsonify({'error': 'Error al exportar estadísticas'}), 500
+

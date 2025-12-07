@@ -286,3 +286,6 @@ class InventoryMovement(db.Model):
         sign = '+' if self.quantity >= 0 else ''
         return f'<InventoryMovement {self.movement_type} {sign}{self.quantity} @ {self.location}>'
 
+
+
+

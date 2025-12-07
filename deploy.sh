@@ -109,7 +109,8 @@ if [ "$DEPLOY_METHOD" == "1" ]; then
         --cpu "$CPU" \
         --timeout 300 \
         --max-instances "$MAX_INSTANCES" \
-        --set-env-vars "FLASK_ENV=production,LOCAL_ONLY=false"
+        --add-cloudsql-instances "pelagic-river-479014-a3:us-central1:bimba-db" \
+        --set-env-vars "FLASK_ENV=production,LOCAL_ONLY=false,DATABASE_URL=postgresql+psycopg2://bimba_user:qbiqpVcv9zJPVB0aaA9YwfAJSzFIGroUBcwJHNhzsas=@/bimba?host=/cloudsql/pelagic-river-479014-a3:us-central1:bimba-db"
     
 elif [ "$DEPLOY_METHOD" == "2" ]; then
     # Build con Docker
@@ -139,7 +140,8 @@ elif [ "$DEPLOY_METHOD" == "2" ]; then
         --cpu "$CPU" \
         --timeout 300 \
         --max-instances "$MAX_INSTANCES" \
-        --set-env-vars "FLASK_ENV=production,LOCAL_ONLY=false"
+        --add-cloudsql-instances "pelagic-river-479014-a3:us-central1:bimba-db" \
+        --set-env-vars "FLASK_ENV=production,LOCAL_ONLY=false,DATABASE_URL=postgresql+psycopg2://bimba_user:qbiqpVcv9zJPVB0aaA9YwfAJSzFIGroUBcwJHNhzsas=@/bimba?host=/cloudsql/pelagic-river-479014-a3:us-central1:bimba-db"
 else
     echo -e "${RED}❌ Opción inválida${NC}"
     exit 1

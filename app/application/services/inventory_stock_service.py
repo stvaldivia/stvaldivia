@@ -521,3 +521,6 @@ class InventoryStockService:
         
         return summary
 
+
+
+

@@ -72,3 +72,6 @@ gcloud run services describe bimba-system --region us-central1 --format='value(s
 2. **Probar bien** antes de pasar a producción
 3. **Deploy a producción** solo cuando esté listo
 
+
+
+

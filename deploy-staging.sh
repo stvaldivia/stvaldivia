@@ -35,3 +35,6 @@ echo "🌐 URL Producción: https://stvaldivia.cl (NO afectada)"
 echo ""
 echo "💡 Usa staging para probar cambios antes de producción"
 
+
+
+
