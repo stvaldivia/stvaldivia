@@ -333,26 +333,22 @@
         transform: translateY(-1px);
     }
 
-    /* FIX: Permitir que los pasos se ajusten a la pantalla (wrap) */
+    /* FIX: Usar CSS Grid para un layout robusto y responsivo */
     .flujo-container {
-        display: flex;
-        flex-wrap: wrap;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
         gap: 20px;
-        justify-content: flex-start;
-        /* Alineado a la izquierda */
         width: 100%;
         margin-top: 20px;
-        padding-bottom: 20px;
+        padding-bottom: 40px;
+        box-sizing: border-box;
     }
 
     .step-card {
-        flex: 1 1 300px;
-        /* Base 300px, crecer y encoger */
-        min-width: 280px;
-        max-width: 100%;
-        /* Permitir ancho completo en móviles */
+        width: 100%;
+        min-width: 0;
+        /* Importante para prevenir desbordes en grid */
         margin: 0;
-        /* El gap maneja el espaciado */
         background: #252525;
         border-radius: 12px;
         border: 1px solid rgba(102, 126, 234, 0.2);
@@ -362,27 +358,7 @@
         flex-direction: column;
     }
 
-    /* En pantallas grandes, limitar el ancho máximo de las tarjetas para que no se estiren demasiado si son pocas */
-    @media (min-width: 1200px) {
-        .step-card {
-            max-width: calc(25% - 20px);
-            /* 4 por fila aprox */
-        }
-    }
-
-    @media (max-width: 1199px) {
-        .step-card {
-            max-width: calc(50% - 20px);
-            /* 2 por fila */
-        }
-    }
-
-    @media (max-width: 768px) {
-        .step-card {
-            max-width: 100%;
-            /* 1 por fila */
-        }
-    }
+    /* Eliminar media queries manuales ya que Grid auto-fit maneja esto automáticamente */
 </style>
 {% endblock %}
 
