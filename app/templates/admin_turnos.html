@@ -328,21 +328,60 @@
         transform: translateY(-1px);
     }
 
-    .btn-close-historial {
-        background: rgba(245, 87, 108, 0.2);
-        border: 1px solid rgba(245, 87, 108, 0.5);
-        color: #f5576c;
-        padding: 6px 12px;
-        border-radius: 6px;
-        font-size: 0.85rem;
-        font-weight: bold;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-
     .btn-close-historial:hover {
         background: rgba(245, 87, 108, 0.3);
         transform: translateY(-1px);
+    }
+
+    /* FIX: Permitir que los pasos se ajusten a la pantalla (wrap) */
+    .flujo-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        justify-content: flex-start;
+        /* Alineado a la izquierda */
+        width: 100%;
+        margin-top: 20px;
+        padding-bottom: 20px;
+    }
+
+    .step-card {
+        flex: 1 1 300px;
+        /* Base 300px, crecer y encoger */
+        min-width: 280px;
+        max-width: 100%;
+        /* Permitir ancho completo en móviles */
+        margin: 0;
+        /* El gap maneja el espaciado */
+        background: #252525;
+        border-radius: 12px;
+        border: 1px solid rgba(102, 126, 234, 0.2);
+        overflow: hidden;
+        transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* En pantallas grandes, limitar el ancho máximo de las tarjetas para que no se estiren demasiado si son pocas */
+    @media (min-width: 1200px) {
+        .step-card {
+            max-width: calc(25% - 20px);
+            /* 4 por fila aprox */
+        }
+    }
+
+    @media (max-width: 1199px) {
+        .step-card {
+            max-width: calc(50% - 20px);
+            /* 2 por fila */
+        }
+    }
+
+    @media (max-width: 768px) {
+        .step-card {
+            max-width: 100%;
+            /* 1 por fila */
+        }
     }
 </style>
 {% endblock %}
