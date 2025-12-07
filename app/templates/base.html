@@ -33,7 +33,10 @@
                     <span class="logo-text" style="display: none;">BIMBA</span>
                 </a>
             </div>
-            <div class="admin-nav-right">
+            <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Menú">
+                ☰
+            </button>
+            <div class="admin-nav-right" id="mobile-menu">
                 <a href="/admin"
                     class="admin-nav-btn {% if request.endpoint == 'routes.admin_dashboard' %}active{% endif %}"
                     aria-label="Inicio">
@@ -69,6 +72,11 @@
                     aria-label="Gestionar Equipo">
                     👥 Equipo
                 </a>
+                <a href="{{ url_for('guardarropia.index') }}"
+                    class="admin-nav-btn {% if request.endpoint and request.endpoint.startswith('guardarropia.') %}active{% endif %}"
+                    aria-label="Gestionar Guardarropía">
+                    🧥 Guardarropía
+                </a>
                 <a href="{{ url_for('routes.admin_panel_control') }}"
                     class="admin-nav-btn {% if request.endpoint == 'routes.admin_panel_control' %}active{% endif %}"
                     aria-label="Panel de Control">
@@ -99,7 +107,7 @@
         {% if not session.get('admin_logged_in') and request.endpoint != 'routes.index' and request.endpoint !=
         'routes.login_admin' %}
         {% block titulo_sistema %}
-        <h1 class="titulo-sistema-principal">SISTEMA DE ENTREGA DE PRODUCTOS BIMBA</h1>
+        <h1 class="page-title" style="text-align: center; margin-bottom: var(--space-5);">SISTEMA DE ENTREGA DE PRODUCTOS BIMBA</h1>
         {% endblock %}
         {% endif %}
 
@@ -169,7 +177,6 @@
             <div style="display: flex; align-items: center; gap: 10px;">
                 <span
                     style="display: inline-block; width: 10px; height: 10px; background: #ff9800; border-radius: 50%;"></span>
-                <span style="color: #ff9800; font-weight: bold;">Turno Cerrado</span>
             </div>
             {% endif %}
         </div>
@@ -418,6 +425,37 @@
 
         document.addEventListener('DOMContentLoaded', (event) => {
             // JavaScript personalizado si es necesario
+        });
+        
+        // Función para toggle del menú móvil
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            if (menu) {
+                menu.classList.toggle('mobile-menu-open');
+            }
+        }
+        
+        // Cerrar menú móvil al hacer click fuera
+        document.addEventListener('click', function(event) {
+            const menu = document.getElementById('mobile-menu');
+            const toggle = document.querySelector('.mobile-menu-toggle');
+            
+            if (menu && toggle && 
+                !menu.contains(event.target) && 
+                !toggle.contains(event.target) &&
+                menu.classList.contains('mobile-menu-open')) {
+                menu.classList.remove('mobile-menu-open');
+            }
+        });
+        
+        // Cerrar menú móvil al hacer click en un enlace
+        document.querySelectorAll('.admin-nav-right a').forEach(link => {
+            link.addEventListener('click', function() {
+                const menu = document.getElementById('mobile-menu');
+                if (menu) {
+                    menu.classList.remove('mobile-menu-open');
+                }
+            });
         });
     </script>
 

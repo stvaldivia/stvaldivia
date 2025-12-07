@@ -4,36 +4,47 @@
 */
 
 :root {
-  /* --- COLORES --- */
-  /* Marca */
+  /* --- COLORES ESTANDARIZADOS --- */
+  /* Marca Principal - Verde BIMBA */
   --primary: #00ff00;
   --primary-hover: #00cc00;
   --primary-light: rgba(0, 255, 0, 0.1);
+  --primary-dark: #00aa00;
 
   /* Fondos */
   --bg-body: #0f0f1e;
   --bg-surface: #1a1a2e;
   --bg-surface-hover: #252540;
   --bg-input: #222222;
+  --bg-card: #1a1a2e;
 
   /* Texto */
   --text-primary: #e8e8e8;
   --text-secondary: #aaaaaa;
   --text-muted: #666666;
   --text-inverse: #000000;
+  --text-accent: #00ff00;
 
   /* Estados */
   --success: #4caf50;
+  --success-light: rgba(76, 175, 80, 0.2);
   --warning: #ff9800;
+  --warning-light: rgba(255, 152, 0, 0.2);
   --danger: #f44336;
+  --danger-light: rgba(244, 67, 54, 0.2);
   --info: #2196f3;
+  --info-light: rgba(33, 150, 243, 0.2);
 
   /* Bordes */
   --border-color: rgba(255, 255, 255, 0.1);
   --border-focus: #007bff;
 
-  /* --- TIPOGRAFÍA --- */
-  --font-family: 'Segoe UI', 'Roboto', system-ui, -apple-system, sans-serif;
+  /* --- TIPOGRAFÍA ESTANDARIZADA --- */
+  --font-family: 'Segoe UI', 'Roboto', 'Inter', system-ui, -apple-system, -apple-system-blink-mac-system-font, sans-serif;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
 
   --text-xs: 0.75rem;
   /* 12px */
@@ -100,7 +111,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* --- TIPOGRAFÍA --- */
+/* --- TIPOGRAFÍA ESTANDARIZADA --- */
 h1,
 h2,
 h3,
@@ -112,20 +123,68 @@ h6 {
   font-weight: 700;
   line-height: 1.2;
   color: var(--text-primary);
+  font-family: var(--font-family);
 }
 
 h1 {
   font-size: var(--text-3xl);
+  font-weight: 700;
   color: var(--primary);
-  text-shadow: var(--shadow-glow);
+  text-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+  margin-bottom: var(--space-5);
+  letter-spacing: -0.02em;
 }
 
 h2 {
   font-size: var(--text-2xl);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-4);
 }
 
 h3 {
   font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-3);
+}
+
+h4 {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-3);
+}
+
+/* Título de página estándar */
+.page-title {
+  font-size: var(--text-3xl);
+  font-weight: 700;
+  color: var(--primary);
+  text-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+  margin: 0 0 var(--space-5) 0;
+  padding-bottom: var(--space-3);
+  border-bottom: 2px solid var(--border-color);
+  font-family: var(--font-family);
+  letter-spacing: -0.02em;
+}
+
+.page-title-small {
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-4) 0;
+  font-family: var(--font-family);
+}
+
+.section-title {
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-4) 0;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-color);
+  font-family: var(--font-family);
 }
 
 p {
@@ -520,4 +579,304 @@ small {
   font-size: var(--text-3xl);
   font-weight: 700;
   color: var(--primary);
+}
+
+/* ========================================
+   RESPONSIVE DESIGN SYSTEM
+   ======================================== */
+
+/* --- BREAKPOINTS --- */
+/* Mobile First Approach */
+
+/* Extra Small devices (phones, 320px and up) */
+@media (min-width: 320px) {
+  .container {
+    padding: var(--space-2);
+  }
+  
+  .admin-page {
+    padding: var(--space-3);
+  }
+  
+  h1 {
+    font-size: var(--text-2xl);
+  }
+  
+  .card {
+    padding: var(--space-3);
+  }
+}
+
+/* Small devices (landscape phones, 576px and up) */
+@media (min-width: 576px) {
+  .container {
+    padding: var(--space-3);
+  }
+  
+  .admin-page {
+    padding: var(--space-4);
+  }
+}
+
+/* Medium devices (tablets, 768px and up) */
+@media (min-width: 768px) {
+  .container {
+    padding: var(--space-4);
+  }
+  
+  .admin-page {
+    padding: var(--space-5);
+  }
+  
+  h1 {
+    font-size: var(--text-3xl);
+  }
+  
+  .card {
+    padding: var(--space-5);
+  }
+}
+
+/* Large devices (desktops, 992px and up) */
+@media (min-width: 992px) {
+  .container {
+    max-width: 1200px;
+    padding: var(--space-5);
+  }
+  
+  .admin-page {
+    padding: var(--space-6);
+  }
+}
+
+/* Extra Large devices (large desktops, 1200px and up) */
+@media (min-width: 1200px) {
+  .container {
+    max-width: 1400px;
+  }
+}
+
+/* --- RESPONSIVE GRIDS --- */
+@media (max-width: 767px) {
+  /* Grids se convierten en columna única en móviles */
+  .admin-stats-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-3);
+  }
+  
+  /* Cards de acceso rápido en móvil */
+  .quick-access-grid {
+    grid-template-columns: 1fr !important;
+  }
+  
+  /* Formularios en grid se apilan */
+  .form-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  /* Tablets: 2 columnas */
+  .admin-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .quick-access-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (min-width: 992px) {
+  /* Desktop: múltiples columnas */
+  .admin-stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  }
+}
+
+/* --- RESPONSIVE TABLES --- */
+@media (max-width: 767px) {
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    display: block;
+    width: 100%;
+  }
+  
+  .table {
+    min-width: 600px; /* Ancho mínimo para scroll horizontal */
+    font-size: var(--text-sm);
+  }
+  
+  .table th,
+  .table td {
+    padding: var(--space-2) var(--space-3);
+    white-space: nowrap;
+  }
+  
+  /* Ocultar columnas menos importantes en móvil */
+  .table .hide-mobile {
+    display: none;
+  }
+}
+
+/* --- RESPONSIVE FORMS --- */
+@media (max-width: 767px) {
+  .form-group {
+    margin-bottom: var(--space-3);
+  }
+  
+  .form-control {
+    font-size: 16px; /* Evita zoom en iOS */
+    padding: var(--space-3);
+  }
+  
+  /* Botones full width en móvil */
+  .btn {
+    width: 100%;
+    padding: var(--space-4);
+    font-size: var(--text-base);
+  }
+  
+  /* Grids de formularios se apilan */
+  .form-row {
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+  
+  .form-row .form-group {
+    width: 100%;
+  }
+}
+
+/* --- RESPONSIVE CARDS --- */
+@media (max-width: 767px) {
+  .card {
+    margin-bottom: var(--space-3);
+    border-radius: var(--radius-md);
+  }
+  
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+  
+  .card-title {
+    font-size: var(--text-lg);
+  }
+}
+
+/* --- RESPONSIVE TYPOGRAPHY --- */
+@media (max-width: 767px) {
+  h1 {
+    font-size: var(--text-2xl);
+    line-height: 1.2;
+  }
+  
+  h2 {
+    font-size: var(--text-xl);
+  }
+  
+  h3 {
+    font-size: var(--text-lg);
+  }
+  
+  .admin-page-header h1 {
+    font-size: var(--text-2xl);
+  }
+  
+  .admin-section-title {
+    font-size: var(--text-lg);
+  }
+}
+
+/* --- RESPONSIVE UTILITIES --- */
+@media (max-width: 767px) {
+  /* Ocultar en móvil */
+  .hide-mobile {
+    display: none !important;
+  }
+  
+  /* Mostrar solo en móvil */
+  .show-mobile {
+    display: block !important;
+  }
+  
+  /* Ocultar en desktop */
+  .hide-desktop {
+    display: none !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .show-mobile {
+    display: none !important;
+  }
+  
+  .hide-desktop {
+    display: block !important;
+  }
+}
+
+/* --- RESPONSIVE SPACING --- */
+@media (max-width: 767px) {
+  .admin-page {
+    padding: var(--space-3);
+  }
+  
+  .admin-section {
+    margin-bottom: var(--space-4);
+  }
+  
+  .admin-actions {
+    flex-direction: column;
+  }
+  
+  .admin-actions .btn {
+    width: 100%;
+    margin-bottom: var(--space-2);
+  }
+}
+
+/* --- RESPONSIVE MODALS --- */
+@media (max-width: 767px) {
+  .modal-content {
+    width: 95%;
+    margin: var(--space-4) auto;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  
+  .modal-header,
+  .modal-body,
+  .modal-footer {
+    padding: var(--space-3);
+  }
+}
+
+/* --- RESPONSIVE BADGES --- */
+@media (max-width: 767px) {
+  .badge {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+}
+
+/* --- TOUCH FRIENDLY --- */
+@media (max-width: 767px) {
+  /* Áreas táctiles más grandes en móvil */
+  .btn,
+  .admin-nav-btn,
+  a {
+    min-height: 44px; /* Tamaño mínimo recomendado para touch */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* Mejor espaciado para elementos interactivos */
+  .card a,
+  .card button {
+    margin: var(--space-2) 0;
+  }
 }

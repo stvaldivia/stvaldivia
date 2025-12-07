@@ -5,12 +5,9 @@
 <div class="admin-page">
     <!-- Header -->
     <div class="admin-page-header">
-        <h1>⏰ Gestión de Turnos</h1>
-        {% if jornada.estado_apertura == 'abierto' %}(🟢 Abierto){% elif jornada.estado_apertura ==
-        'cerrado' %}(🔴 Cerrado){% else %}(⏳ Preparando){% endif %}
-        </option>
-        {% endfor %}
-        </select>
+        <h1 class="page-title">⏰ Gestión de Turnos
+        {% if jornada and jornada.estado_apertura == 'abierto' %}(🟢 Abierto){% elif jornada and jornada.estado_apertura == 'cerrado' %}(🔴 Cerrado){% else %}(⏳ Preparando){% endif %}
+        </h1>
     </div>
 </div>
 
@@ -148,7 +145,7 @@
                 <thead>
                     <tr>
                         <th>SERVICIO</th>
-                        <th>{{ (jornada_actual.fecha_jornada if jornada_actual else fecha_hoy)|fecha_solo }}</th>
+                        <th>{{ (jornada_actual.fecha_jornada if jornada_actual else fecha_hoy) }}</th>
                         <th style="width: 100px;">Acciones</th>
                     </tr>
                 </thead>
@@ -207,7 +204,7 @@
         <h2 class="card-title">📜 Historial de Turnos</h2>
     </div>
 
-    {% if jornadas_historial %}
+    {% if jornadas_historial and jornadas_historial|length > 0 %}
     <div class="table-container">
         <table class="table">
             <thead>
@@ -227,7 +224,7 @@
                 <tr>
                     <td>#{{ jornada.id }}</td>
                     <td><strong>{{ jornada.nombre_fiesta or 'Turno' }}</strong></td>
-                    <td>{{ jornada.fecha_jornada|fecha_solo }}</td>
+                    <td>{{ jornada.fecha_jornada }}</td>
                     <td>{{ jornada.tipo_turno }}</td>
                     <td style="font-size: 0.9rem;">{{ jornada.horario_apertura_programado }} - {{
                         jornada.horario_cierre_programado }}</td>
@@ -258,7 +255,10 @@
         </table>
     </div>
     {% else %}
-    <p style="text-align: center; padding: 40px; color: #aaa;">No hay historial de turnos disponible</p>
+    <div style="text-align: center; padding: 40px; color: #aaa;">
+        <p style="font-size: 1.1rem; margin-bottom: 10px;">📭 No hay historial de turnos disponible</p>
+        <p style="font-size: 0.9rem; color: #888;">Crea tu primer turno para comenzar</p>
+    </div>
     {% endif %}
 </div>
 </div>

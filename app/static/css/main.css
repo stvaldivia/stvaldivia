@@ -134,26 +134,92 @@ body.has-admin-nav {
 }
 
 /* --- RESPONSIVE NAV --- */
-@media (max-width: 768px) {
-  .admin-nav-container {
-    flex-direction: column;
-    padding: var(--space-2);
-  }
+/* Menú hamburguesa para móviles */
+.mobile-menu-toggle {
+  display: none;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: var(--text-xl);
+  min-width: 44px;
+  min-height: 44px;
+}
 
-  .admin-nav-left,
+.mobile-menu-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 991px) {
+  .mobile-menu-toggle {
+    display: block;
+  }
+  
   .admin-nav-right {
-    width: 100%;
-    justify-content: center;
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border-color);
+    box-shadow: var(--shadow-lg);
+    flex-direction: column;
+    padding: var(--space-3);
+    gap: var(--space-2);
+    z-index: 10000;
+    max-height: calc(100vh - 70px);
+    overflow-y: auto;
   }
-
+  
+  .admin-nav-right.mobile-menu-open {
+    display: flex;
+  }
+  
   .admin-nav-btn {
     width: 100%;
-    justify-content: center;
-    margin: 2px 0;
+    justify-content: flex-start;
+    padding: var(--space-3);
+    min-height: 44px;
+    font-size: var(--text-base);
   }
-
+  
+  .admin-nav-container {
+    position: relative;
+    flex-wrap: nowrap;
+  }
+  
+  .admin-nav-left {
+    flex: 1;
+  }
+  
   body.has-admin-nav {
-    padding-top: 160px;
+    padding-top: 70px;
+  }
+}
+
+@media (max-width: 576px) {
+  .admin-nav-container {
+    padding: var(--space-2);
+  }
+  
+  .admin-nav-logo .logo-text {
+    font-size: var(--text-lg);
+  }
+  
+  .admin-nav-logo img.logo-img {
+    height: 32px;
+  }
+  
+  .admin-nav-right {
+    padding: var(--space-2);
+  }
+  
+  .admin-nav-btn {
+    font-size: var(--text-sm);
+    padding: var(--space-2) var(--space-3);
   }
 }
 
@@ -367,4 +433,179 @@ form button[type="submit"]:hover {
 /* Ocultar números de paso en página de turnos */
 .step-number {
   display: none !important;
+}
+
+/* --- RESPONSIVE FOOTER --- */
+@media (max-width: 767px) {
+  .admin-footer {
+    flex-direction: column;
+    padding: var(--space-2);
+    font-size: var(--text-xs);
+    gap: var(--space-2);
+    text-align: center;
+  }
+  
+  .footer-desarrollador {
+    padding: var(--space-3);
+    font-size: var(--text-xs);
+  }
+}
+
+/* --- RESPONSIVE CONTAINER --- */
+@media (max-width: 767px) {
+  .container {
+    padding: var(--space-2);
+    width: 100%;
+  }
+  
+  .main-container {
+    padding: var(--space-2);
+    min-height: calc(100vh - 70px);
+  }
+}
+
+/* --- RESPONSIVE FLASH MESSAGES --- */
+@media (max-width: 767px) {
+  .flash {
+    padding: var(--space-2);
+    font-size: var(--text-sm);
+    margin-bottom: var(--space-2);
+  }
+  
+  .flash-container {
+    margin-bottom: var(--space-3);
+  }
+}
+
+/* --- RESPONSIVE FORMS --- */
+@media (max-width: 767px) {
+  form input[type="text"],
+  form input[type="password"],
+  form input[type="email"],
+  form input[type="number"],
+  form select,
+  form textarea {
+    font-size: 16px; /* Evita zoom automático en iOS */
+    padding: var(--space-3);
+  }
+  
+  form button[type="submit"] {
+    width: 100%;
+    padding: var(--space-4);
+    font-size: var(--text-base);
+    min-height: 48px;
+  }
+  
+  /* Grids en formularios se apilan */
+  form .form-row,
+  form [style*="grid-template-columns"] {
+    grid-template-columns: 1fr !important;
+    gap: var(--space-3) !important;
+  }
+}
+
+/* --- RESPONSIVE CARDS Y BOXES --- */
+@media (max-width: 767px) {
+  .venta-info,
+  .venta-info-dos-lineas,
+  .buscar-box {
+    padding: var(--space-3);
+    margin-bottom: var(--space-3);
+  }
+  
+  .titulo-detalles,
+  .titulo-venta,
+  .titulo-buscar {
+    font-size: var(--text-xl);
+    margin-bottom: var(--space-2);
+  }
+}
+
+/* --- RESPONSIVE UTILITIES --- */
+@media (max-width: 767px) {
+  /* Texto más pequeño en móvil */
+  .text-sm-mobile {
+    font-size: var(--text-sm);
+  }
+  
+  /* Ocultar elementos menos importantes */
+  .hide-on-mobile {
+    display: none !important;
+  }
+  
+  /* Mostrar solo en móvil */
+  .show-on-mobile {
+    display: block !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .show-on-mobile {
+    display: none !important;
+  }
+  
+  .hide-on-mobile {
+    display: block !important;
+  }
+}
+
+/* --- RESPONSIVE TABLES MEJORADO --- */
+@media (max-width: 767px) {
+  .table-container {
+    position: relative;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--radius-md);
+  }
+  
+  .table {
+    min-width: 100%;
+    font-size: var(--text-sm);
+  }
+  
+  .table th,
+  .table td {
+    padding: var(--space-2);
+    white-space: nowrap;
+  }
+  
+  .table th {
+    font-size: var(--text-xs);
+    padding: var(--space-2);
+  }
+  
+  /* Indicador de scroll horizontal */
+  .table-container::after {
+    content: '← Desliza para ver más →';
+    position: absolute;
+    right: var(--space-2);
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    color: var(--text-primary);
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-xs);
+    pointer-events: none;
+    opacity: 0.7;
+  }
+}
+
+/* --- MEJORAS DE TOUCH --- */
+@media (max-width: 767px) {
+  /* Áreas táctiles más grandes */
+  a, button, .btn, .admin-nav-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Mejor espaciado entre elementos interactivos */
+  .card > * + * {
+    margin-top: var(--space-3);
+  }
+  
+  /* Mejor contraste en móvil */
+  .btn-primary {
+    font-weight: 700;
+  }
 }

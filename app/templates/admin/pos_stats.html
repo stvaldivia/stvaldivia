@@ -20,8 +20,11 @@
     
     .stats-header h1 {
         margin: 0;
-        font-size: 2.5rem;
-        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        font-size: var(--text-3xl);
+        font-weight: 700;
+        color: var(--primary);
+        text-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+        font-family: var(--font-family);
     }
     
     .stats-grid {
@@ -1130,7 +1133,6 @@
 <div class="pos-stats-container">
     {% if not shift_status.get('is_open', False) %}
     <div class="error-message">
-        ⚠️ No hay un turno abierto. Abre un turno para ver las estadísticas POS.
     </div>
     {% else %}
     
