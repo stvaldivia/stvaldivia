@@ -433,6 +433,28 @@ def api_close_register():
         close_register_data['status'] = 'pending'  # Asegurar que quede pendiente
         register_close = save_register_close(close_register_data)
         
+        # Enviar notificación a admin
+        if register_close:
+            try:
+                from app.helpers.notification_service import NotificationService
+                
+                # Determinar si es una diferencia grande (mayor a $2.000)
+                diff = register_close.difference_total
+                if abs(diff) > 2000:
+                    NotificationService.notify_diferencia_grande(
+                        cierre_id=register_close.id,
+                        barra=register_close.register_name,
+                        diferencia=diff
+                    )
+                else:
+                    NotificationService.notify_cierre_pendiente(
+                        cierre_id=register_close.id,
+                        barra=register_close.register_name,
+                        cajero=register_close.employee_name
+                    )
+            except Exception as e:
+                logger.error(f"Error al enviar notificación de cierre: {e}")
+        
         # Imprimir ticket de cierre
         try:
             printer_service = TicketPrinterService()

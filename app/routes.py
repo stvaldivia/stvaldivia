@@ -444,6 +444,17 @@ def scanner_internal(admin_mode=False):
                         fraud_type=fraud_check['fraud_type'],
                         authorized=False
                     )
+                    
+                    # Notify Admin about fraud attempt
+                    try:
+                        from app.helpers.notification_service import NotificationService
+                        NotificationService.notify_fraude_detectado(
+                            sale_id=sale_id_canonical,
+                            bartender=bartender_fraud,
+                            fraud_type=fraud_check['fraud_type']
+                        )
+                    except Exception as e:
+                        logger.error(f"Error notifying fraud: {e}")
         except ValueError as e:
             error = f"Error al escanear venta: {str(e)}"
         except Exception as e:
@@ -663,6 +674,17 @@ def entregar():
                 fraud_type=fraud_check['fraud_type'],
                 authorized=False
             )
+            
+            # Notify Admin about fraud attempt
+            try:
+                from app.helpers.notification_service import NotificationService
+                NotificationService.notify_fraude_detectado(
+                    sale_id=sale_id,
+                    bartender=session.get('bartender', 'Desconocido'),
+                    fraud_type=fraud_check['fraud_type']
+                )
+            except Exception as e:
+                current_app.logger.error(f"Error notifying fraud: {e}")
             
             return render_template(
                 'fraud_detection.html',
@@ -4778,6 +4800,19 @@ def abrir_local():
         
         # El servicio JornadaService ya maneja todo (snapshots, EmployeeShift, etc.)
         # Solo mostrar mensaje de éxito
+        
+        # Notificar turno abierto
+        try:
+            from app.helpers.notification_service import NotificationService
+            admin_name = session.get('admin_username', 'admin')
+            jornada_name = f"{jornada.fecha_jornada} - {jornada.nombre_fiesta or jornada.tipo_turno}"
+            NotificationService.notify_turno_abierto(
+                jornada_nombre=jornada_name,
+                admin=admin_name
+            )
+        except Exception as e:
+            current_app.logger.error(f"Error notifying shift open: {e}")
+            
         flash("✅ Local abierto exitosamente. Sistema habilitado para ventas, escaneo y control en tiempo real.", "success")
         return redirect(url_for('routes.admin_turnos'))
         
@@ -5204,6 +5239,30 @@ def cerrar_jornada():
         
         # Sistema único - no necesita sincronización
         current_app.logger.info("✅ Turno cerrado - Sistema completamente reseteado (excepto login admin)")
+        
+        # Notificar turno cerrado
+        try:
+            from app.helpers.notification_service import NotificationService
+            from app.models.pos_models import PosSale
+            
+            # Calcular ventas totales
+            total_sales = 0
+            try:
+                sales = PosSale.query.filter_by(shift_date=jornada.fecha_jornada).all()
+                total_sales = sum(float(s.total_amount or 0) for s in sales)
+            except:
+                pass
+                
+            admin_name = session.get('admin_username', 'admin')
+            jornada_name = f"{jornada.fecha_jornada} - {jornada.nombre_fiesta or jornada.tipo_turno}"
+            
+            NotificationService.notify_turno_cerrado(
+                jornada_nombre=jornada_name,
+                admin=admin_name,
+                total_ventas=total_sales
+            )
+        except Exception as e:
+            current_app.logger.error(f"Error notifying shift close: {e}")
         
         flash(f"✅ Turno del {jornada.fecha_jornada} cerrado correctamente. Todo el sistema ha sido reseteado.", "success")
         return redirect(url_for('routes.admin_turnos'))

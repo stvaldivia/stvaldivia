@@ -81,6 +81,20 @@ Guardadas en: `cloud_sql_credentials.txt`
 
 ---
 
+## 🔔 **6. Notificaciones en Eventos Críticos**
+
+### **Integraciones:**
+- ✅ **Cierre de Caja:** Notifica al admin cuando un cajero cierra caja.
+  - Alerta especial si la diferencia > $2.000.
+- ✅ **Fraude:** Notifica intentos de entrega de tickets duplicados/usados.
+- ✅ **Turnos:** Notifica apertura y cierre de local ("Jornada").
+
+### **Archivos Modificados:**
+- `app/blueprints/pos/views/register.py` (Cierres)
+- `app/routes.py` (Turnos y Fraudes)
+
+---
+
 ## 🌐 **5. Sitio en Producción**
 
 ### **URL:**
@@ -269,13 +283,13 @@ gcloud run services describe bimba-pos --region us-central1
 - [x] Scripts de deployment
 - [x] Empleados agregados (Migrados automáticamente)
 - [x] Cargos configurados (Migrados automáticamente)
-- [ ] Notificaciones integradas en eventos (pendiente)
+- [x] Notificaciones integradas en eventos (Cierres, Fraudes, Turnos)
 
 ---
 
 **🎉 ¡Excelente trabajo hoy! El sistema está mucho más robusto y profesional.**
 
-**Próxima sesión:** Integrar las notificaciones en los eventos del sistema y optimizar el dashboard con WebSockets.
+**Próxima sesión:** Optimizar el dashboard con WebSockets (ya iniciado) y Refactorizar routes.py.
 
 ---
 
