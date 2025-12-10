@@ -82,7 +82,7 @@
                     aria-label="Panel de Control">
                     🎛️ Panel de Control
                 </a>
-                <a href="{{ url_for('routes.logout_admin') }}" class="admin-nav-btn logout-btn"
+                <a href="{{ url_for('auth.logout_admin') }}" class="admin-nav-btn logout-btn"
                     aria-label="Cerrar Sesión de Administrador">🔓 Salir</a>
             </div>
         </div>
@@ -105,7 +105,7 @@
 
         <!-- Título del sistema (solo en sistema de entrega, no en admin, no en home, no en login) -->
         {% if not session.get('admin_logged_in') and request.endpoint != 'routes.index' and request.endpoint !=
-        'routes.login_admin' %}
+        'auth.login_admin' %}
         {% block titulo_sistema %}
         <h1 class="page-title" style="text-align: center; margin-bottom: var(--space-5);">SISTEMA DE ENTREGA DE PRODUCTOS BIMBA</h1>
         {% endblock %}
@@ -128,7 +128,7 @@
 
     <!-- Barra del Footer Fija (solo en sistema de entrega, NO en admin, NO en home, NO en login) -->
     {% if not session.get('admin_logged_in') and request.endpoint != 'routes.index' and request.endpoint !=
-    'routes.login_admin' %}
+    'auth.login_admin' %}
     <div class="footer-bar">
         <div class="session-info">
             {% if session.get('barra') and session.get('bartender') %}
@@ -348,7 +348,7 @@
     <script>
         // Verificar estado de conexión API (siempre visible)
         function checkApiStatus() {
-            fetch('{{ url_for("routes.api_health_check") }}', {
+            fetch('{{ url_for("api.health_check") }}', {
                 method: 'GET',
                 headers: {
                     'Accept': 'application/json',
