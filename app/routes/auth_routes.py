@@ -16,7 +16,7 @@ auth_bp = Blueprint('auth', __name__)
 def login_admin():
     """Login de administrador"""
     if session.get('admin_logged_in'):
-        return redirect(url_for('admin.dashboard'))
+        return redirect(url_for('routes.admin_dashboard'))
     
     if request.method == 'POST':
         client_id = get_client_identifier()
@@ -41,7 +41,7 @@ def login_admin():
             # Mensaje de bienvenida personalizado
             welcome_msg = f"{get_time_based_greeting()} {get_welcome_message(username)}"
             flash(welcome_msg, "success")
-            return redirect(url_for('admin.dashboard'))
+            return redirect(url_for('routes.admin_dashboard'))
         
         # Fallback a autenticación con contraseña única
         elif pwd and verify_admin_password(pwd):
@@ -50,7 +50,7 @@ def login_admin():
             session['admin_username'] = 'Admin'
             session['last_activity'] = time.time()
             flash("Bienvenido, Administrador!", "success")
-            return redirect(url_for('admin.dashboard'))
+            return redirect(url_for('routes.admin_dashboard'))
         else:
             # Registrar intento fallido
             record_failed_attempt(client_id)

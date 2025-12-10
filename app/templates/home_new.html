@@ -399,15 +399,8 @@
     </div>
 </div>
 {% elif shift_status and not shift_status.get('is_open', False) %}
-<!-- Alerta: Turno Cerrado -->
-<div style="background: linear-gradient(135deg, rgba(255, 152, 0, 0.2) 0%, rgba(255, 152, 0, 0.1) 100%); border: 3px solid rgba(255, 152, 0, 0.5); border-radius: 20px; padding: 30px; box-shadow: 0 10px 40px rgba(255, 152, 0, 0.2); text-align: center; margin-bottom: 40px;">
-    <h1 style="margin: 0 0 15px 0; color: #ff9800; font-size: 2rem; display: flex; align-items: center; justify-content: center; gap: 15px;">
-        <span style="font-size: 2.5rem;">⏸️</span>
-        <span>TURNO CERRADO</span>
-    </h1>
-    <p style="margin: 0 0 25px 0; color: #aaa; font-size: 1.1rem;">
-        No hay un turno abierto actualmente. Abre un turno para comenzar a registrar entregas y estadísticas.
-    </p>
+<!-- Alerta: Turno Cerrado (oculto) -->
+<div style="display: none;">
     {% if shift_status.get('closed_at') %}
     <p style="margin: 0 0 25px 0; color: #888; font-size: 0.95rem;">
         Último cierre: {{ shift_status.get('closed_at', '')[:16] if shift_status.get('closed_at') else 'N/A' }}

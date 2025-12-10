@@ -26,6 +26,13 @@ logger = logging.getLogger(__name__)
 @caja_bp.route('/register', methods=['GET', 'POST'])
 def register():
     """Selección de caja"""
+    # Limpiar sesión de guardarropía si existe (para evitar conflictos)
+    if session.get('guardarropia_logged_in'):
+        session.pop('guardarropia_logged_in', None)
+        session.pop('guardarropia_employee_id', None)
+        session.pop('guardarropia_jornada_id', None)
+        session.pop('guardarropia_employee_name', None)
+    
     if not session.get('pos_logged_in'):
         return redirect(url_for('caja.login'))
     

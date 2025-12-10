@@ -1,6 +1,6 @@
-2025/12/06 10:20:46 Authorizing with Application Default Credentials
-2025/12/06 10:20:47 [pelagic-river-479014-a3:us-central1:bimba-db] Listening on 127.0.0.1:5432
-2025/12/06 10:20:47 The proxy has started successfully and is ready for new connections!
-2025/12/06 10:20:52 [pelagic-river-479014-a3:us-central1:bimba-db] accepted connection from 127.0.0.1:57897
-2025/12/06 10:21:01 [pelagic-river-479014-a3:us-central1:bimba-db] client closed the connection
-2025/12/06 10:21:01 SIGTERM signal received. Shutting down...
+2025/12/07 08:26:13 Authorizing with Application Default Credentials
+2025/12/07 08:26:14 [pelagic-river-479014-a3:us-central1:bimba-db] Listening on 127.0.0.1:5432
+2025/12/07 08:26:14 The proxy has started successfully and is ready for new connections!
+2025/12/07 08:26:18 [pelagic-river-479014-a3:us-central1:bimba-db] accepted connection from 127.0.0.1:54649
+2025/12/07 08:26:20 [pelagic-river-479014-a3:us-central1:bimba-db] client closed the connection
+2025/12/07 08:26:20 SIGTERM signal received. Shutting down...

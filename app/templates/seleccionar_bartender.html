@@ -260,7 +260,7 @@ function updatePinDisplay() {
             <p>Ingresa tu PIN</p>
         </div>
 
-        <form method="POST" action="{{ url_for('routes.seleccionar_bartender') }}" id="pin-form">
+        <form method="POST" action="{{ url_for('scanner.seleccionar_bartender') }}" id="pin-form">
             <input type="hidden" name="pin" id="pin" required>
             
             <div class="pin-display empty" id="pin-display">Ingresa tu PIN</div>
@@ -286,7 +286,7 @@ function updatePinDisplay() {
             </div>
         </form>
 
-        <form method="POST" action="{{ url_for('routes.seleccionar_bartender') }}" style="margin-top: 10px;">
+        <form method="POST" action="{{ url_for('scanner.seleccionar_bartender') }}" style="margin-top: 10px;">
             <input type="hidden" name="cancel" value="1">
             <button type="submit" class="btn-cancel">Cancelar y seleccionar otro empleado</button>
         </form>
@@ -304,7 +304,7 @@ function updatePinDisplay() {
                 {% set emp_name = (emp.get('first_name', '') + " " + emp.get('last_name', '')).strip() or emp.get('name', 'Empleado') %}
                 
                 {% if emp_id and emp_name %}
-                <form method="POST" action="{{ url_for('routes.seleccionar_bartender') }}" style="margin: 0;">
+                <form method="POST" action="{{ url_for('scanner.seleccionar_bartender') }}" style="margin: 0;">
                     <input type="hidden" name="employee_id" value="{{ emp_id }}">
                     <button type="submit" class="employee-button">{{ emp_name }}</button>
                 </form>

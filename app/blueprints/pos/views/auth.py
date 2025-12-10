@@ -15,7 +15,67 @@ logger = logging.getLogger(__name__)
 
 @caja_bp.route('/login', methods=['GET', 'POST'])
 def login():
-    """Login del POS - usa autenticación local"""
+    """Login del POS - Muestra selección de cajas disponibles"""
+    # Limpiar sesión de guardarropía si existe (para evitar conflictos)
+    if session.get('guardarropia_logged_in'):
+        session.pop('guardarropia_logged_in', None)
+        session.pop('guardarropia_employee_id', None)
+        session.pop('guardarropia_jornada_id', None)
+        session.pop('guardarropia_employee_name', None)
+    
+    # Obtener cajas disponibles
+    default_registers = [
+        {'id': '1', 'name': 'Caja 1'},
+        {'id': '2', 'name': 'Caja 2'},
+        {'id': '3', 'name': 'Caja 3'},
+        {'id': '4', 'name': 'Caja 4'},
+        {'id': '5', 'name': 'Caja 5'},
+        {'id': '6', 'name': 'Caja 6'},
+    ]
+    
+    # Agregar Guardarropía como opción
+    registers = [
+        {'id': 'GUARDARROPIA', 'name': '🧥 Guardarropía', 'type': 'guardarropia'}
+    ]
+    
+    try:
+        # Intentar obtener cajas desde el servicio POS
+        api_registers = pos_service.get_registers()
+        if api_registers and len(api_registers) > 0:
+            # Agregar cajas regulares
+            for reg in api_registers:
+                if isinstance(reg, dict):
+                    reg['type'] = 'regular'
+                    registers.append(reg)
+                else:
+                    # Si es un objeto, convertir a dict
+                    registers.append({
+                        'id': str(getattr(reg, 'id', reg.get('id', ''))),
+                        'name': getattr(reg, 'name', reg.get('name', f"Caja {getattr(reg, 'id', reg.get('id', ''))}")),
+                        'type': 'regular'
+                    })
+        else:
+            # Usar cajas por defecto
+            for reg in default_registers:
+                reg['type'] = 'regular'
+                registers.append(reg)
+    except Exception as e:
+        logger.error(f"Error al obtener cajas: {e}")
+        # Agregar cajas por defecto
+        for reg in default_registers:
+            reg['type'] = 'regular'
+            registers.append(reg)
+    
+    return render_template('pos/select_register.html', registers=registers)
+
+
+@caja_bp.route('/login_old', methods=['GET', 'POST'])
+def login_old():
+    """Login del POS - usa autenticación local para cajas regulares"""
+    # Obtener register_id desde query params
+    register_id = request.args.get('register_id')
+    register_name = request.args.get('register_name')
+    
     if request.method == 'POST':
         pin = request.form.get('pin', '').strip()
         employee_id = request.form.get('employee_id')
@@ -44,6 +104,13 @@ def login():
             session['pos_employee_name'] = employee['name']
             session['pos_logged_in'] = True
             session['show_fortune_cookie'] = True  # Flag en sesión para mostrar galleta
+            
+            # Guardar register_id si se proporcionó
+            if register_id:
+                session['register_id'] = register_id
+            if register_name:
+                session['register_name'] = register_name
+            
             employee_name = employee.get("name", "Empleado")
             logger.info(f"✅ Login exitoso: {employee_name}")
             init_session()
@@ -58,7 +125,7 @@ def login():
     if not employees:
         logger.warning("⚠️ No hay empleados habilitados para Caja")
         flash("No hay cajeros asignados en el turno actual. Por favor, contacta al administrador.", "warning")
-    return render_template('pos/login.html', employees=employees)
+    return render_template('pos/login.html', employees=employees, register_id=register_id, register_name=register_name)
 
 
 @caja_bp.route('/api/verify-pin', methods=['POST'])

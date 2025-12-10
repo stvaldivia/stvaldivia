@@ -14,11 +14,24 @@ import os
 parent_dir = os.path.dirname(os.path.dirname(__file__))
 routes_file = os.path.join(parent_dir, 'routes.py')
 
-# Usar importlib para importar desde la ruta del archivo
-spec = importlib.util.spec_from_file_location("app.routes_module", routes_file)
-routes_module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(routes_module)
-
-# Re-exportar el blueprint
-bp = routes_module.bp
+# Verificar que el archivo existe
+if os.path.exists(routes_file):
+    # Usar importlib para importar desde la ruta del archivo
+    spec = importlib.util.spec_from_file_location("app_routes_file", routes_file)
+    if spec and spec.loader:
+        routes_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(routes_module)
+        # Re-exportar el blueprint
+        bp = getattr(routes_module, 'bp', None)
+        if bp is None:
+            # Si no existe, crear uno vacío
+            from flask import Blueprint
+            bp = Blueprint('routes', __name__)
+    else:
+        from flask import Blueprint
+        bp = Blueprint('routes', __name__)
+else:
+    # Si el archivo no existe, crear un blueprint vacío
+    from flask import Blueprint
+    bp = Blueprint('routes', __name__)
 

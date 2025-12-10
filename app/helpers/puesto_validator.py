@@ -28,7 +28,7 @@ def puede_abrir_puesto(employee_id, tipo_puesto):
         # Normalizar tipo_puesto
         tipo_puesto_lower = tipo_puesto.lower()
         
-        if tipo_puesto_lower not in ['caja', 'barra']:
+        if tipo_puesto_lower not in ['caja', 'barra', 'guardarropia', 'guardarropía']:
             return False, f"Tipo de puesto inválido: {tipo_puesto}", None
         
         # Buscar jornada abierta actual
@@ -65,6 +65,13 @@ def puede_abrir_puesto(employee_id, tipo_puesto):
                 return True, f"Acceso permitido a Barra - Turno: {jornada_actual.fecha_jornada}", jornada_actual.id
             else:
                 return False, f"No estás asignado a Barra en este turno. Tu asignación: {planilla.area or planilla.rol or 'N/A'}", None
+        
+        # Para GUARDARROPÍA: verificar que el área/rol contenga "guardarropía" o "guardarropia"
+        elif tipo_puesto_lower in ['guardarropia', 'guardarropía']:
+            if 'guardarrop' in area_planilla or 'guardarrop' in rol_planilla or 'guardarropia' in area_planilla or 'guardarropia' in rol_planilla:
+                return True, f"Acceso permitido a Guardarropía - Turno: {jornada_actual.fecha_jornada}", jornada_actual.id
+            else:
+                return False, f"No estás asignado a Guardarropía en este turno. Tu asignación: {planilla.area or planilla.rol or 'N/A'}", None
         
         return False, "Error de validación", None
         
@@ -126,6 +133,16 @@ def obtener_empleados_habilitados_para_puesto(tipo_puesto, jornada_id=None):
                     PlanillaTrabajador.rol.ilike('%bar%'),
                     PlanillaTrabajador.area.ilike('%barra%'),
                     PlanillaTrabajador.area.ilike('%bar%')
+                )
+            ).all()
+        elif tipo_puesto_lower in ['guardarropia', 'guardarropía']:
+            # Filtrar trabajadores de guardarropía
+            planilla_workers = PlanillaTrabajador.query.filter_by(
+                jornada_id=jornada.id
+            ).filter(
+                or_(
+                    PlanillaTrabajador.rol.ilike('%guardarrop%'),
+                    PlanillaTrabajador.area.ilike('%guardarrop%')
                 )
             ).all()
         else:

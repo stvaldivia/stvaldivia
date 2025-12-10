@@ -209,7 +209,6 @@
     <div class="alert-banner warning" style="margin-bottom: 6px;">
         <span style="font-size: 0.85rem;">⚠️</span>
         <div style="flex: 1;">
-            <strong>Turno Cerrado:</strong> Abre un turno para comenzar a registrar entregas y estadísticas.
         </div>
         <a href="{{ url_for('routes.open_shift') }}" style="padding: 8px 16px; background: rgba(76, 175, 80, 0.3); border: 1px solid rgba(76, 175, 80, 0.5); border-radius: 6px; color: #4caf50; text-decoration: none; font-weight: 600; white-space: nowrap;">
             Abrir Turno
@@ -543,7 +542,7 @@
                     <p><strong>Abierto:</strong> {{ shift_status.get('opened_at', '')[:16] if shift_status.get('opened_at') else 'N/A' }}</p>
                 </div>
             {% else %}
-                <div class="tool-card" style="border-color: rgba(255, 152, 0, 0.5); background: linear-gradient(135deg, rgba(255, 152, 0, 0.2) 0%, rgba(255, 152, 0, 0.1) 100%);">
+                <div class="tool-card" style="border-color: rgba(255, 152, 0, 0.5); background: linear-gradient(135deg, rgba(255, 152, 0, 0.2) 0%, rgba(255, 152, 0, 0.1) 100%); display: none;">
                     <span class="icon">⏸️</span>
                     <h3>Turno Cerrado</h3>
                     <p>No hay un turno abierto actualmente</p>
@@ -839,7 +838,7 @@
     
     <!-- Acciones rápidas -->
     <div class="logout-section">
-        <a href="{{ url_for('routes.logout_admin') }}" class="btn btn-danger" style="padding: 5px 30px; font-size: 1.1rem;">
+        <a href="{{ url_for('auth.logout_admin') }}" class="btn btn-danger" style="padding: 5px 30px; font-size: 1.1rem;">
             🔓 Cerrar Sesión
         </a>
     </div>

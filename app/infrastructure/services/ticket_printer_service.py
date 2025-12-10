@@ -835,6 +835,135 @@ class TicketPrinterService:
             logger.error(f"Error al enviar corte en macOS: {e}")
             return False
     
+    def generate_guardarropia_ticket(
+        self,
+        ticket_code: str,
+        customer_name: str,
+        customer_phone: str,
+        description: Optional[str] = None,
+        price: float = 500.0,
+        payment_type: str = "cash",
+        deposited_at: Optional[str] = None
+    ) -> Image.Image:
+        """
+        Genera imagen del ticket de guardarropía con código QR
+        
+        Args:
+            ticket_code: Código único del ticket
+            customer_name: Nombre del cliente
+            customer_phone: Teléfono del cliente
+            description: Descripción de la prenda (opcional)
+            price: Precio pagado
+            payment_type: Tipo de pago
+            deposited_at: Fecha de depósito
+            
+        Returns:
+            PIL Image del ticket
+        """
+        # Configuración para impresora térmica 80mm
+        width = 384
+        margin = 15
+        line_height = 22
+        font_size = 13
+        
+        # Calcular altura
+        header_height = 50
+        info_height = 120
+        qr_height = 180
+        footer_height = 40
+        total_height = header_height + info_height + qr_height + footer_height + (margin * 2) + 20
+        
+        img = Image.new('RGB', (width, total_height), 'white')
+        draw = ImageDraw.Draw(img)
+        
+        try:
+            font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", font_size)
+            font_bold = ImageFont.truetype("/System/Library/Fonts/Helvetica-Bold.ttc", font_size + 4)
+            font_small = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", font_size - 2)
+        except:
+            font = ImageFont.load_default()
+            font_bold = ImageFont.load_default()
+            font_small = ImageFont.load_default()
+        
+        y = margin
+        
+        # Encabezado
+        draw.text((width // 2, y), "BIMBA", fill='black', font=font_bold, anchor='mm')
+        y += line_height + 5
+        draw.text((width // 2, y), "GUARDARROPÍA", fill='black', font=font_bold, anchor='mm')
+        y += line_height + 15
+        
+        # Información del cliente
+        draw.text((margin, y), f"Cliente: {customer_name[:30]}", fill='black', font=font)
+        y += line_height
+        draw.text((margin, y), f"Teléfono: {customer_phone[:30]}", fill='black', font=font)
+        y += line_height
+        
+        if description:
+            draw.text((margin, y), f"Prenda: {description[:30]}", fill='black', font=font)
+            y += line_height
+        
+        # Línea separadora
+        y += 5
+        draw.line([(margin, y), (width - margin, y)], fill='black', width=1)
+        y += line_height + 5
+        
+        # Precio y pago
+        draw.text((margin, y), f"Precio: ${price:,.0f}", fill='black', font=font_bold)
+        y += line_height
+        payment_text = {
+            'cash': 'Efectivo',
+            'debit': 'Débito',
+            'credit': 'Crédito'
+        }.get(payment_type, payment_type)
+        draw.text((margin, y), f"Pago: {payment_text}", fill='black', font=font)
+        y += line_height + 10
+        
+        # Código QR
+        try:
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_H,
+                box_size=4,
+                border=2
+            )
+            qr.add_data(ticket_code)
+            qr.make(fit=True)
+            
+            qr_img = qr.make_image(fill_color="black", back_color="white")
+            qr_size = min(160, width - (margin * 2))
+            qr_img = qr_img.resize((qr_size, qr_size), Image.Resampling.LANCZOS)
+            
+            x_pos = (width - qr_size) // 2
+            img.paste(qr_img, (x_pos, y))
+            y += qr_size + 10
+            
+            # Código de ticket en grande
+            draw.text((width // 2, y), ticket_code, fill='black', font=font_bold, anchor='mm')
+            y += line_height + 5
+            
+            # Instrucciones
+            draw.text((width // 2, y), "Presente este código QR", fill='black', font=font_small, anchor='mm')
+            y += line_height - 5
+            draw.text((width // 2, y), "para retirar su prenda", fill='black', font=font_small, anchor='mm')
+            
+        except Exception as e:
+            logger.error(f"Error al generar QR: {e}")
+            # Si falla, solo mostrar el código
+            draw.text((width // 2, y), ticket_code, fill='black', font=font_bold, anchor='mm')
+        
+        # Fecha
+        if deposited_at:
+            try:
+                from datetime import datetime
+                dt = datetime.fromisoformat(deposited_at.replace('Z', '+00:00'))
+                date_str = dt.strftime('%d/%m/%Y %H:%M')
+            except:
+                date_str = deposited_at[:16]
+            draw.text((width // 2, y + line_height + 10), date_str, fill='black', font=font_small, anchor='mm')
+        
+        return img
+    
     def _send_cut_linux(self, command: bytes) -> bool:
         """Envía comando de corte en Linux"""
         try:

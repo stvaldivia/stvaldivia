@@ -67,7 +67,7 @@
     </div>
     {% endif %}
 
-    <form method="POST" action="{{ url_for('routes.seleccionar_barra') }}">
+    <form method="POST" action="{{ url_for('scanner.seleccionar_barra') }}">
         <div class="barra-buttons">
             {% for b in barras %}
                 <button class="barra-button" name="barra" value="{{ b }}" type="submit">{{ b }}</button>

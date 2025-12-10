@@ -51,6 +51,9 @@ from .inventory_stock_models import (
     Recipe, RecipeIngredient, InventoryMovement
 )
 
+# Importar modelos de guardarropía
+from .guardarropia_models import GuardarropiaItem
+
 __all__ = [
     'db', 
     'Pago', 'PagoItem',
@@ -68,6 +71,8 @@ __all__ = [
     'LegacyIngredient', 'ProductRecipe',
     # Nuevos modelos de inventario de stock
     'IngredientCategory', 'StockIngredient', 'IngredientStock',
-    'Recipe', 'RecipeIngredient', 'InventoryMovement'
+    'Recipe', 'RecipeIngredient', 'InventoryMovement',
+    # Modelos de guardarropía
+    'GuardarropiaItem'
 ]
 

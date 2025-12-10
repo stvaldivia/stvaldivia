@@ -12,6 +12,7 @@ from .survey_service import SurveyService
 from .stats_service import StatsService
 from .social_media_service import SocialMediaService
 from .inventory_service import InventoryService
+from .guardarropia_service import GuardarropiaService
 
 from app.infrastructure.repositories.shift_repository import JsonShiftRepository
 from app.infrastructure.repositories.delivery_repository import CsvDeliveryRepository
@@ -376,4 +377,32 @@ def create_inventory_service(
 def get_inventory_service() -> InventoryService:
     """Obtiene una instancia de InventoryService"""
     return create_inventory_service()
+
+
+def create_guardarropia_service(
+    repository=None,
+    shift_repository=None
+) -> GuardarropiaService:
+    """
+    Crea una instancia de GuardarropiaService con sus dependencias.
+    
+    Returns:
+        GuardarropiaService: Instancia configurada
+    """
+    if repository is None:
+        from app.infrastructure.repositories.sql_guardarropia_repository import SqlGuardarropiaRepository
+        repository = SqlGuardarropiaRepository()
+    
+    if shift_repository is None:
+        shift_repository = JsonShiftRepository()
+    
+    return GuardarropiaService(
+        repository=repository,
+        shift_repository=shift_repository
+    )
+
+
+def get_guardarropia_service() -> GuardarropiaService:
+    """Obtiene una instancia de GuardarropiaService"""
+    return create_guardarropia_service()
 

@@ -193,9 +193,9 @@ function updatePinDisplay() {
 
 {% block content %}
 <div class="pos-login-container">
-    <h1>💰 Sistema de Ventas BIMBA</h1>
+    <h1 style="font-size: 3rem; margin-bottom: 30px;">🧥 Guardarropía</h1>
     <p style="text-align: center; color: #aaa; margin-bottom: 30px; font-size: 1.1rem;">
-        ¡Bienvenido! Selecciona tu nombre para comenzar
+        Selecciona tu nombre para comenzar
     </p>
     
     {% if not request.form.get('employee_id') %}
@@ -218,7 +218,7 @@ function updatePinDisplay() {
     <p id="selected-employee" style="text-align: center; color: #aaa; margin: 20px 0;"></p>
     
     <div id="pin-section" style="display: none;">
-        <form method="POST" action="{{ url_for('caja.login') }}">
+        <form method="POST" action="{{ url_for('guardarropia.login') }}">
             <input type="hidden" name="employee_id" id="employee_id">
             
             <div class="pin-entry">

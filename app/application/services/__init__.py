@@ -5,6 +5,7 @@ from .delivery_service import DeliveryService
 from .survey_service import SurveyService
 from .stats_service import StatsService
 from .social_media_service import SocialMediaService
+from .guardarropia_service import GuardarropiaService
 
 __all__ = [
     'ShiftService',
@@ -12,6 +13,7 @@ __all__ = [
     'DeliveryService',
     'SurveyService',
     'StatsService',
-    'SocialMediaService'
+    'SocialMediaService',
+    'GuardarropiaService'
 ]
 

@@ -205,6 +205,14 @@ def create_app():
     # Obtener prefijo de URL de variables de entorno
     url_prefix = os.environ.get('APPLICATION_ROOT', '')
     
+    # Registrar blueprint de home (ruta raíz)
+    from .routes.home_routes import home_bp
+    app.register_blueprint(home_bp, url_prefix=url_prefix)
+    
+    # Registrar blueprint de autenticación
+    from .routes.auth_routes import auth_bp
+    app.register_blueprint(auth_bp, url_prefix=url_prefix)
+    
     # Registrar rutas
     from .routes import bp as routes_bp
     app.register_blueprint(routes_bp, url_prefix=url_prefix)
@@ -229,10 +237,29 @@ def create_app():
     else:
         app.register_blueprint(equipo_bp)
     
+    # Registrar blueprint de guardarropía
+    from .blueprints.guardarropia import guardarropia_bp
+    if url_prefix:
+        combined_prefix = f"{url_prefix}/admin/guardarropia" if not url_prefix.endswith('/') else f"{url_prefix}admin/guardarropia"
+        app.register_blueprint(guardarropia_bp, url_prefix=combined_prefix)
+    else:
+        app.register_blueprint(guardarropia_bp)
+    app.logger.info("✅ Blueprint de guardarropía registrado")
+    
     # Registrar blueprint de notificaciones
     from .blueprints.notifications import bp as notifications_bp
     app.register_blueprint(notifications_bp)
     app.logger.info("✅ Blueprint de notificaciones registrado")
+    
+    # Registrar blueprint de API
+    try:
+        from .routes.api_routes import api_bp
+        app.register_blueprint(api_bp, url_prefix=url_prefix)
+        app.logger.info("✅ Blueprint de API registrado")
+    except ImportError as e:
+        app.logger.warning(f"⚠️  No se pudo registrar el blueprint de API: {e}")
+    except Exception as e:
+        app.logger.error(f"❌ Error al registrar blueprint de API: {e}")
     
     # Registrar blueprint de Instagram webhooks
     try:

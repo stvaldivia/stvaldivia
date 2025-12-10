@@ -74,7 +74,7 @@
 <div class="login-container">
     <h2>🔐 Acceso Administrador</h2>
 
-    <form method="POST" action="{{ url_for('routes.login_admin') }}">
+    <form method="POST" action="{{ url_for('auth.login_admin') }}">
         <label for="username">Usuario:</label>
         <input type="text" name="username" id="username" required autofocus placeholder="Ingresa tu usuario"
             autocomplete="username">
