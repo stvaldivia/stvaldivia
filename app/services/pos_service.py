@@ -41,8 +41,8 @@ class PosService:
                     'category': p.category,
                     'category_normalized': p.category,
                     'category_display': p.category.upper() if p.category else 'GENERAL',
-                    'price': float(p.price),
-                    'cost_price': float(p.cost_price),
+                    'price': float(p.price) if p.price else 0.0,
+                    'cost_price': float(p.cost_price) if p.cost_price else 0.0,
                     'quantity': p.stock_quantity,
                     'is_kit': False, # Por ahora todo es producto simple
                     'description': '',
@@ -72,8 +72,8 @@ class PosService:
                 'item_id': str(p.id),
                 'name': p.name,
                 'category': p.category,
-                'price': float(p.price),
-                'cost_price': float(p.cost_price),
+                'price': float(p.price) if p.price else 0.0,
+                'cost_price': float(p.cost_price) if p.cost_price else 0.0,
                 'quantity': p.stock_quantity
             }
         except Exception as e:
@@ -146,12 +146,13 @@ class PosService:
             
             # Obtener turno actual para asociar fecha
             from app.application.services.service_factory import get_shift_service
+            from app.helpers.date_normalizer import normalize_shift_date
             shift_service = get_shift_service()
             shift_status = shift_service.get_current_shift_status()
             if shift_status.is_open:
-                sale.shift_date = shift_status.shift_date
+                sale.shift_date = normalize_shift_date(shift_status.shift_date) or shift_status.shift_date
             else:
-                sale.shift_date = datetime.now().strftime('%Y-%m-%d')
+                sale.shift_date = normalize_shift_date(datetime.now().strftime('%Y-%m-%d')) or datetime.now().strftime('%Y-%m-%d')
 
             db.session.add(sale)
             db.session.flush() # Para obtener ID
@@ -170,10 +171,13 @@ class PosService:
             else:
                 barra_name = 'Barra Principal'
 
+            # CORRECCIÓN: Usar Decimal para cálculos financieros
+            from app.helpers.financial_utils import to_decimal, round_currency
+            
             for item in items:
                 item_id = item.get('item_id')
-                quantity = float(item.get('quantity', 1))
-                price = float(item.get('price', 0))
+                quantity = float(to_decimal(item.get('quantity', 1)))
+                price = float(to_decimal(item.get('price', 0)))
                 
                 # Buscar producto para obtener nombre correcto
                 product = Product.query.get(int(item_id))
@@ -285,26 +289,15 @@ class PosService:
     
     def calculate_total(self, items: List[Dict[str, Any]]) -> float:
         """
-        Calcula el total de los items
+        Calcula el total de los items usando Decimal para precisión financiera
         
         Args:
             items: Lista de items con 'quantity' y 'price'
             
         Returns:
-            Total calculado
+            Total calculado (redondeado a 2 decimales)
         """
-        total = 0.0
-        for item in items:
-            try:
-                quantity = float(item.get('quantity', 1))
-                price = float(item.get('price', 0))
-                total += quantity * price
-            except (ValueError, TypeError):
-                # Si hay error al convertir, usar subtotal si existe
-                try:
-                    subtotal = float(item.get('subtotal', 0))
-                    total += subtotal
-                except (ValueError, TypeError):
-                    continue
-        return round(total, 2)
+        # CORRECCIÓN: Usar Decimal para cálculos financieros precisos
+        from app.helpers.financial_utils import calculate_total as calculate_total_decimal
+        return calculate_total_decimal(items)
 

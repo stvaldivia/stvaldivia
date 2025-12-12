@@ -81,9 +81,10 @@ def authenticate_employee_local(employee_id, pin):
             logger.warning(f"⚠️ Empleado {employee_id} ({employee.name}) no tiene PIN configurado")
             return None
         
-        # Comparar PINs como strings, sin espacios
-        stored_pin = str(employee.pin).strip()
-        provided_pin = str(pin).strip()
+        # Comparar PINs como strings, normalizados (sin espacios, mayúsculas)
+        # CORRECCIÓN: Normalizar para evitar problemas de case-sensitivity y espacios
+        stored_pin = str(employee.pin).strip().upper()
+        provided_pin = str(pin).strip().upper()
         
         logger.info(f"🔍 Verificando PIN para empleado {employee_id} ({employee.name}): almacenado='{stored_pin}', proporcionado='{provided_pin}'")
         

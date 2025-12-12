@@ -20,6 +20,7 @@ from app.helpers.sos_drawer_helper import (
 from app import socketio
 import uuid
 import os
+from app.helpers.financial_utils import to_decimal, round_currency, safe_float
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +142,11 @@ def register():
                     ).all()
                     
                     previous_sales_count = len(previous_sales)
-                    previous_sales_total = sum(float(sale.total_amount) for sale in previous_sales) if previous_sales else 0.0
+                    # CORRECCIÓN: Usar Decimal para suma de montos
+                    from app.helpers.financial_utils import to_decimal, round_currency
+                    previous_sales_total = round_currency(
+                        sum(to_decimal(sale.total_amount or 0) for sale in previous_sales)
+                    ) if previous_sales else 0.0
                     
                     # Verificar si hay ventas de otro cajero
                     if previous_sales:
@@ -417,18 +422,19 @@ def api_close_register():
             'shift_date': summary.get('shift_date'),
             'opened_at': opened_at,  # Ahora es el momento en que el trabajador abrió esta caja
             'closed_at': datetime.now(CHILE_TZ).replace(tzinfo=None),
-            'expected_cash': float(expected_cash),
-            'actual_cash': float(actual_cash),
-            'diff_cash': float(diff_cash),
-            'expected_debit': float(expected_debit),
-            'actual_debit': float(actual_debit),
-            'diff_debit': float(diff_debit),
-            'expected_credit': float(expected_credit),
-            'actual_credit': float(actual_credit),
-            'diff_credit': float(diff_credit),
+            'expected_cash': safe_float(expected_cash),
+            'actual_cash': safe_float(actual_cash),
+            'diff_cash': safe_float(diff_cash),
+            'expected_debit': safe_float(expected_debit),
+            'actual_debit': safe_float(actual_debit),
+            'diff_debit': safe_float(diff_debit),
+            'expected_credit': safe_float(expected_credit),
+            'actual_credit': safe_float(actual_credit),
+            'diff_credit': safe_float(diff_credit),
             'total_sales': int(summary.get('total_sales', 0)),
-            'total_amount': float(summary.get('total_amount', 0)),
-            'difference_total': float(difference),  # Asegurar que sea float explícitamente
+            # CORRECCIÓN: Usar Decimal para montos financieros
+            'total_amount': safe_float(summary.get('total_amount', 0)),
+            'difference_total': safe_float(difference),  # Usar Decimal para precisión
             'notes': notes
         }
         

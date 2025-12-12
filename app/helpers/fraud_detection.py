@@ -45,11 +45,16 @@ def load_fraud_attempts():
 
 def count_delivery_attempts(sale_id):
     """Cuenta cuántas veces se ha intentado entregar un ticket (incluyendo entregas exitosas y autorizadas)"""
+    # CORRECCIÓN: Validar que sale_id no sea None o vacío
+    if not sale_id:
+        current_app.logger.warning("count_delivery_attempts llamado con sale_id vacío")
+        return 0
+    
     try:
         count = Delivery.query.filter_by(sale_id=str(sale_id)).count()
         return count
     except Exception as e:
-        current_app.logger.error(f"Error al contar entregas desde BD: {e}")
+        current_app.logger.error(f"Error al contar entregas desde BD para sale_id={sale_id}: {e}", exc_info=True)
         return 0
 
 

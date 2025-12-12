@@ -61,7 +61,9 @@ class InventoryService:
             if not shift_status.is_open:
                 return False, "No hay un turno abierto. Abre un turno primero."
             
-            shift_date = shift_status.shift_date
+            from app.helpers.date_normalizer import normalize_shift_date
+            shift_date_raw = shift_status.shift_date
+            shift_date = normalize_shift_date(shift_date_raw) or shift_date_raw
             
             # Obtener o crear inventario del turno
             shift_inventory = self.inventory_repository.get_shift_inventory(shift_date)
@@ -142,7 +144,9 @@ class InventoryService:
             if not shift_status.is_open:
                 return False, "No hay un turno abierto."
             
-            shift_date = shift_status.shift_date
+            from app.helpers.date_normalizer import normalize_shift_date
+            shift_date_raw = shift_status.shift_date
+            shift_date = normalize_shift_date(shift_date_raw) or shift_date_raw
             
             # Obtener inventario del turno
             shift_inventory = self.inventory_repository.get_shift_inventory(shift_date)

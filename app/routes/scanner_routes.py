@@ -253,36 +253,79 @@ def entregar():
         current_app.logger.warning(f"Error al obtener info de venta para validación: {e}")
     
     # Validar cantidad pendiente si tenemos info de la venta
+    # CORRECCIÓN: Sumar todas las cantidades del mismo item (puede haber múltiples items con mismo nombre)
     if venta_info and 'error' not in venta_info:
         items = venta_info.get('items', [])
-        for item in items:
-            item_name_from_api = item.get('name', '') if isinstance(item, dict) else getattr(item, 'name', '')
-            item_qty = item.get('quantity', 0) if isinstance(item, dict) else getattr(item, 'quantity', 0)
+        # Sumar todas las cantidades de items con el mismo nombre
+        total_item_qty = sum(
+            item.get('quantity', 0) if isinstance(item, dict) else getattr(item, 'quantity', 0)
+            for item in items
+            if (item.get('name', '') if isinstance(item, dict) else getattr(item, 'name', '')) == item_name
+        )
+        
+        if total_item_qty > 0:
+            # CORRECCIÓN: Usar transacción atómica con lock para prevenir race conditions
+            from app.models import db
+            from app.models.delivery_models import Delivery as DeliveryModel
+            from sqlalchemy import select
             
-            if item_name_from_api == item_name:
-                # Contar entregas existentes de este item
-                existing_deliveries = delivery_service.delivery_repository.find_by_sale_id(sale_id)
-                delivered = sum(d.qty for d in existing_deliveries if d.item_name == item_name)
-                pending = item_qty - delivered
-                
-                if qty > pending:
-                    flash(f"No se puede entregar {qty} unidades. Solo hay {pending} pendientes.", "error")
-                    return redirect(url_for('scanner.scanner', sale_id=sale_id))
-                break
+            try:
+                with db.session.begin():
+                    # Obtener entregas existentes con lock para prevenir race conditions
+                    existing_deliveries_locked = db.session.execute(
+                        select(DeliveryModel)
+                        .where(DeliveryModel.sale_id == sale_id)
+                        .with_for_update()
+                    ).scalars().all()
+                    
+                    delivered = sum(d.qty for d in existing_deliveries_locked if d.item_name == item_name)
+                    pending = total_item_qty - delivered
+                    
+                    if qty > pending:
+                        db.session.rollback()
+                        flash(f"No se puede entregar {qty} unidades. Solo hay {pending} pendientes (de {total_item_qty} totales).", "error")
+                        return redirect(url_for('scanner.scanner', sale_id=sale_id))
+            except Exception as e:
+                current_app.logger.error(f"Error al validar cantidad pendiente: {e}", exc_info=True)
+                # Continuar sin validación estricta si hay error (fallback)
+                pass
     
     # Verificar autorización de fraudes previos
     fraud_check = delivery_service.fraud_service.detect_fraud(sale_id, sale_time)
     
     if fraud_check['is_fraud']:
-        # Verificar si hay autorización previa
-        fraud_attempts = load_fraud_attempts()
+        # CORRECCIÓN: Mejorar manejo de errores al cargar intentos de fraude
         is_authorized = False
+        try:
+            fraud_attempts = load_fraud_attempts()
+        except Exception as e:
+            current_app.logger.error(f"Error al cargar intentos de fraude para {sale_id}: {e}", exc_info=True)
+            fraud_attempts = []
         
+        # Verificar autorización previa con validación de timestamp
+        from datetime import datetime, timedelta
         for attempt in reversed(fraud_attempts):
             if len(attempt) >= 7 and attempt[0] == sale_id and attempt[6] == fraud_check['fraud_type']:
                 if attempt[7] == '1':  # Autorizado
-                    is_authorized = True
-                    break
+                    # CORRECCIÓN: Validar que la autorización sea reciente (última hora)
+                    try:
+                        # Intentar obtener timestamp de autorización (si está disponible)
+                        if len(attempt) > 8:
+                            auth_time_str = attempt[8] if isinstance(attempt[8], str) else str(attempt[8])
+                            try:
+                                auth_time = datetime.fromisoformat(auth_time_str)
+                                # Autorización válida solo por 1 hora
+                                if (datetime.now() - auth_time).total_seconds() < 3600:
+                                    is_authorized = True
+                                    break
+                            except (ValueError, TypeError):
+                                # Si no se puede parsear, asumir autorización antigua (no válida)
+                                pass
+                        else:
+                            # Si no hay timestamp, asumir autorización antigua (no válida)
+                            pass
+                    except Exception as e:
+                        current_app.logger.warning(f"Error al validar timestamp de autorización: {e}")
                 else:
                     break
         

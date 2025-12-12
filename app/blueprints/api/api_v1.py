@@ -1,0 +1,325 @@
+"""
+API V1 - Endpoints públicos y del bot
+"""
+from flask import Blueprint, jsonify, request, current_app
+from app.application.services.programacion_service import ProgramacionService
+from app.infrastructure.external.openai_client import OpenAIAPIClient
+from app.helpers.simple_rate_limiter import check_rate_limit
+
+api_v1 = Blueprint('api_v1', __name__, url_prefix='/api/v1')
+
+
+@api_v1.route('/public/evento/hoy', methods=['GET'])
+def public_evento_hoy():
+    """
+    Endpoint público: Obtiene información del evento de hoy
+    """
+    # Rate limiting: 120 requests / 5 minutos / IP
+    client_ip = request.remote_addr or 'unknown'
+    is_allowed, remaining = check_rate_limit(client_ip, max_requests=120, window_seconds=300)
+    if not is_allowed:
+        return jsonify({
+            "status": "error",
+            "error": "rate_limited",
+            "detalle": "Demasiadas solicitudes. Intenta más tarde."
+        }), 429
+    
+    try:
+        service = ProgramacionService()
+        evento_info = service.get_public_info_for_today()
+        
+        if not evento_info:
+            return jsonify({
+                "status": "no_event",
+                "evento": None
+            }), 200
+        
+        return jsonify({
+            "status": "ok",
+            "evento": evento_info
+        }), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"Error en /api/v1/public/evento/hoy: {e}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "detalle": "Error al obtener información del evento"
+        }), 500
+
+
+@api_v1.route('/public/eventos/proximos', methods=['GET'])
+def public_eventos_proximos():
+    """
+    Endpoint público: Obtiene lista de eventos próximos
+    """
+    # Rate limiting: 120 requests / 5 minutos / IP
+    client_ip = request.remote_addr or 'unknown'
+    is_allowed, remaining = check_rate_limit(client_ip, max_requests=120, window_seconds=300)
+    if not is_allowed:
+        return jsonify({
+            "status": "error",
+            "error": "rate_limited",
+            "detalle": "Demasiadas solicitudes. Intenta más tarde."
+        }), 429
+    
+    try:
+        limit = request.args.get('limit', type=int) or 10
+        
+        service = ProgramacionService()
+        eventos = service.get_upcoming_events(limit=limit)
+        
+        return jsonify({
+            "status": "ok",
+            "eventos": eventos
+        }), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"Error en /api/v1/public/eventos/proximos: {e}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "detalle": "Error al obtener eventos próximos"
+        }), 500
+
+
+@api_v1.route('/bot/responder', methods=['POST'])
+def bot_responder():
+    """
+    Endpoint del bot: Genera respuesta usando OpenAI basada en programación del día
+    """
+    # Rate limiting: 30 requests / 5 minutos / IP
+    client_ip = request.remote_addr or 'unknown'
+    is_allowed, remaining = check_rate_limit(client_ip, max_requests=30, window_seconds=300)
+    if not is_allowed:
+        return jsonify({
+            "status": "error",
+            "error": "rate_limited",
+            "detalle": "Demasiadas solicitudes. Intenta más tarde."
+        }), 429
+    
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({
+                "status": "error",
+                "detalle": "JSON requerido"
+            }), 400
+        
+        mensaje = data.get('mensaje', '').strip()
+        canal = data.get('canal', 'interno').strip()
+        
+        if not mensaje:
+            return jsonify({
+                "status": "error",
+                "detalle": "El campo 'mensaje' es requerido"
+            }), 400
+        
+        programacion_service = ProgramacionService()
+        evento_info = programacion_service.get_public_info_for_today()
+        
+        # Obtener datos operativos del día (contexto privado para el bot)
+        from app.application.services.operational_insights_service import OperationalInsightsService
+        operational = OperationalInsightsService.get_daily_summary()
+        
+        # CAPA 1: Intent Router - Detectar intención
+        from app.application.services.intent_router import IntentRouter
+        intent = IntentRouter.detectar_intent(mensaje)
+        
+        # CAPA 2: Bot Rule Engine - Intentar generar respuesta con reglas
+        from app.application.services.bot_rule_engine import BotRuleEngine
+        respuesta_rule_based = BotRuleEngine.generar_respuesta(intent, evento_info, operational)
+        
+        if respuesta_rule_based:
+            # Respuesta generada por reglas duras
+            return jsonify({
+                "status": "ok",
+                "respuesta": respuesta_rule_based,
+                "source": "rule_based",
+                "intent": intent,
+                "modelo": None,
+                "tokens": None
+            }), 200
+        
+        # CAPA 2 y 3: Si no hay match en reglas, usar OpenAI con contexto operativo
+        try:
+            from app.prompts.prompts_bimba import PROMPT_MAESTRO_BIMBA
+            
+            if evento_info:
+                import json
+                evento_str = json.dumps(evento_info, ensure_ascii=False, indent=2)
+            else:
+                evento_str = "null"
+            
+            # Formatear datos operativos para el prompt
+            if operational:
+                import json
+                operational_str = json.dumps(operational, ensure_ascii=False, indent=2)
+            else:
+                operational_str = "None"
+            
+            system_prompt = PROMPT_MAESTRO_BIMBA.format(
+                evento=evento_str,
+                operacional=operational_str
+            )
+        except ImportError:
+            current_app.logger.warning("PROMPT_MAESTRO_BIMBA no encontrado, usando prompt por defecto")
+            if evento_info:
+                evento_str = f"Evento de hoy: {evento_info.get('nombre_evento', 'N/A')}"
+            else:
+                evento_str = "No hay evento programado para hoy"
+            system_prompt = f"""Eres BimbaBot, asistente virtual de BIMBA discoteca.
+            
+            Información del evento: {evento_str}
+            
+            Responde de forma amigable y profesional."""
+        
+        # Intentar usar OpenAI, pero con fallback seguro
+        client = OpenAIAPIClient()
+        openai_client = client._get_client()
+        
+        if not openai_client:
+            # OpenAI no disponible - responder con mensaje genérico seguro
+            current_app.logger.warning("OpenAI no disponible, usando respuesta genérica segura")
+            respuesta_segura = "Hola! 💜 Soy BimbaBot, el asistente de BIMBA. "
+            if evento_info:
+                nombre_evento = evento_info.get('nombre_evento', '')
+                if nombre_evento:
+                    respuesta_segura += f"Hoy tenemos {nombre_evento}. "
+            respuesta_segura += "Para más información, revisa nuestras redes sociales o contáctanos directamente. ¡Nos vemos en la noche! 💜✨"
+            
+            return jsonify({
+                "status": "ok",
+                "respuesta": respuesta_segura,
+                "source": "fallback",
+                "intent": intent,
+                "modelo": None,
+                "tokens": None
+            }), 200
+        
+        formatted_messages = []
+        if system_prompt:
+            formatted_messages.append({
+                "role": "system",
+                "content": system_prompt
+            })
+        
+        formatted_messages.append({
+            "role": "user",
+            "content": mensaje
+        })
+        
+        try:
+            import openai
+            response = openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=formatted_messages,
+                temperature=0.7,
+                max_tokens=500
+            )
+            
+            if not response.choices or len(response.choices) == 0:
+                return jsonify({
+                    "status": "error",
+                    "detalle": "No se recibió respuesta de OpenAI"
+                }), 500
+            
+            respuesta_texto = response.choices[0].message.content.strip()
+            
+            tokens_info = {
+                "input": 0,
+                "output": 0,
+                "total": 0
+            }
+            
+            if response.usage:
+                tokens_info = {
+                    "input": response.usage.prompt_tokens,
+                    "output": response.usage.completion_tokens,
+                    "total": response.usage.total_tokens
+                }
+            
+        except openai.AuthenticationError as e:
+            current_app.logger.error(f"Error de autenticación en OpenAI: {e}")
+            # Fallback seguro en lugar de error
+            respuesta_segura = "Hola! 💜 Soy BimbaBot. "
+            if evento_info:
+                nombre_evento = evento_info.get('nombre_evento', '')
+                if nombre_evento:
+                    respuesta_segura += f"Hoy tenemos {nombre_evento}. "
+            respuesta_segura += "Para más información, revisa nuestras redes sociales. ¡Nos vemos! 💜✨"
+            return jsonify({
+                "status": "ok",
+                "respuesta": respuesta_segura,
+                "source": "fallback",
+                "intent": intent,
+                "modelo": None,
+                "tokens": None
+            }), 200
+        except openai.RateLimitError as e:
+            current_app.logger.error(f"Rate limit excedido en OpenAI: {e}")
+            # Fallback seguro
+            respuesta_segura = "Hola! 💜 Estoy recibiendo muchas consultas ahora. "
+            if evento_info:
+                nombre_evento = evento_info.get('nombre_evento', '')
+                if nombre_evento:
+                    respuesta_segura += f"Hoy tenemos {nombre_evento}. "
+            respuesta_segura += "Intenta más tarde o revisa nuestras redes. 💜✨"
+            return jsonify({
+                "status": "ok",
+                "respuesta": respuesta_segura,
+                "source": "fallback",
+                "intent": intent,
+                "modelo": None,
+                "tokens": None
+            }), 200
+        except openai.APIError as e:
+            current_app.logger.error(f"Error en API de OpenAI: {e}")
+            # Fallback seguro
+            respuesta_segura = "Hola! 💜 Soy BimbaBot. "
+            if evento_info:
+                nombre_evento = evento_info.get('nombre_evento', '')
+                if nombre_evento:
+                    respuesta_segura += f"Hoy tenemos {nombre_evento}. "
+            respuesta_segura += "Para más información, revisa nuestras redes sociales. 💜✨"
+            return jsonify({
+                "status": "ok",
+                "respuesta": respuesta_segura,
+                "source": "fallback",
+                "intent": intent,
+                "modelo": None,
+                "tokens": None
+            }), 200
+        except Exception as e:
+            current_app.logger.error(f"Error inesperado al generar respuesta: {e}", exc_info=True)
+            # Fallback seguro - NUNCA exponer stacktrace
+            respuesta_segura = "Hola! 💜 Soy BimbaBot, el asistente de BIMBA. "
+            if evento_info:
+                nombre_evento = evento_info.get('nombre_evento', '')
+                if nombre_evento:
+                    respuesta_segura += f"Hoy tenemos {nombre_evento}. "
+            respuesta_segura += "Para más información, revisa nuestras redes sociales o contáctanos directamente. ¡Nos vemos en la noche! 💜✨"
+            return jsonify({
+                "status": "ok",
+                "respuesta": respuesta_segura,
+                "source": "fallback",
+                "intent": intent,
+                "modelo": None,
+                "tokens": None
+            }), 200
+        
+        return jsonify({
+            "status": "ok",
+            "respuesta": respuesta_texto,
+            "source": "openai",
+            "intent": intent,
+            "modelo": "gpt-4o-mini",
+            "tokens": tokens_info
+        }), 200
+        
+    except Exception as e:
+        current_app.logger.error(f"Error en /api/v1/bot/responder: {e}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "detalle": str(e)
+        }), 500
+

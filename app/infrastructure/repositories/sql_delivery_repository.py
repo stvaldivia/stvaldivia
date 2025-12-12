@@ -17,31 +17,35 @@ class SqlDeliveryRepository(DeliveryRepository):
     """
     
     def save(self, delivery: DeliveryDomain) -> bool:
-        """Guarda una entrega en la base de datos"""
+        """Guarda una entrega en la base de datos con transacción atómica"""
         try:
             from datetime import datetime
+            from sqlalchemy import select
             
-            # Convertir timestamp string a DateTime
-            try:
-                timestamp_dt = datetime.strptime(delivery.timestamp, '%Y-%m-%d %H:%M:%S')
-            except (ValueError, TypeError):
-                timestamp_dt = datetime.utcnow()
+            # CORRECCIÓN: Usar transacción atómica para prevenir race conditions
+            with db.session.begin():
+                # Convertir timestamp string a DateTime
+                try:
+                    timestamp_dt = datetime.strptime(delivery.timestamp, '%Y-%m-%d %H:%M:%S')
+                except (ValueError, TypeError):
+                    timestamp_dt = datetime.utcnow()
+                
+                # Convertir dominio a modelo
+                delivery_model = Delivery(
+                    sale_id=delivery.sale_id,
+                    item_name=delivery.item_name,
+                    qty=delivery.qty,
+                    bartender=delivery.bartender,
+                    barra=delivery.barra,
+                    timestamp=timestamp_dt
+                )
+                
+                db.session.add(delivery_model)
+                # El commit se hace automáticamente al salir del bloque 'with'
             
-            # Convertir dominio a modelo
-            delivery_model = Delivery(
-                sale_id=delivery.sale_id,
-                item_name=delivery.item_name,
-                qty=delivery.qty,
-                bartender=delivery.bartender,
-                barra=delivery.barra,
-                timestamp=timestamp_dt
-            )
-            
-            db.session.add(delivery_model)
-            db.session.commit()
             return True
         except Exception as e:
-            current_app.logger.error(f"Error al guardar entrega: {e}")
+            current_app.logger.error(f"Error al guardar entrega: {e}", exc_info=True)
             db.session.rollback()
             return False
     
@@ -54,10 +58,26 @@ class SqlDeliveryRepository(DeliveryRepository):
             current_app.logger.error(f"Error al obtener entregas: {e}")
             return []
     
-    def find_by_sale_id(self, sale_id: str) -> List[DeliveryDomain]:
-        """Obtiene entregas de una venta específica"""
+    def find_by_sale_id(self, sale_id: str, with_lock: bool = False) -> List[DeliveryDomain]:
+        """Obtiene entregas de una venta específica
+        
+        Args:
+            sale_id: ID de la venta
+            with_lock: Si True, usa lock de fila para prevenir race conditions
+        """
         try:
-            deliveries = Delivery.query.filter_by(sale_id=sale_id).order_by(Delivery.timestamp.desc()).all()
+            if with_lock:
+                # CORRECCIÓN: Usar lock para prevenir race conditions en validaciones
+                from sqlalchemy import select
+                deliveries = db.session.execute(
+                    select(Delivery)
+                    .where(Delivery.sale_id == sale_id)
+                    .with_for_update()
+                    .order_by(Delivery.timestamp.desc())
+                ).scalars().all()
+            else:
+                deliveries = Delivery.query.filter_by(sale_id=sale_id).order_by(Delivery.timestamp.desc()).all()
+            
             return [self._model_to_domain(d) for d in deliveries]
         except Exception as e:
             current_app.logger.error(f"Error al obtener entregas por sale_id: {e}")

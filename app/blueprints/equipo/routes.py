@@ -1398,8 +1398,10 @@ def api_marcar_shift_pagado(shift_id):
                     'message': 'Este turno ya está marcado como pagado'
                 }), 400
             
-            # Validar monto antes de marcar como pagado
-            sueldo_turno = float(shift.sueldo_turno or 0)
+            # CORRECCIÓN: Usar Decimal para validación de monto
+            from app.helpers.financial_utils import to_decimal
+            sueldo_turno_decimal = to_decimal(shift.sueldo_turno)
+            sueldo_turno = float(sueldo_turno_decimal)
             if sueldo_turno <= 0:
                 return jsonify({
                     'success': False,
@@ -1412,6 +1414,15 @@ def api_marcar_shift_pagado(shift_id):
                 'fecha_pago': None,
                 'sueldo_turno': sueldo_turno
             })
+            
+            # CORRECCIÓN: Refrescar antes de marcar como pagado para verificar nuevamente
+            db.session.refresh(shift)
+            if shift.pagado:
+                db.session.rollback()
+                return jsonify({
+                    'success': False,
+                    'message': 'Este turno ya fue marcado como pagado por otro proceso'
+                }), 400
             
             # Marcar como pagado
             now_utc = datetime.now(CHILE_TZ).astimezone(pytz.UTC).replace(tzinfo=None)

@@ -19,6 +19,7 @@ from app.helpers.register_lock_db import is_register_locked, get_register_lock
 from app.infrastructure.external.phppos_kiosk_client import PHPPosKioskClient
 from app.application.services.service_factory import get_shift_service
 from app import socketio
+from app.helpers.financial_utils import to_decimal, round_currency, safe_float
 
 logger = logging.getLogger(__name__)
 
@@ -167,7 +168,7 @@ def sales():
     for item in cart:
         if 'subtotal' in item:
             try:
-                item['subtotal'] = float(item['subtotal'])
+                item['subtotal'] = safe_float(item.get('subtotal', 0))
             except (ValueError, TypeError):
                 item['subtotal'] = float(item.get('quantity', 1)) * float(item.get('price', 0))
     
@@ -566,10 +567,11 @@ def api_create_sale():
                 logger.warning(f"⚠️ No hay turno abierto para hoy ({fecha_hoy}) - la venta se guardará sin shift_date")
                 shift_date = None
             
-            # Calcular montos por método de pago
-            payment_cash = float(total) if payment_type_normalized == 'Efectivo' else 0.0
-            payment_debit = float(total) if payment_type_normalized == 'Débito' else 0.0
-            payment_credit = float(total) if payment_type_normalized == 'Crédito' else 0.0
+            # Calcular montos por método de pago usando Decimal
+            total_decimal = to_decimal(total)
+            payment_cash = round_currency(total_decimal) if payment_type_normalized == 'Efectivo' else 0.0
+            payment_debit = round_currency(total_decimal) if payment_type_normalized == 'Débito' else 0.0
+            payment_credit = round_currency(total_decimal) if payment_type_normalized == 'Crédito' else 0.0
             
             # Preparar items para la venta
             sale_items_data = []
@@ -578,14 +580,14 @@ def api_create_sale():
                     'product_id': str(item.get('item_id', '')),
                     'product_name': item.get('name', 'Producto'),
                     'quantity': int(item.get('quantity', 1)),
-                    'unit_price': float(item.get('price', 0)),
-                    'subtotal': float(item.get('subtotal', 0))
+                    'unit_price': safe_float(item.get('price', 0)),
+                    'subtotal': safe_float(item.get('subtotal', 0))
                 })
             
             # Crear venta local
             local_sale = PosSale(
                 sale_id_phppos=None,
-                total_amount=float(total),
+                total_amount=round_currency(to_decimal(total)),
                 payment_type=payment_type_normalized,
                 payment_cash=payment_cash,
                 payment_debit=payment_debit,
@@ -670,7 +672,7 @@ def api_create_sale():
             
             # Registrar auditoría
             sale_data_for_audit = {
-                'total_amount': float(total),
+                'total_amount': round_currency(to_decimal(total)),
                 'payment_type': payment_type_normalized,
                 'items': sale_items_data
             }
@@ -700,7 +702,7 @@ def api_create_sale():
                 # Preparar datos de venta para impresión
                 sale_data = {
                     'sale_id': local_sale_id,
-                    'total': float(total),
+                    'total': round_currency(to_decimal(total)),
                     'items': cart,
                     'payment_type': payment_type_normalized,
                     'register_name': session.get('pos_register_name', 'POS'),

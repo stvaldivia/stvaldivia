@@ -38,6 +38,13 @@ class JornadaService:
             Tuple[bool, str, Optional[Jornada]]: (éxito, mensaje, jornada)
         """
         try:
+            # Normalizar fecha antes de validar
+            from app.helpers.date_normalizer import normalize_shift_date
+            fecha_normalizada = normalize_shift_date(request.fecha_jornada)
+            if not fecha_normalizada:
+                return False, f"Formato de fecha inválido: {request.fecha_jornada}. Use YYYY-MM-DD.", None
+            request.fecha_jornada = fecha_normalizada
+            
             request.validate()
             
             # Verificar que no haya una jornada abierta para esta fecha
@@ -77,12 +84,15 @@ class JornadaService:
             # Crear nueva jornada
             import json
             
+            # horario_cierre_programado y fecha_cierre_programada son opcionales
+            # Se registrarán automáticamente cuando se cierre el turno
             jornada = Jornada(
                 fecha_jornada=request.fecha_jornada,
+                fecha_cierre_programada=request.fecha_cierre_programada,  # Opcional
                 tipo_turno=request.tipo_turno,
                 nombre_fiesta=request.nombre_fiesta,
                 horario_apertura_programado=request.horario_apertura_programado,
-                horario_cierre_programado=request.horario_cierre_programado,
+                horario_cierre_programado=request.horario_cierre_programado,  # Opcional - se registrará al cerrar
                 djs=request.djs or '',
                 estado_apertura='preparando',
                 abierto_por=creado_por

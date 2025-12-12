@@ -11,6 +11,7 @@ from app.infrastructure.services.ticket_printer_service import TicketPrinterServ
 from app.helpers.pos_api import authenticate_employee, get_employees
 from app.helpers.rate_limiter import rate_limit
 from app.helpers.session_manager import update_session_activity, is_session_valid, init_session, clear_expired_session
+from app.helpers.financial_utils import to_decimal, round_currency
 
 logger = logging.getLogger(__name__)
 
@@ -166,7 +167,11 @@ def resumen():
                 
                 total_sales = len(sales_query)
                 if total_sales > 0:
-                    total_amount = sum(float(sale.total_amount) for sale in sales_query)
+                    # CORRECCIÓN: Usar Decimal para suma de montos
+                    from app.helpers.financial_utils import to_decimal, round_currency
+                    total_amount = round_currency(
+                        sum(to_decimal(sale.total_amount or 0) for sale in sales_query)
+                    )
                     total_cash = sum(float(sale.payment_cash) for sale in sales_query)
                     total_debit = sum(float(sale.payment_debit) for sale in sales_query)
                     total_credit = sum(float(sale.payment_credit) for sale in sales_query)
@@ -194,7 +199,7 @@ def resumen():
                     last_sales = [
                         {
                             'id': sale.sale_id_phppos or f"#{sale.id}",
-                            'total': float(sale.total_amount),
+                            'total': round_currency(to_decimal(sale.total_amount or 0)),
                             'created_at': sale.created_at.strftime('%H:%M:%S') if sale.created_at else 'N/A',
                             'employee_name': sale.employee_name,
                             'payment_type': sale.payment_type
