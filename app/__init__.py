@@ -171,6 +171,9 @@ def create_app():
     app.config['FLASK_ENV'] = os.environ.get('FLASK_ENV', 'development')
     app.config['FLASK_DEBUG'] = os.environ.get('FLASK_DEBUG', 'True').lower() == 'true'
     
+    # Cache-busting para CSS (actualizar cuando cambien estilos)
+    app.config['CSS_VERSION'] = os.environ.get('CSS_VERSION', '20250115-01')
+    
     # Configuración de zona horaria
     app.config['TIMEZONE'] = 'America/Santiago'
     app.config['CHILE_TZ'] = CHILE_TZ

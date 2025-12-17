@@ -39,32 +39,37 @@
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/bimba-logo.png') }}">
 
+    {# Cache-busting para CSS - Versión estable para producción #}
+    {% set CSS_VERSION = current_app.config.get('CSS_VERSION', '20250115-01') if current_app else '20250115-01' %}
+    
+    <!-- CSS BASE (carga primero) -->
     <!-- Sistema de Diseño (Design System) -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/design-system.css') }}">
-    <!-- Sistema Responsive Base (Mobile-First) -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive-base.css') }}">
-    <!-- Tablas Responsive -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/tables-responsive.css') }}">
-    <!-- Estilos principales -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/design-system.css') }}?v={{ CSS_VERSION }}">
     <!-- Utilidades profesionales -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/utilities.css') }}">
-    <!-- Formularios mejorados -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/forms-enhanced.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/utilities.css') }}?v={{ CSS_VERSION }}">
+    <!-- Estilos principales -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}?v={{ CSS_VERSION }}">
     <!-- Progress Bars y Toast Notifications -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/progress-toast.css') }}">
-    <!-- Estilo estandarizado para páginas admin (basado en /encuesta/admin) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/progress-toast.css') }}?v={{ CSS_VERSION }}">
+    
+    <!-- CSS RESPONSIVE (carga después para override) -->
+    <!-- Sistema Responsive Base (Mobile-First) - DEBE cargar después de main.css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive-base.css') }}?v={{ CSS_VERSION }}">
+    <!-- Tablas Responsive -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tables-responsive.css') }}?v={{ CSS_VERSION }}">
+    <!-- Formularios mejorados -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/forms-enhanced.css') }}?v={{ CSS_VERSION }}">
+    
+    <!-- CSS CONDICIONAL (admin) -->
     {% if session.get('admin_logged_in') %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-standard.css') }}">
+    <!-- Estilo estandarizado para páginas admin (basado en /encuesta/admin) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin-standard.css') }}?v={{ CSS_VERSION }}">
+    <!-- Sistema de Notificaciones -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/notifications.css') }}?v={{ CSS_VERSION }}">
     {% endif %}
     
     <!-- CSRF Token Meta Tag para JavaScript -->
     <meta name="csrf-token" content="{{ csrf_token() }}">
-
-    <!-- Sistema de Notificaciones -->
-    {% if session.get('admin_logged_in') %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/notifications.css') }}">
-    {% endif %}
 
     {% block head_extra %}{% endblock %}
     

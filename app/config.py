@@ -47,6 +47,9 @@ class Config:
     RATE_LIMIT_MAX_ATTEMPTS: int = 5
     RATE_LIMIT_LOCKOUT_DURATION: int = 900  # 15 minutos
     
+    # Cache-busting para CSS (actualizar cuando cambien estilos)
+    CSS_VERSION: str = os.environ.get('CSS_VERSION', '20250115-01')
+    
     # Configuración de OpenAI para Agente de Redes Sociales
     OPENAI_API_KEY: Optional[str] = os.environ.get('OPENAI_API_KEY')
     OPENAI_ORGANIZATION_ID: Optional[str] = os.environ.get('OPENAI_ORGANIZATION_ID')
