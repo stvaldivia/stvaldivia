@@ -847,6 +847,13 @@
     </script>
 
     <!-- Scripts cargados al final para no bloquear el renderizado -->
+    <!-- Error Capture Mode (solo en desarrollo) -->
+    {% if not config.get('FLASK_ENV') == 'production' or config.get('DEBUG_ERRORS') %}
+    <script>
+        window.DEBUG_ERRORS = true;
+    </script>
+    <script src="{{ url_for('static', filename='js/error_capture.js') }}"></script>
+    {% endif %}
     <!-- SocketIO (self-hosted) -->
     <script src="{{ url_for('static', filename='vendor/socket.io.min.js') }}" defer></script>
     <!-- Chart.js para gráficos (self-hosted) -->

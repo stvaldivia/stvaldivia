@@ -1042,4 +1042,14 @@ def create_app():
     from app.helpers.security_headers import setup_security_headers
     setup_security_headers(app)  # CORRECCIÓN: Aplicar headers de seguridad
 
+    # Registrar blueprint de debug (solo en desarrollo o con DEBUG_ERRORS=1)
+    try:
+        from app.routes.debug_routes import debug_bp
+        app.register_blueprint(debug_bp)
+        app.logger.info("✅ Blueprint de debug registrado")
+    except ImportError as e:
+        app.logger.warning(f"⚠️  No se pudo registrar el blueprint de debug: {e}")
+    except Exception as e:
+        app.logger.error(f"❌ Error al registrar blueprint de debug: {e}")
+
     return app# Version bump Sun Dec  7 02:37:54 -03 2025
