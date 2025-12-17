@@ -8,11 +8,13 @@
    ============================================ */
 .table-responsive-wrapper {
   width: 100%;
+  max-width: 100%;
   overflow-x: auto;
   overflow-y: visible;
   -webkit-overflow-scrolling: touch;
   margin: var(--spacing-md, 1rem) 0;
   border-radius: 8px;
+  /* Scroll controlado SOLO dentro del componente, NO en body */
   /* Scrollbar styling */
   scrollbar-width: thin;
   scrollbar-color: rgba(102, 126, 234, 0.5) transparent;

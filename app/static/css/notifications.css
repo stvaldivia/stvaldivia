@@ -76,8 +76,8 @@
     position: fixed;
     top: 60px;
     right: 20px;
-    width: 400px;
-    max-width: calc(100vw - 40px);
+    width: auto;
+    max-width: min(400px, calc(100% - 40px));
     max-height: calc(100vh - 100px);
     background: white;
     border-radius: 12px;
@@ -278,8 +278,8 @@
     position: fixed;
     top: 20px;
     right: 20px;
-    width: 360px;
-    max-width: calc(100vw - 40px);
+    width: auto;
+    max-width: min(360px, calc(100% - 40px));
     background: white;
     border-radius: 8px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
