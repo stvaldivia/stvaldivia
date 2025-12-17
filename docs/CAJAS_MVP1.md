@@ -9,6 +9,7 @@
 ## 📋 CHECKLIST DE IMPLEMENTACIÓN
 
 ### ✅ Modelos y Migración
+- [x] Migración unificada creada: `migrations/2025_01_15_bimba_cajas_mvp1_paymentstack.sql` (idempotente)
 - [x] Agregados campos nuevos a `PosRegister`:
   - `register_type` (TOTEM/HUMANA/OFICINA/VIRTUAL)
   - `devices` (JSON text)
@@ -372,6 +373,31 @@ Ver `docs/PAGOS_BIMBA.md` para:
 - Checklists de inicio/cierre
 - Requisitos KLAP
 - Contactos de soporte
+
+---
+
+## 📊 ASOCIACIÓN VENTAS-SESIONES
+
+### Nota Importante: PosSale NO tiene register_session_id
+
+**Asociación actual:**
+- `PosSale` se asocia a `RegisterSession` por:
+  - `register_id` (ID de la caja)
+  - `shift_date` (fecha del turno)
+  - Ventana temporal: `created_at >= opened_at` (ventas desde apertura de sesión)
+
+**Cálculo en `close_session`:**
+- `payment_totals`: Suma de `payment_cash`, `payment_debit`, `payment_credit` desde ventas
+- `ticket_count`: Conteo de ventas (excluyendo canceladas y no_revenue)
+- `cash_difference`: `cash_counted - (initial_cash + payment_totals['cash'])`
+
+**Filtros aplicados:**
+- `is_cancelled == False`
+- `no_revenue == False`
+- `created_at >= opened_at` (ventana temporal de la sesión)
+
+**Decisión de diseño:**
+Esta aproximación permite calcular totales por sesión sin requerir FK explícita, manteniendo compatibilidad con el modelo existente.
 
 ---
 

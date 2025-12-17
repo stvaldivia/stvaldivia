@@ -215,14 +215,40 @@ def create_register():
             # Procesar fallback_policy (construir desde campos del formulario)
             fallback_enabled = request.form.get('fallback_enabled') == 'on'
             max_switch_time = int(request.form.get('max_switch_time', 60))
-            backup_devices_required = int(request.form.get('backup_devices_required', 2))
+            backup_devices_required_raw = request.form.get('backup_devices_required', '2')
+            
+            # Defaults por tipo de caja
+            if register_type == 'TOTEM':
+                default_backup_devices = 2
+                fallback_operational_mode = 'manual'  # No integrado aún
+            elif register_type == 'HUMANA':
+                default_backup_devices = 2
+                fallback_operational_mode = 'automatic'
+            elif register_type == 'OFICINA':
+                default_backup_devices = 1  # Menor flujo
+                fallback_operational_mode = 'automatic'
+            elif register_type == 'VIRTUAL':
+                default_backup_devices = 0  # No aplica
+                fallback_operational_mode = 'not_applicable'
+            else:
+                default_backup_devices = 2
+                fallback_operational_mode = 'automatic'
+            
+            backup_devices_required = int(backup_devices_required_raw) if backup_devices_required_raw else default_backup_devices
+            
+            # Validación: VIRTUAL no debe tener backup
+            if register_type == 'VIRTUAL' and payment_provider_backup:
+                flash('Las cajas VIRTUAL no deben tener provider backup. Integración real en fase posterior.', 'warning')
+                payment_provider_backup = None
+                fallback_enabled = False
             
             # Construir fallback_policy JSON
             fallback_policy_dict = {
                 'enabled': fallback_enabled,
                 'trigger_events': ['pos_offline', 'pos_error', 'printer_error_optional'],
                 'max_switch_time_seconds': max_switch_time,
-                'backup_devices_required': backup_devices_required
+                'backup_devices_required': backup_devices_required,
+                'operational_mode': fallback_operational_mode
             }
             fallback_policy_json = json.dumps(fallback_policy_dict)
             
@@ -436,14 +462,40 @@ def edit_register(register_id):
             # Procesar fallback_policy (construir desde campos del formulario)
             fallback_enabled = request.form.get('fallback_enabled') == 'on'
             max_switch_time = int(request.form.get('max_switch_time', 60))
-            backup_devices_required = int(request.form.get('backup_devices_required', 2))
+            backup_devices_required_raw = request.form.get('backup_devices_required', '2')
+            
+            # Defaults por tipo de caja
+            if register_type == 'TOTEM':
+                default_backup_devices = 2
+                fallback_operational_mode = 'manual'  # No integrado aún
+            elif register_type == 'HUMANA':
+                default_backup_devices = 2
+                fallback_operational_mode = 'automatic'
+            elif register_type == 'OFICINA':
+                default_backup_devices = 1  # Menor flujo
+                fallback_operational_mode = 'automatic'
+            elif register_type == 'VIRTUAL':
+                default_backup_devices = 0  # No aplica
+                fallback_operational_mode = 'not_applicable'
+            else:
+                default_backup_devices = 2
+                fallback_operational_mode = 'automatic'
+            
+            backup_devices_required = int(backup_devices_required_raw) if backup_devices_required_raw else default_backup_devices
+            
+            # Validación: VIRTUAL no debe tener backup
+            if register_type == 'VIRTUAL' and payment_provider_backup:
+                flash('Las cajas VIRTUAL no deben tener provider backup. Integración real en fase posterior.', 'warning')
+                payment_provider_backup = None
+                fallback_enabled = False
             
             # Construir fallback_policy JSON
             fallback_policy_dict = {
                 'enabled': fallback_enabled,
                 'trigger_events': ['pos_offline', 'pos_error', 'printer_error_optional'],
                 'max_switch_time_seconds': max_switch_time,
-                'backup_devices_required': backup_devices_required
+                'backup_devices_required': backup_devices_required,
+                'operational_mode': fallback_operational_mode
             }
             fallback_policy_json = json.dumps(fallback_policy_dict)
             

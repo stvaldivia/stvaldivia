@@ -229,27 +229,49 @@ class RegisterSessionService:
             from app.models.pos_models import PosSale
             from sqlalchemy import func
             
-            # Obtener ventas de esta sesión (por register_id y shift_date)
-            sales_query = PosSale.query.filter_by(
-                register_id=register_session.register_id,
-                shift_date=register_session.shift_date
-            ).filter(
+            # NOTA: PosSale NO tiene register_session_id FK
+            # Asociación por register_id + shift_date + ventana temporal (opened_at..closed_at)
+            # Esto permite calcular totales de la sesión específica incluso si hay múltiples sesiones del mismo día
+            
+            # Construir query base con filtros
+            base_filter = db.session.query(PosSale).filter(
+                PosSale.register_id == register_session.register_id,
+                PosSale.shift_date == register_session.shift_date,
                 PosSale.is_cancelled == False,
                 PosSale.no_revenue == False
             )
+            
+            # Filtrar por ventana temporal de la sesión (opened_at hasta ahora)
+            # Esto asegura que solo contamos ventas de ESTA sesión específica
+            if register_session.opened_at:
+                opened_at_naive = register_session.opened_at
+                if opened_at_naive.tzinfo:
+                    opened_at_naive = opened_at_naive.replace(tzinfo=None)
+                base_filter = base_filter.filter(PosSale.created_at >= opened_at_naive)
+            
+            # Obtener ventas de esta sesión
+            sales_query = base_filter
             
             # Calcular totales por método de pago
             payment_totals_result = db.session.query(
                 func.sum(PosSale.payment_cash).label('cash'),
                 func.sum(PosSale.payment_debit).label('debit'),
                 func.sum(PosSale.payment_credit).label('credit')
-            ).filter_by(
-                register_id=register_session.register_id,
-                shift_date=register_session.shift_date
             ).filter(
+                PosSale.register_id == register_session.register_id,
+                PosSale.shift_date == register_session.shift_date,
                 PosSale.is_cancelled == False,
                 PosSale.no_revenue == False
-            ).first()
+            )
+            
+            # Aplicar ventana temporal también en agregación
+            if register_session.opened_at:
+                opened_at_naive = register_session.opened_at
+                if opened_at_naive.tzinfo:
+                    opened_at_naive = opened_at_naive.replace(tzinfo=None)
+                payment_totals_result = payment_totals_result.filter(PosSale.created_at >= opened_at_naive)
+            
+            payment_totals_result = payment_totals_result.first()
             
             payment_totals = {
                 'cash': float(payment_totals_result.cash or 0) if payment_totals_result else 0.0,
