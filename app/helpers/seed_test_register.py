@@ -75,7 +75,7 @@ def seed_test_register():
             
             db.session.commit()
             
-            return True, f"Caja de prueba actualizada: {test_register.name} (ID: {test_register.id})", test_register
+            return True, "updated", test_register
         
         else:
             # Crear nueva caja de prueba
@@ -105,7 +105,7 @@ def seed_test_register():
             
             logger.info(f"✅ Caja de prueba creada: {new_register.id}")
             
-            return True, f"Caja de prueba creada: {new_register.name} (ID: {new_register.id})", new_register
+            return True, "created", new_register
         
     except Exception as e:
         db.session.rollback()

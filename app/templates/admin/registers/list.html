@@ -180,7 +180,7 @@
             </a>
             <form method="POST" action="{{ url_for('register_admin.seed_test') }}" style="display: inline; margin: 0;" id="seed-test-form" onsubmit="return confirmSeedTest(event);">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                <button type="submit" class="btn-create" id="seed-test-btn" style="background: rgba(0, 230, 118, 0.3); border: 1px solid rgba(0, 230, 118, 0.5); color: #00e676;">
+                <button type="submit" class="btn-create" id="seed-test-btn" style="background: rgba(0, 230, 118, 0.3); border: 1px solid rgba(0, 230, 118, 0.5); color: #00e676; font-weight: bold;">
                     🧪 Crear/Actualizar Caja de Prueba
                 </button>
             </form>
