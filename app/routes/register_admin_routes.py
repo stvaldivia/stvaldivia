@@ -129,6 +129,64 @@ def create_register():
             if selected_categories:
                 allowed_categories_json = json.dumps(selected_categories)
             
+            # MVP1: Procesar nuevos campos
+            register_type = request.form.get('register_type', '').strip() or None
+            operational_status = request.form.get('operational_status', 'active').strip()
+            responsible_user_id = request.form.get('responsible_user_id', '').strip() or None
+            responsible_role = request.form.get('responsible_role', '').strip() or None
+            
+            # Validar register_type si se proporciona
+            if register_type and register_type not in ['TOTEM', 'HUMANA', 'OFICINA', 'VIRTUAL']:
+                flash(f'Tipo de caja inválido: {register_type}', 'error')
+                return render_template('admin/registers/form.html', register=None, available_categories=available_categories, available_printers=available_printers)
+            
+            # Procesar JSON fields con validación
+            devices_json = None
+            devices_raw = request.form.get('devices', '').strip()
+            if devices_raw:
+                try:
+                    devices_dict = json.loads(devices_raw)
+                    devices_json = json.dumps(devices_dict)
+                except json.JSONDecodeError:
+                    flash('Error: devices debe ser un JSON válido', 'error')
+                    return render_template('admin/registers/form.html', register=None, available_categories=available_categories, available_printers=available_printers)
+            
+            operation_mode_json = None
+            operation_mode_raw = request.form.get('operation_mode', '').strip()
+            if operation_mode_raw:
+                try:
+                    operation_mode_dict = json.loads(operation_mode_raw)
+                    operation_mode_json = json.dumps(operation_mode_dict)
+                except json.JSONDecodeError:
+                    flash('Error: operation_mode debe ser un JSON válido', 'error')
+                    return render_template('admin/registers/form.html', register=None, available_categories=available_categories, available_printers=available_printers)
+            
+            # Payment methods como JSON array
+            payment_methods_list = request.form.getlist('payment_methods')
+            payment_methods_json = None
+            if payment_methods_list:
+                payment_methods_json = json.dumps(payment_methods_list)
+            
+            fallback_config_json = None
+            fallback_config_raw = request.form.get('fallback_config', '').strip()
+            if fallback_config_raw:
+                try:
+                    fallback_config_dict = json.loads(fallback_config_raw)
+                    fallback_config_json = json.dumps(fallback_config_dict)
+                except json.JSONDecodeError:
+                    flash('Error: fallback_config debe ser un JSON válido', 'error')
+                    return render_template('admin/registers/form.html', register=None, available_categories=available_categories, available_printers=available_printers)
+            
+            fast_lane_config_json = None
+            fast_lane_config_raw = request.form.get('fast_lane_config', '').strip()
+            if fast_lane_config_raw:
+                try:
+                    fast_lane_config_dict = json.loads(fast_lane_config_raw)
+                    fast_lane_config_json = json.dumps(fast_lane_config_dict)
+                except json.JSONDecodeError:
+                    flash('Error: fast_lane_config debe ser un JSON válido', 'error')
+                    return render_template('admin/registers/form.html', register=None, available_categories=available_categories, available_printers=available_printers)
+            
             # Crear nuevo TPV
             new_register = PosRegister(
                 name=name,
@@ -142,6 +200,16 @@ def create_register():
                 printer_config=printer_config_json,
                 max_concurrent_sessions=max_concurrent_sessions,
                 requires_cash_count=requires_cash_count,
+                # MVP1: Campos nuevos
+                register_type=register_type,
+                devices=devices_json,
+                operation_mode=operation_mode_json,
+                payment_methods=payment_methods_json,
+                responsible_user_id=responsible_user_id,
+                responsible_role=responsible_role,
+                operational_status=operational_status,
+                fallback_config=fallback_config_json,
+                fast_lane_config=fast_lane_config_json,
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow()
             )
@@ -238,6 +306,64 @@ def edit_register(register_id):
                 flash(f'Error en configuración de impresora: {error_msg}', 'error')
                 return render_template('admin/registers/form.html', register=register, available_categories=available_categories, available_printers=available_printers)
             
+            # MVP1: Procesar nuevos campos
+            register_type = request.form.get('register_type', '').strip() or None
+            operational_status = request.form.get('operational_status', 'active').strip()
+            responsible_user_id = request.form.get('responsible_user_id', '').strip() or None
+            responsible_role = request.form.get('responsible_role', '').strip() or None
+            
+            # Validar register_type si se proporciona
+            if register_type and register_type not in ['TOTEM', 'HUMANA', 'OFICINA', 'VIRTUAL']:
+                flash(f'Tipo de caja inválido: {register_type}', 'error')
+                return render_template('admin/registers/form.html', register=register, available_categories=available_categories, available_printers=available_printers)
+            
+            # Procesar JSON fields con validación
+            devices_json = None
+            devices_raw = request.form.get('devices', '').strip()
+            if devices_raw:
+                try:
+                    devices_dict = json.loads(devices_raw)
+                    devices_json = json.dumps(devices_dict)
+                except json.JSONDecodeError:
+                    flash('Error: devices debe ser un JSON válido', 'error')
+                    return render_template('admin/registers/form.html', register=register, available_categories=available_categories, available_printers=available_printers)
+            
+            operation_mode_json = None
+            operation_mode_raw = request.form.get('operation_mode', '').strip()
+            if operation_mode_raw:
+                try:
+                    operation_mode_dict = json.loads(operation_mode_raw)
+                    operation_mode_json = json.dumps(operation_mode_dict)
+                except json.JSONDecodeError:
+                    flash('Error: operation_mode debe ser un JSON válido', 'error')
+                    return render_template('admin/registers/form.html', register=register, available_categories=available_categories, available_printers=available_printers)
+            
+            # Payment methods como JSON array
+            payment_methods_list = request.form.getlist('payment_methods')
+            payment_methods_json = None
+            if payment_methods_list:
+                payment_methods_json = json.dumps(payment_methods_list)
+            
+            fallback_config_json = None
+            fallback_config_raw = request.form.get('fallback_config', '').strip()
+            if fallback_config_raw:
+                try:
+                    fallback_config_dict = json.loads(fallback_config_raw)
+                    fallback_config_json = json.dumps(fallback_config_dict)
+                except json.JSONDecodeError:
+                    flash('Error: fallback_config debe ser un JSON válido', 'error')
+                    return render_template('admin/registers/form.html', register=register, available_categories=available_categories, available_printers=available_printers)
+            
+            fast_lane_config_json = None
+            fast_lane_config_raw = request.form.get('fast_lane_config', '').strip()
+            if fast_lane_config_raw:
+                try:
+                    fast_lane_config_dict = json.loads(fast_lane_config_raw)
+                    fast_lane_config_json = json.dumps(fast_lane_config_dict)
+                except json.JSONDecodeError:
+                    flash('Error: fast_lane_config debe ser un JSON válido', 'error')
+                    return render_template('admin/registers/form.html', register=register, available_categories=available_categories, available_printers=available_printers)
+            
             # Actualizar TPV
             register.name = name
             register.code = code
@@ -250,6 +376,16 @@ def edit_register(register_id):
             register.printer_config = printer_config_json
             register.max_concurrent_sessions = max_concurrent_sessions
             register.requires_cash_count = requires_cash_count
+            # MVP1: Campos nuevos
+            register.register_type = register_type
+            register.devices = devices_json
+            register.operation_mode = operation_mode_json
+            register.payment_methods = payment_methods_json
+            register.responsible_user_id = responsible_user_id
+            register.responsible_role = responsible_role
+            register.operational_status = operational_status
+            register.fallback_config = fallback_config_json
+            register.fast_lane_config = fast_lane_config_json
             register.updated_at = datetime.utcnow()
             
             db.session.commit()
@@ -279,7 +415,15 @@ def edit_register(register_id):
         except:
             selected_categories = []
     
-    return render_template('admin/registers/form.html', register=register, available_categories=available_categories, selected_categories=selected_categories, available_printers=available_printers)
+    # MVP1: Parsear payment_methods para el template
+    payment_methods_list = []
+    if register.payment_methods:
+        try:
+            payment_methods_list = json.loads(register.payment_methods)
+        except:
+            payment_methods_list = []
+    
+    return render_template('admin/registers/form.html', register=register, available_categories=available_categories, selected_categories=selected_categories, available_printers=available_printers, payment_methods_list=payment_methods_list)
 
 
 @register_admin_bp.route('/<int:register_id>/toggle', methods=['POST'])
@@ -378,3 +522,56 @@ def api_printers():
     except Exception as e:
         current_app.logger.error(f"Error en API impresoras: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@register_admin_bp.route('/reportes')
+def reportes():
+    """MVP1: Reportes básicos de cajas y sesiones"""
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('auth.login_admin'))
+    
+    try:
+        from app.models.pos_models import RegisterSession
+        from app.models.jornada_models import Jornada
+        from sqlalchemy import func, desc
+        
+        # Obtener todas las cajas
+        registers = PosRegister.query.order_by(PosRegister.name).all()
+        
+        # Obtener última sesión por caja
+        registers_data = []
+        for register in registers:
+            # Última sesión de esta caja
+            last_session = RegisterSession.query.filter_by(
+                register_id=str(register.id)
+            ).order_by(desc(RegisterSession.opened_at)).first()
+            
+            # Totales de ventas por método de pago (última sesión cerrada)
+            payment_totals = {'cash': 0.0, 'debit': 0.0, 'credit': 0.0}
+            ticket_count = 0
+            cash_difference = None
+            
+            if last_session and last_session.payment_totals:
+                try:
+                    payment_totals = json.loads(last_session.payment_totals)
+                except:
+                    pass
+            
+            if last_session:
+                ticket_count = last_session.ticket_count or 0
+                cash_difference = float(last_session.cash_difference) if last_session.cash_difference else None
+            
+            registers_data.append({
+                'register': register,
+                'last_session': last_session,
+                'payment_totals': payment_totals,
+                'ticket_count': ticket_count,
+                'cash_difference': cash_difference
+            })
+        
+        return render_template('admin/cajas/reportes.html', registers_data=registers_data)
+        
+    except Exception as e:
+        current_app.logger.error(f"Error al generar reportes: {e}", exc_info=True)
+        flash(f'Error al generar reportes: {str(e)}', 'error')
+        return redirect(url_for('register_admin.list_registers'))

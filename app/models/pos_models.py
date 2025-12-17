@@ -278,6 +278,17 @@ class PosRegister(db.Model):
     max_concurrent_sessions = db.Column(db.Integer, default=1, nullable=False)  # Sesiones simultáneas permitidas
     requires_cash_count = db.Column(db.Boolean, default=True, nullable=False)  # Requiere conteo de efectivo al abrir
     
+    # MVP1: Campos nuevos para configuración de cajas según plan BIMBA
+    register_type = db.Column(db.String(50), nullable=True, index=True)  # TOTEM, HUMANA, OFICINA, VIRTUAL
+    devices = db.Column(Text, nullable=True)  # JSON: dispositivos asociados (POS, impresora, gaveta)
+    operation_mode = db.Column(Text, nullable=True)  # JSON: modo de operación (venta normal, cortesía, precompra)
+    payment_methods = db.Column(Text, nullable=True)  # JSON array: métodos de pago habilitados
+    responsible_user_id = db.Column(db.String(50), nullable=True, index=True)  # Usuario responsable
+    responsible_role = db.Column(db.String(50), nullable=True)  # Rol del responsable
+    operational_status = db.Column(db.String(50), default='active', nullable=False, index=True)  # active, maintenance, offline, error
+    fallback_config = db.Column(Text, nullable=True)  # JSON: configuración de fallback
+    fast_lane_config = db.Column(Text, nullable=True)  # JSON: configuración de fast lane
+    
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
@@ -289,7 +300,7 @@ class PosRegister(db.Model):
         Index('idx_pos_registers_location', 'location'),
     )
     
-    # Tipos de TPV válidos
+    # Tipos de TPV válidos (legacy)
     TPV_TYPE_BARRA = 'barra'
     TPV_TYPE_PUERTA = 'puerta'
     TPV_TYPE_TERRAZA = 'terraza'
@@ -306,6 +317,32 @@ class PosRegister(db.Model):
         TPV_TYPE_VIP,
     ]
     
+    # MVP1: Tipos de caja según plan BIMBA
+    REGISTER_TYPE_TOTEM = 'TOTEM'
+    REGISTER_TYPE_HUMANA = 'HUMANA'
+    REGISTER_TYPE_OFICINA = 'OFICINA'
+    REGISTER_TYPE_VIRTUAL = 'VIRTUAL'
+    
+    REGISTER_TYPES = [
+        REGISTER_TYPE_TOTEM,
+        REGISTER_TYPE_HUMANA,
+        REGISTER_TYPE_OFICINA,
+        REGISTER_TYPE_VIRTUAL,
+    ]
+    
+    # Estados operativos
+    STATUS_ACTIVE = 'active'
+    STATUS_MAINTENANCE = 'maintenance'
+    STATUS_OFFLINE = 'offline'
+    STATUS_ERROR = 'error'
+    
+    OPERATIONAL_STATUSES = [
+        STATUS_ACTIVE,
+        STATUS_MAINTENANCE,
+        STATUS_OFFLINE,
+        STATUS_ERROR,
+    ]
+    
     def to_dict(self):
         """Convierte el modelo a diccionario"""
         printer_config_dict = None
@@ -314,6 +351,42 @@ class PosRegister(db.Model):
                 printer_config_dict = json.loads(self.printer_config)
             except:
                 printer_config_dict = None
+        
+        # Parsear JSON fields
+        devices_dict = None
+        if self.devices:
+            try:
+                devices_dict = json.loads(self.devices)
+            except:
+                devices_dict = None
+        
+        operation_mode_dict = None
+        if self.operation_mode:
+            try:
+                operation_mode_dict = json.loads(self.operation_mode)
+            except:
+                operation_mode_dict = None
+        
+        payment_methods_list = None
+        if self.payment_methods:
+            try:
+                payment_methods_list = json.loads(self.payment_methods)
+            except:
+                payment_methods_list = None
+        
+        fallback_config_dict = None
+        if self.fallback_config:
+            try:
+                fallback_config_dict = json.loads(self.fallback_config)
+            except:
+                fallback_config_dict = None
+        
+        fast_lane_config_dict = None
+        if self.fast_lane_config:
+            try:
+                fast_lane_config_dict = json.loads(self.fast_lane_config)
+            except:
+                fast_lane_config_dict = None
         
         return {
             'id': str(self.id),
@@ -328,6 +401,16 @@ class PosRegister(db.Model):
             'max_concurrent_sessions': self.max_concurrent_sessions,
             'requires_cash_count': self.requires_cash_count,
             'allowed_categories': json.loads(self.allowed_categories) if self.allowed_categories else None,
+            # MVP1: Campos nuevos
+            'register_type': self.register_type,
+            'devices': devices_dict,
+            'operation_mode': operation_mode_dict,
+            'payment_methods': payment_methods_list,
+            'responsible_user_id': self.responsible_user_id,
+            'responsible_role': self.responsible_role,
+            'operational_status': self.operational_status,
+            'fallback_config': fallback_config_dict,
+            'fast_lane_config': fast_lane_config_dict,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
@@ -391,6 +474,14 @@ class RegisterSession(db.Model):
     # Monto inicial (opcional)
     initial_cash = db.Column(Numeric(10, 2), nullable=True)
     
+    # MVP1: Campos nuevos para cierre con arqueo y totales
+    cash_count = db.Column(Text, nullable=True)  # JSON: conteo de efectivo por denominación
+    payment_totals = db.Column(Text, nullable=True)  # JSON: snapshot de totales por método de pago
+    ticket_count = db.Column(db.Integer, default=0, nullable=False)  # Contador de tickets emitidos
+    cash_difference = db.Column(Numeric(10, 2), nullable=True)  # Diferencia entre efectivo contado y esperado
+    incidents = db.Column(Text, nullable=True)  # JSON array: incidentes durante la sesión
+    close_notes = db.Column(Text, nullable=True)  # Notas del cierre
+    
     # Cierre
     closed_at = db.Column(db.DateTime, nullable=True)
     closed_by = db.Column(db.String(200), nullable=True)
@@ -414,6 +505,28 @@ class RegisterSession(db.Model):
     
     def to_dict(self):
         """Convierte el modelo a diccionario"""
+        # Parsear JSON fields
+        cash_count_dict = None
+        if self.cash_count:
+            try:
+                cash_count_dict = json.loads(self.cash_count)
+            except:
+                cash_count_dict = None
+        
+        payment_totals_dict = None
+        if self.payment_totals:
+            try:
+                payment_totals_dict = json.loads(self.payment_totals)
+            except:
+                payment_totals_dict = None
+        
+        incidents_list = None
+        if self.incidents:
+            try:
+                incidents_list = json.loads(self.incidents)
+            except:
+                incidents_list = None
+        
         return {
             'id': self.id,
             'register_id': self.register_id,
@@ -424,6 +537,13 @@ class RegisterSession(db.Model):
             'shift_date': self.shift_date,
             'jornada_id': self.jornada_id,
             'initial_cash': float(self.initial_cash) if self.initial_cash else None,
+            # MVP1: Campos nuevos
+            'cash_count': cash_count_dict,
+            'payment_totals': payment_totals_dict,
+            'ticket_count': self.ticket_count,
+            'cash_difference': float(self.cash_difference) if self.cash_difference else None,
+            'incidents': incidents_list,
+            'close_notes': self.close_notes,
             'closed_at': self.closed_at.isoformat() if self.closed_at else None,
             'closed_by': self.closed_by,
             'created_at': self.created_at.isoformat() if self.created_at else None,

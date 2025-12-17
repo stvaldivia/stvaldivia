@@ -237,7 +237,7 @@
             </div>
             
             <div class="form-group">
-                <label for="tpv_type">Tipo de TPV</label>
+                <label for="tpv_type">Tipo de TPV (Legacy)</label>
                 <select id="tpv_type" name="tpv_type" style="width: 100%; padding: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #e8e8e8; font-size: 1rem; box-sizing: border-box;">
                     <option value="">-- Seleccionar tipo --</option>
                     <option value="barra" {% if register and register.tpv_type == 'barra' %}selected{% endif %}>🍺 Barra</option>
@@ -247,7 +247,99 @@
                     <option value="movil" {% if register and register.tpv_type == 'movil' %}selected{% endif %}>📲 Móvil</option>
                     <option value="vip" {% if register and register.tpv_type == 'vip' %}selected{% endif %}>💎 VIP</option>
                 </select>
-                <div class="help-text">Tipo de terminal punto de venta</div>
+                <div class="help-text">Tipo de terminal punto de venta (legacy, usar register_type para nuevas cajas)</div>
+            </div>
+            
+            <!-- MVP1: Nueva sección de configuración de caja -->
+            <div class="form-group" style="margin-top: 30px; padding-top: 20px; border-top: 2px solid rgba(102, 126, 234, 0.3);">
+                <label style="font-size: 1.1rem; color: #667eea; margin-bottom: 15px; display: block;">
+                    ⚙️ Configuración de Caja (MVP1)
+                </label>
+                
+                <div class="form-group">
+                    <label for="register_type">Tipo de Caja *</label>
+                    <select id="register_type" name="register_type" required style="width: 100%; padding: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #e8e8e8; font-size: 1rem; box-sizing: border-box;">
+                        <option value="">-- Seleccionar tipo --</option>
+                        <option value="TOTEM" {% if register and register.register_type == 'TOTEM' %}selected{% endif %}>🤖 TOTEM (Autoatención)</option>
+                        <option value="HUMANA" {% if register and register.register_type == 'HUMANA' %}selected{% endif %}>👤 HUMANA (Cajero)</option>
+                        <option value="OFICINA" {% if register and register.register_type == 'OFICINA' %}selected{% endif %}>🏢 OFICINA (Cortesías)</option>
+                        <option value="VIRTUAL" {% if register and register.register_type == 'VIRTUAL' %}selected{% endif %}>💻 VIRTUAL (Precompra/QR)</option>
+                    </select>
+                    <div class="help-text">Tipo de caja según operación BIMBA</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="operational_status">Estado Operativo</label>
+                    <select id="operational_status" name="operational_status" style="width: 100%; padding: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #e8e8e8; font-size: 1rem; box-sizing: border-box;">
+                        <option value="active" {% if not register or register.operational_status == 'active' %}selected{% endif %}>✅ Activa</option>
+                        <option value="maintenance" {% if register and register.operational_status == 'maintenance' %}selected{% endif %}>🔧 Mantenimiento</option>
+                        <option value="offline" {% if register and register.operational_status == 'offline' %}selected{% endif %}>📴 Offline</option>
+                        <option value="error" {% if register and register.operational_status == 'error' %}selected{% endif %}>❌ Error</option>
+                    </select>
+                    <div class="help-text">Estado operativo de la caja</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="devices">Dispositivos (JSON)</label>
+                    <textarea id="devices" name="devices" rows="4" placeholder='{"pos": "modelo", "printer": "modelo", "drawer": true}' style="width: 100%; padding: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #e8e8e8; font-size: 0.9rem; font-family: monospace; box-sizing: border-box; resize: vertical;">{% if register and register.devices %}{{ register.devices }}{% endif %}</textarea>
+                    <div class="help-text">JSON con dispositivos asociados: POS, impresora, gaveta. Ej: {"pos": "GETNET-123", "printer": "Epson-TM20", "drawer": true}</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="operation_mode">Modo de Operación (JSON)</label>
+                    <textarea id="operation_mode" name="operation_mode" rows="3" placeholder='{"mode": "normal"}' style="width: 100%; padding: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #e8e8e8; font-size: 0.9rem; font-family: monospace; box-sizing: border-box; resize: vertical;">{% if register and register.operation_mode %}{{ register.operation_mode }}{% endif %}</textarea>
+                    <div class="help-text">JSON con modo de operación. Ej: {"mode": "normal"} o {"mode": "courtesy"} o {"mode": "prepurchase"}</div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Métodos de Pago Habilitados</label>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; padding: 15px; background: rgba(255, 255, 255, 0.02); border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.05);">
+                        {% if not payment_methods_list %}
+                            {% set payment_methods_list = [] %}
+                        {% endif %}
+                        <div class="checkbox-group" style="margin: 0;">
+                            <input type="checkbox" id="pm_cash" name="payment_methods" value="cash" {% if 'cash' in payment_methods_list %}checked{% endif %}>
+                            <label for="pm_cash" style="margin: 0; cursor: pointer;">💵 Efectivo</label>
+                        </div>
+                        <div class="checkbox-group" style="margin: 0;">
+                            <input type="checkbox" id="pm_debit" name="payment_methods" value="debit" {% if 'debit' in payment_methods_list %}checked{% endif %}>
+                            <label for="pm_debit" style="margin: 0; cursor: pointer;">💳 Débito</label>
+                        </div>
+                        <div class="checkbox-group" style="margin: 0;">
+                            <input type="checkbox" id="pm_credit" name="payment_methods" value="credit" {% if 'credit' in payment_methods_list %}checked{% endif %}>
+                            <label for="pm_credit" style="margin: 0; cursor: pointer;">💳 Crédito</label>
+                        </div>
+                        <div class="checkbox-group" style="margin: 0;">
+                            <input type="checkbox" id="pm_qr" name="payment_methods" value="qr" {% if 'qr' in payment_methods_list %}checked{% endif %}>
+                            <label for="pm_qr" style="margin: 0; cursor: pointer;">📱 QR</label>
+                        </div>
+                    </div>
+                    <div class="help-text">Selecciona los métodos de pago habilitados para esta caja</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="responsible_user_id">Usuario Responsable (ID)</label>
+                    <input type="text" id="responsible_user_id" name="responsible_user_id" value="{{ register.responsible_user_id if register else '' }}" placeholder="Ej: user123">
+                    <div class="help-text">ID del usuario responsable de esta caja</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="responsible_role">Rol del Responsable</label>
+                    <input type="text" id="responsible_role" name="responsible_role" value="{{ register.responsible_role if register else '' }}" placeholder="Ej: cajero, supervisor, admin">
+                    <div class="help-text">Rol del usuario responsable</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="fallback_config">Configuración de Fallback (JSON)</label>
+                    <textarea id="fallback_config" name="fallback_config" rows="3" placeholder='{"enabled": false}' style="width: 100%; padding: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #e8e8e8; font-size: 0.9rem; font-family: monospace; box-sizing: border-box; resize: vertical;">{% if register and register.fallback_config %}{{ register.fallback_config }}{% endif %}</textarea>
+                    <div class="help-text">JSON con configuración de fallback (MVP3)</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="fast_lane_config">Configuración de Fast Lane (JSON)</label>
+                    <textarea id="fast_lane_config" name="fast_lane_config" rows="3" placeholder='{"enabled": false}' style="width: 100%; padding: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #e8e8e8; font-size: 0.9rem; font-family: monospace; box-sizing: border-box; resize: vertical;">{% if register and register.fast_lane_config %}{{ register.fast_lane_config }}{% endif %}</textarea>
+                    <div class="help-text">JSON con configuración de fast lane (MVP3)</div>
+                </div>
             </div>
             
             <div class="form-group">

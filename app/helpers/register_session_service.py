@@ -11,6 +11,7 @@ from app.models.jornada_models import Jornada
 from app.helpers.timezone_utils import CHILE_TZ
 import hashlib
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -197,15 +198,21 @@ class RegisterSessionService:
     def close_session(
         register_session_id: int,
         closed_by: str,
-        employee_id: Optional[str] = None
+        employee_id: Optional[str] = None,
+        cash_count: Optional[Dict[str, Any]] = None,
+        close_notes: Optional[str] = None,
+        incidents: Optional[list] = None
     ) -> Tuple[bool, str]:
         """
-        Cierra una sesión (cambia a CLOSED)
+        Cierra una sesión (cambia a CLOSED) con arqueo y totales
         
         Args:
             register_session_id: ID de la sesión
             closed_by: Nombre de quien cierra
             employee_id: ID del empleado (opcional)
+            cash_count: Dict con conteo de efectivo por denominación (opcional)
+            close_notes: Notas del cierre (opcional)
+            incidents: Lista de incidentes durante la sesión (opcional)
             
         Returns:
             Tuple[bool, str]: (éxito, mensaje)
@@ -218,9 +225,71 @@ class RegisterSessionService:
             if register_session.status not in ['OPEN', 'PENDING_CLOSE']:
                 return False, f"La sesión no puede cerrarse (estado: {register_session.status})"
             
+            # MVP1: Calcular totales y diferencias antes de cerrar
+            from app.models.pos_models import PosSale
+            from sqlalchemy import func
+            
+            # Obtener ventas de esta sesión (por register_id y shift_date)
+            sales_query = PosSale.query.filter_by(
+                register_id=register_session.register_id,
+                shift_date=register_session.shift_date
+            ).filter(
+                PosSale.is_cancelled == False,
+                PosSale.no_revenue == False
+            )
+            
+            # Calcular totales por método de pago
+            payment_totals_result = db.session.query(
+                func.sum(PosSale.payment_cash).label('cash'),
+                func.sum(PosSale.payment_debit).label('debit'),
+                func.sum(PosSale.payment_credit).label('credit')
+            ).filter_by(
+                register_id=register_session.register_id,
+                shift_date=register_session.shift_date
+            ).filter(
+                PosSale.is_cancelled == False,
+                PosSale.no_revenue == False
+            ).first()
+            
+            payment_totals = {
+                'cash': float(payment_totals_result.cash or 0) if payment_totals_result else 0.0,
+                'debit': float(payment_totals_result.debit or 0) if payment_totals_result else 0.0,
+                'credit': float(payment_totals_result.credit or 0) if payment_totals_result else 0.0
+            }
+            
+            # Contar tickets (número de ventas)
+            ticket_count = sales_query.count()
+            
+            # Calcular diferencia de efectivo
+            cash_difference = None
+            if cash_count:
+                # Obtener total de efectivo contado
+                total_cash_counted = cash_count.get('total', 0.0)
+                if isinstance(total_cash_counted, (int, float)):
+                    # Calcular efectivo esperado: initial_cash + ventas en efectivo
+                    initial_cash_amount = float(register_session.initial_cash or 0)
+                    cash_from_sales = payment_totals['cash']
+                    expected_cash = initial_cash_amount + cash_from_sales
+                    
+                    # Diferencia = contado - esperado
+                    cash_difference = total_cash_counted - expected_cash
+            
+            # Guardar datos en la sesión
             register_session.status = 'CLOSED'
             register_session.closed_at = datetime.now(CHILE_TZ).replace(tzinfo=None)
             register_session.closed_by = closed_by
+            
+            # MVP1: Guardar campos nuevos
+            if cash_count:
+                register_session.cash_count = json.dumps(cash_count)
+            register_session.payment_totals = json.dumps(payment_totals)
+            register_session.ticket_count = ticket_count
+            if cash_difference is not None:
+                register_session.cash_difference = cash_difference
+            if incidents:
+                register_session.incidents = json.dumps(incidents)
+            if close_notes:
+                register_session.close_notes = close_notes
             
             db.session.commit()
             

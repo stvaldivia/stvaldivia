@@ -982,3 +982,202 @@ def api_authorize_sos_drawer():
     except Exception as e:
         logger.error(f"Error autorizar SOS: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# MVP1: Rutas para apertura/cierre de sesión con arqueo
+@caja_bp.route('/session/open', methods=['GET', 'POST'])
+def session_open():
+    """Abrir sesión de caja con fondo inicial"""
+    if not session.get('pos_logged_in') and not session.get('admin_logged_in'):
+        return redirect(url_for('auth.login_pos'))
+    
+    from app.models.pos_models import PosRegister
+    from app.models.jornada_models import Jornada
+    from app.helpers.shift_manager_compat import get_shift_status
+    
+    if request.method == 'POST':
+        try:
+            register_id = request.form.get('register_id', '').strip()
+            initial_cash_str = request.form.get('initial_cash', '').strip()
+            jornada_id_str = request.form.get('jornada_id', '').strip()
+            
+            if not register_id:
+                flash('Debe seleccionar una caja', 'error')
+                return redirect(url_for('caja.session_open'))
+            
+            # Validar que la caja existe
+            register = PosRegister.query.get(int(register_id))
+            if not register:
+                flash('Caja no encontrada', 'error')
+                return redirect(url_for('caja.session_open'))
+            
+            # Obtener jornada actual o la especificada
+            jornada_id = None
+            if jornada_id_str:
+                jornada_id = int(jornada_id_str)
+            else:
+                # Buscar jornada abierta
+                jornada_abierta = Jornada.query.filter_by(estado_apertura='abierto').order_by(
+                    Jornada.fecha_jornada.desc()
+                ).first()
+                if jornada_abierta:
+                    jornada_id = jornada_abierta.id
+            
+            if not jornada_id:
+                flash('No hay jornada abierta. Debe abrir una jornada primero.', 'error')
+                return redirect(url_for('caja.session_open'))
+            
+            # Parsear initial_cash
+            initial_cash = None
+            if initial_cash_str:
+                try:
+                    initial_cash = float(initial_cash_str)
+                except ValueError:
+                    flash('Monto inicial inválido', 'error')
+                    return redirect(url_for('caja.session_open'))
+            
+            # Obtener empleado de la sesión
+            employee_id = session.get('pos_employee_id') or session.get('admin_username', 'admin')
+            employee_name = session.get('pos_employee_name') or session.get('admin_username', 'Admin')
+            
+            # Abrir sesión
+            success, register_session, msg = RegisterSessionService.open_session(
+                register_id=register_id,
+                employee_id=str(employee_id),
+                employee_name=employee_name,
+                jornada_id=jornada_id,
+                initial_cash=initial_cash
+            )
+            
+            if success:
+                session['pos_register_id'] = register_id
+                session['pos_register_name'] = register.name
+                session['pos_register_session_id'] = register_session.id
+                flash(f'Sesión abierta correctamente. Fondo inicial: ${initial_cash:,.0f}' if initial_cash else 'Sesión abierta correctamente', 'success')
+                return redirect(url_for('caja.sales'))
+            else:
+                flash(f'Error al abrir sesión: {msg}', 'error')
+                return redirect(url_for('caja.session_open'))
+                
+        except Exception as e:
+            logger.error(f"Error al abrir sesión: {e}", exc_info=True)
+            flash(f'Error: {str(e)}', 'error')
+            return redirect(url_for('caja.session_open'))
+    
+    # GET: Mostrar formulario
+    registers = PosRegister.query.filter_by(is_active=True).order_by(PosRegister.name).all()
+    jornadas_abiertas = Jornada.query.filter_by(estado_apertura='abierto').order_by(
+        Jornada.fecha_jornada.desc()
+    ).all()
+    
+    return render_template('caja/session/open.html', registers=registers, jornadas_abiertas=jornadas_abiertas)
+
+
+@caja_bp.route('/session/close', methods=['GET', 'POST'])
+def session_close():
+    """Cerrar sesión de caja con arqueo"""
+    if not session.get('pos_logged_in') and not session.get('admin_logged_in'):
+        return redirect(url_for('auth.login_pos'))
+    
+    from app.models.pos_models import RegisterSession, PosRegister
+    
+    register_session_id = session.get('pos_register_session_id')
+    if not register_session_id:
+        flash('No hay sesión activa', 'error')
+        return redirect(url_for('caja.register'))
+    
+    register_session = RegisterSession.query.get(register_session_id)
+    if not register_session:
+        flash('Sesión no encontrada', 'error')
+        return redirect(url_for('caja.register'))
+    
+    if register_session.status != 'OPEN':
+        flash(f'La sesión ya está cerrada (estado: {register_session.status})', 'error')
+        return redirect(url_for('caja.register'))
+    
+    register = PosRegister.query.filter_by(code=register_session.register_id).first()
+    
+    if request.method == 'POST':
+        try:
+            # Obtener datos del formulario
+            cash_count_raw = request.form.get('cash_count', '').strip()
+            close_notes = request.form.get('close_notes', '').strip() or None
+            incidents_raw = request.form.get('incidents', '').strip()
+            
+            # Parsear cash_count (JSON)
+            cash_count = None
+            if cash_count_raw:
+                try:
+                    cash_count = json.loads(cash_count_raw)
+                except json.JSONDecodeError:
+                    flash('Error: cash_count debe ser un JSON válido', 'error')
+                    return redirect(url_for('caja.session_close'))
+            
+            # Parsear incidents (JSON array)
+            incidents = None
+            if incidents_raw:
+                try:
+                    incidents = json.loads(incidents_raw)
+                except json.JSONDecodeError:
+                    flash('Error: incidents debe ser un JSON válido', 'error')
+                    return redirect(url_for('caja.session_close'))
+            
+            # Obtener empleado
+            employee_id = session.get('pos_employee_id') or session.get('admin_username', 'admin')
+            employee_name = session.get('pos_employee_name') or session.get('admin_username', 'Admin')
+            
+            # Cerrar sesión
+            success, msg = RegisterSessionService.close_session(
+                register_session_id=register_session_id,
+                closed_by=employee_name,
+                employee_id=str(employee_id),
+                cash_count=cash_count,
+                close_notes=close_notes,
+                incidents=incidents
+            )
+            
+            if success:
+                # Limpiar sesión
+                session.pop('pos_register_id', None)
+                session.pop('pos_register_name', None)
+                session.pop('pos_register_session_id', None)
+                flash('Sesión cerrada correctamente', 'success')
+                return redirect(url_for('caja.register'))
+            else:
+                flash(f'Error al cerrar sesión: {msg}', 'error')
+                return redirect(url_for('caja.session_close'))
+                
+        except Exception as e:
+            logger.error(f"Error al cerrar sesión: {e}", exc_info=True)
+            flash(f'Error: {str(e)}', 'error')
+            return redirect(url_for('caja.session_close'))
+    
+    # GET: Mostrar formulario de cierre
+    # Obtener resumen de ventas para mostrar
+    from app.models.pos_models import PosSale
+    from sqlalchemy import func
+    
+    sales_summary = db.session.query(
+        func.count(PosSale.id).label('total_sales'),
+        func.sum(PosSale.payment_cash).label('total_cash'),
+        func.sum(PosSale.payment_debit).label('total_debit'),
+        func.sum(PosSale.payment_credit).label('total_credit')
+    ).filter_by(
+        register_id=register_session.register_id,
+        shift_date=register_session.shift_date
+    ).filter(
+        PosSale.is_cancelled == False,
+        PosSale.no_revenue == False
+    ).first()
+    
+    summary = {
+        'total_sales': sales_summary.total_sales or 0,
+        'total_cash': float(sales_summary.total_cash or 0),
+        'total_debit': float(sales_summary.total_debit or 0),
+        'total_credit': float(sales_summary.total_credit or 0),
+        'total_amount': float((sales_summary.total_cash or 0) + (sales_summary.total_debit or 0) + (sales_summary.total_credit or 0)),
+        'initial_cash': float(register_session.initial_cash or 0),
+        'expected_cash': float((register_session.initial_cash or 0) + (sales_summary.total_cash or 0))
+    }
+    
+    return render_template('caja/session/close.html', register_session=register_session, register=register, summary=summary)
