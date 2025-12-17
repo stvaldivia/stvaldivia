@@ -848,7 +848,7 @@
 
     <!-- Scripts cargados al final para no bloquear el renderizado -->
     <!-- Error Capture Mode (solo en desarrollo) -->
-    {% if not config.get('FLASK_ENV') == 'production' or config.get('DEBUG_ERRORS') %}
+    {% if not current_app.config.get('FLASK_ENV') == 'production' or current_app.config.get('DEBUG_ERRORS') %}
     <script>
         window.DEBUG_ERRORS = true;
     </script>
