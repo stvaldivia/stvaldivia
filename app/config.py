@@ -53,6 +53,12 @@ class Config:
     # GETNET Serial Integration (Windows COM ports)
     ENABLE_GETNET_SERIAL: bool = os.environ.get('ENABLE_GETNET_SERIAL', '0').lower() in ('1', 'true', 'yes')
     
+    # Payment Agent API Key (para autenticación del agente local)
+    AGENT_API_KEY: Optional[str] = os.environ.get('AGENT_API_KEY')
+    
+    # Test Registers: Mostrar cajas de prueba en selección POS
+    ENABLE_TEST_REGISTERS: bool = os.environ.get('ENABLE_TEST_REGISTERS', '0').lower() in ('1', 'true', 'yes')
+    
     # Configuración de OpenAI para Agente de Redes Sociales
     OPENAI_API_KEY: Optional[str] = os.environ.get('OPENAI_API_KEY')
     OPENAI_ORGANIZATION_ID: Optional[str] = os.environ.get('OPENAI_ORGANIZATION_ID')

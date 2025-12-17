@@ -5,7 +5,9 @@ Sistema de gestión propio - ventas locales + sincronización con PHP POS
 from datetime import datetime
 from . import db
 from sqlalchemy import Numeric, Text, Index
+from sqlalchemy.dialects.postgresql import UUID
 import json
+import uuid
 
 
 class PosSession(db.Model):
@@ -310,6 +312,9 @@ class PosRegister(db.Model):
     payment_provider_backup = db.Column(db.String(50), nullable=True)  # KLAP, null si no hay backup
     provider_config = db.Column(Text, nullable=True)  # JSON: configuración por proveedor (terminal_id, merchant_id, etc)
     fallback_policy = db.Column(Text, nullable=True)  # JSON: reglas de cuándo usar backup
+    
+    # Test register flag
+    is_test = db.Column(db.Boolean, default=False, nullable=False, index=True)  # Caja de prueba (no usar en producción)
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

@@ -174,9 +174,16 @@
             <h1>🏪 Administración de Puntos de Venta (TPV)</h1>
             <p style="color: #aaa; margin: 5px 0 0 0;">Gestiona los terminales punto de venta del sistema</p>
         </div>
-        <a href="{{ url_for('register_admin.create_register') }}" class="btn-create">
-            ➕ Crear Nuevo TPV
-        </a>
+        <div style="display: flex; gap: 12px; align-items: center;">
+            <a href="{{ url_for('register_admin.create_register') }}" class="btn-create">
+                ➕ Crear Nuevo TPV
+            </a>
+            <form method="POST" action="{{ url_for('register_admin.seed_test') }}" style="display: inline; margin: 0;" id="seed-test-form" onsubmit="return confirmSeedTest(event);">
+                <button type="submit" class="btn-create" id="seed-test-btn" style="background: rgba(0, 230, 118, 0.3); border: 1px solid rgba(0, 230, 118, 0.5); color: #00e676;">
+                    🧪 Crear/Actualizar Caja de Prueba
+                </button>
+            </form>
+        </div>
     </div>
     
     {% if registers %}
@@ -269,6 +276,21 @@
 </div>
 
 <script>
+function confirmSeedTest(event) {
+    if (!confirm('Esto creará/actualizará la CAJA TEST (TEST001). ¿Continuar?')) {
+        return false;
+    }
+    
+    // Deshabilitar botón para evitar doble click
+    const btn = document.getElementById('seed-test-btn');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = '⏳ Procesando...';
+    }
+    
+    return true;
+}
+
 function toggleRegister(registerId, isActive) {
     if (!confirm(`¿Estás seguro de ${isActive ? 'desactivar' : 'activar'} este TPV?`)) {
         return;

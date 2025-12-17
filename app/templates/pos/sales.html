@@ -2250,6 +2250,13 @@
                 {% if not cart or total == 0 %}disabled{% endif %}>
                 💳 CRÉDITO
             </button>
+            <button 
+                class="payment-btn getnet" 
+                onclick="if(typeof window.processPaymentGETNET === 'function') { window.processPaymentGETNET(); } else { console.error('processPaymentGETNET no disponible'); alert('Error: processPaymentGETNET no disponible'); }"
+                style="background: linear-gradient(135deg, #00c853 0%, #00e676 100%); border: 2px solid #00c853;"
+                {% if not cart or total == 0 %}disabled{% endif %}>
+                🏦 GETNET
+            </button>
             {% if is_superadmin_register %}
             <button 
                 class="payment-btn courtesy" 

@@ -49,7 +49,23 @@ def register():
     
     # Obtener cajas de la BD primero
     from app.models.pos_models import PosRegister
-    db_registers = PosRegister.query.filter_by(is_active=True).all()
+    from flask import current_app
+    
+    # Verificar si se deben mostrar cajas de prueba
+    show_test_registers = (
+        current_app.config.get('FLASK_DEBUG', False) or
+        current_app.config.get('ENABLE_TEST_REGISTERS', False) or
+        is_superadmin or
+        session.get('admin_logged_in', False)
+    )
+    
+    query = PosRegister.query.filter_by(is_active=True)
+    
+    # Filtrar cajas de prueba si no están habilitadas
+    if not show_test_registers:
+        query = query.filter_by(is_test=False)
+    
+    db_registers = query.all()
     
     # Convertir a formato dict y filtrar superadmin_only
     registers = []
@@ -61,7 +77,8 @@ def register():
             'id': str(reg.id),
             'name': reg.name,
             'code': reg.code,
-            'superadmin_only': reg.superadmin_only
+            'superadmin_only': reg.superadmin_only,
+            'is_test': reg.is_test
         })
     
     # Si no hay cajas en BD, usar defaults o API

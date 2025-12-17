@@ -153,6 +153,11 @@
                     🔐 SUPERADMIN (Cortesías/Pruebas)
                 </span>
                 {% endif %}
+                {% if reg.get('is_test') %}
+                <span style="display: block; font-size: 0.75rem; color: #00e676; margin-top: 5px; font-weight: normal;">
+                    🧪 TEST (Caja de Prueba)
+                </span>
+                {% endif %}
                 {% if is_locked and locked_by_name %}
                 <span style="font-size: 0.85rem; font-weight: normal; margin-top: 8px; opacity: 0.85;">
                     👤 {{ locked_by_name }}

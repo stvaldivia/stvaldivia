@@ -180,6 +180,12 @@ def create_app():
     # GETNET Serial Integration (Windows COM ports)
     app.config['ENABLE_GETNET_SERIAL'] = os.environ.get('ENABLE_GETNET_SERIAL', '0').lower() in ('1', 'true', 'yes')
     
+    # Payment Agent API Key
+    app.config['AGENT_API_KEY'] = os.environ.get('AGENT_API_KEY')
+    
+    # Test Registers
+    app.config['ENABLE_TEST_REGISTERS'] = os.environ.get('ENABLE_TEST_REGISTERS', '0').lower() in ('1', 'true', 'yes')
+    
     # Configuración de zona horaria
     app.config['TIMEZONE'] = 'America/Santiago'
     app.config['CHILE_TZ'] = CHILE_TZ

@@ -9,4 +9,5 @@ from . import routes
 from .views import auth
 from .views import register as register_views
 from .views import sales
+from .views import payment_intents
 

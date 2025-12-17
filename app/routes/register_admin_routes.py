@@ -8,6 +8,7 @@ from app.models.product_models import Product
 from datetime import datetime
 from flask import current_app
 from app.helpers.printer_helper import PrinterHelper
+from app.helpers.seed_test_register import seed_test_register
 import json
 
 register_admin_bp = Blueprint('register_admin', __name__, url_prefix='/admin/cajas')
