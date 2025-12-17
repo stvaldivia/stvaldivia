@@ -51,19 +51,12 @@ def register():
     from app.models.pos_models import PosRegister
     from flask import current_app
     
-    # Verificar si se deben mostrar cajas de prueba
-    show_test_registers = (
-        current_app.config.get('FLASK_DEBUG', False) or
-        current_app.config.get('ENABLE_TEST_REGISTERS', False) or
-        is_superadmin or
-        session.get('admin_logged_in', False)
-    )
-    
+    # Mostrar TODAS las cajas activas (incluyendo de prueba) - igual que en desarrollo
+    # Esto permite que las cajas creadas en producción sean visibles
     query = PosRegister.query.filter_by(is_active=True)
     
-    # Filtrar cajas de prueba si no están habilitadas
-    if not show_test_registers:
-        query = query.filter_by(is_test=False)
+    # NO filtrar cajas de prueba - mostrarlas siempre (tanto en desarrollo como producción)
+    # Las cajas de prueba se marcan visualmente con 🧪 pero están disponibles para uso
     
     db_registers = query.all()
     
