@@ -454,6 +454,16 @@ def edit_register(register_id):
             if provider_config_raw:
                 try:
                     provider_config_dict = json.loads(provider_config_raw)
+                    
+                    # Validar GETNET serial config si está habilitado
+                    if current_app.config.get('ENABLE_GETNET_SERIAL', False):
+                        getnet_config = provider_config_dict.get('GETNET', {})
+                        if getnet_config.get('mode') == 'serial' and payment_provider_primary == 'GETNET':
+                            # Validar que port esté presente para modo serial
+                            if not getnet_config.get('port'):
+                                flash('Error: GETNET en modo serial requiere campo "port" (ej: COM4)', 'error')
+                                return render_template('admin/registers/form.html', register=register, available_categories=available_categories, available_printers=available_printers)
+                    
                     provider_config_json = json.dumps(provider_config_dict)
                 except json.JSONDecodeError:
                     flash('Error: provider_config debe ser un JSON válido', 'error')

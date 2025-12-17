@@ -177,6 +177,9 @@ def create_app():
     # Cache-busting para CSS (actualizar cuando cambien estilos)
     app.config['CSS_VERSION'] = os.environ.get('CSS_VERSION', '20250115-01')
     
+    # GETNET Serial Integration (Windows COM ports)
+    app.config['ENABLE_GETNET_SERIAL'] = os.environ.get('ENABLE_GETNET_SERIAL', '0').lower() in ('1', 'true', 'yes')
+    
     # Configuración de zona horaria
     app.config['TIMEZONE'] = 'America/Santiago'
     app.config['CHILE_TZ'] = CHILE_TZ

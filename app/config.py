@@ -50,6 +50,9 @@ class Config:
     # Cache-busting para CSS (actualizar cuando cambien estilos)
     CSS_VERSION: str = os.environ.get('CSS_VERSION', '20250115-01')
     
+    # GETNET Serial Integration (Windows COM ports)
+    ENABLE_GETNET_SERIAL: bool = os.environ.get('ENABLE_GETNET_SERIAL', '0').lower() in ('1', 'true', 'yes')
+    
     # Configuración de OpenAI para Agente de Redes Sociales
     OPENAI_API_KEY: Optional[str] = os.environ.get('OPENAI_API_KEY')
     OPENAI_ORGANIZATION_ID: Optional[str] = os.environ.get('OPENAI_ORGANIZATION_ID')
