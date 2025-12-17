@@ -752,17 +752,16 @@ def seed_test():
         success, status, register, product = seed_test_register()
         
         if success:
+            # Flash message unificado según requisitos
+            flash('✅ Caja y producto de prueba listos para usar', 'success')
             if status == 'created':
-                flash('✅ Caja TEST001 lista + Producto TEST100 ($100) listo', 'success')
                 logger.info(f"✅ Seed completo: Caja {register.id} y Producto {product.id} creados")
             elif status == 'updated':
-                flash('✅ Caja TEST001 lista + Producto TEST100 ($100) listo', 'success')
                 logger.info(f"✅ Seed completo: Caja {register.id} y Producto {product.id} actualizados")
             elif status == 'mixed':
-                flash('✅ Caja TEST001 lista + Producto TEST100 ($100) listo', 'success')
                 logger.info(f"✅ Seed completo: Caja {register.id} y Producto {product.id} (uno creado, otro actualizado)")
             else:
-                flash(f'✅ {status}', 'success')
+                logger.info(f"✅ Seed completo: {status}")
         else:
             flash(f'❌ {status}', 'error')
             logger.error(f"❌ Error en seed: {status}")

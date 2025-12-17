@@ -108,24 +108,28 @@ def seed_test_register():
             register = new_register
         
         # ==========================================
-        # SEED: PRODUCTO TEST100
+        # SEED: PRODUCTO TEST100 (TEST / QA ONLY)
         # ==========================================
         test_product_name = "TEST PRODUCTO $100"
-        test_product = Product.query.filter_by(name=test_product_name).first()
+        # Buscar por name o external_id="TEST100"
+        test_product = Product.query.filter(
+            (Product.name == test_product_name) | (Product.external_id == "TEST100")
+        ).first()
         
         if test_product:
             # Actualizar producto existente
             logger.info(f"✅ Actualizando producto de prueba existente: {test_product.id}")
             
+            test_product.name = test_product_name
             test_product.price = 100
+            test_product.cost_price = 0
             test_product.is_active = True
             test_product.is_kit = False  # Producto simple sin receta
             test_product.category = "TEST"
-            test_product.cost_price = 0
             test_product.stock_quantity = 0
             test_product.stock_minimum = 0
             
-            # Si existe external_id, actualizarlo
+            # Asignar external_id como sku/code
             if hasattr(test_product, 'external_id'):
                 test_product.external_id = "TEST100"
             
@@ -145,7 +149,7 @@ def seed_test_register():
                 is_kit=False  # Producto simple sin receta
             )
             
-            # Si existe external_id, asignarlo
+            # Asignar external_id como sku/code (TEST100)
             if hasattr(Product, 'external_id'):
                 test_product.external_id = "TEST100"
             
