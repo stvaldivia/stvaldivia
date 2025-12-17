@@ -24,6 +24,9 @@ def seed_test_register():
             (PosRegister.code == 'TEST001') | (PosRegister.name == 'CAJA TEST')
         ).first()
         
+        # ==========================================
+        # SEED: CAJA TEST001 (TEST / QA ONLY)
+        # ==========================================
         # Configuración de la caja de prueba
         test_config = {
             'name': 'CAJA TEST BIMBA',
