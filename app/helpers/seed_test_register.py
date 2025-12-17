@@ -149,12 +149,9 @@ def seed_test_register():
                 stock_quantity=0,
                 stock_minimum=0,
                 is_active=True,
-                is_kit=False  # Producto simple sin receta
+                is_kit=False,  # Producto simple sin receta
+                external_id="TEST100"  # sku/code para identificación
             )
-            
-            # Asignar external_id como sku/code (TEST100)
-            if hasattr(Product, 'external_id'):
-                test_product.external_id = "TEST100"
             
             db.session.add(test_product)
             product_status = "created"
