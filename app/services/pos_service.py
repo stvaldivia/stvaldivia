@@ -219,10 +219,10 @@ class PosService:
         # Preferir cajas desde BD (pos_registers). Si no hay datos, usar fallback estático.
         try:
             from app.models.pos_models import PosRegister
-            from app.helpers.production_check import is_production
             from sqlalchemy import or_
 
-            include_test = not is_production()  # En producción, ocultar cajas de prueba
+            # Incluir cajas de prueba siempre (tanto en desarrollo como producción)
+            # include_test siempre True - mostrar todas las cajas
 
             query = PosRegister.query.filter(PosRegister.is_active == True)
 
@@ -231,8 +231,9 @@ class PosService:
             if hasattr(PosRegister, 'superadmin_only'):
                 query = query.filter(or_(PosRegister.superadmin_only == False, PosRegister.superadmin_only.is_(None)))
 
-            if not include_test and hasattr(PosRegister, 'is_test'):
-                query = query.filter(or_(PosRegister.is_test == False, PosRegister.is_test.is_(None)))
+            # NO filtrar cajas de prueba - mostrarlas siempre
+            # if not include_test and hasattr(PosRegister, 'is_test'):
+            #     query = query.filter(or_(PosRegister.is_test == False, PosRegister.is_test.is_(None)))
 
             regs = query.order_by(PosRegister.created_at.desc()).all()
 
@@ -242,8 +243,8 @@ class PosService:
                     is_test_val = bool(getattr(r, 'is_test', False))
                     name = r.name or f"Caja {r.id}"
                     display_name = name
-                    # Señal visual para test en local (solo UI; no contaminar register_name en URL)
-                    if is_test_val and include_test:
+                    # Señal visual para test (mostrar siempre, tanto en desarrollo como producción)
+                    if is_test_val:
                         display_name = f"🧪 {name}"
 
                     result.append({
