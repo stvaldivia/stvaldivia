@@ -739,3 +739,34 @@ def reportes():
         current_app.logger.error(f"Error al generar reportes: {e}", exc_info=True)
         flash(f'Error al generar reportes: {str(e)}', 'error')
         return redirect(url_for('register_admin.list_registers'))
+
+
+@register_admin_bp.route('/seed-test', methods=['POST'])
+def seed_test():
+    """Endpoint protegido para crear/actualizar caja de prueba"""
+    if not session.get('admin_logged_in'):
+        flash('No autorizado', 'error')
+        return redirect(url_for('auth.login_admin'))
+    
+    try:
+        success, status, register = seed_test_register()
+        
+        if success:
+            if status == 'created':
+                flash('✅ Caja de prueba creada: TEST001', 'success')
+                logger.info(f"✅ Caja de prueba creada: TEST001 (ID: {register.id})")
+            elif status == 'updated':
+                flash('✅ Caja de prueba actualizada: TEST001', 'success')
+                logger.info(f"✅ Caja de prueba actualizada: TEST001 (ID: {register.id})")
+            else:
+                flash(f'✅ {status}', 'success')
+        else:
+            flash(f'❌ {status}', 'error')
+            logger.error(f"❌ Error en seed de caja de prueba: {status}")
+        
+        return redirect(url_for('register_admin.list_registers'))
+        
+    except Exception as e:
+        current_app.logger.error(f"Error en seed_test: {e}", exc_info=True)
+        flash(f'Error al crear caja de prueba: {str(e)}', 'error')
+        return redirect(url_for('register_admin.list_registers'))
