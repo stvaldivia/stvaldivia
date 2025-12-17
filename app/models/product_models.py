@@ -19,6 +19,9 @@ class Product(db.Model):
     is_active = db.Column(db.Boolean, default=True)
     is_kit = db.Column(db.Boolean, default=False) # Si es True, usa receta (ProductRecipe)
     
+    # TEST / QA ONLY – DO NOT USE IN PROD LOGIC
+    is_test = db.Column(db.Boolean, default=False, nullable=True)  # Producto de prueba (no usar en producción)
+    
     # Identificadores externos (para migración)
     external_id = db.Column(db.String(100), index=True)
     

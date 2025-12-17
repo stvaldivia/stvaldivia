@@ -82,3 +82,4 @@ FROM pg_indexes
 WHERE tablename = 'pos_sales'
 AND indexname IN ('idx_pos_sales_register_session', 'idx_pos_sales_payment_provider');
 
+

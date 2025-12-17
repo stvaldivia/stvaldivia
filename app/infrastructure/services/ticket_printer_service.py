@@ -168,11 +168,30 @@ class TicketPrinterService:
         
         y += 15
         
-        # Código QR - Usar solo el sale_id numérico
+        # Código QR
+        # Preferir qr_token del TicketEntrega (si existe); fallback a sale_id numérico.
         try:
+            qr_payload = None
+            try:
+                qr_payload = (sale_data or {}).get('qr_token')
+            except Exception:
+                qr_payload = None
+            qr_payload = str(qr_payload).strip() if qr_payload else ''
+
+            display_code = None
+            try:
+                display_code = (sale_data or {}).get('ticket_display_code')
+            except Exception:
+                display_code = None
+            display_code = str(display_code).strip() if display_code else ''
+
             numeric_sale_id = ''.join(filter(str.isdigit, str(sale_id)))
             if not numeric_sale_id:
                 numeric_sale_id = str(sale_id)
+
+            # Si no hay token, usar sale_id numérico
+            if not qr_payload:
+                qr_payload = numeric_sale_id
             
             # Generar código QR
             qr = qrcode.QRCode(
@@ -181,7 +200,7 @@ class TicketPrinterService:
                 box_size=3,  # Tamaño adecuado para ticket térmico
                 border=2
             )
-            qr.add_data(numeric_sale_id)
+            qr.add_data(qr_payload)
             qr.make(fit=True)
             
             # Crear imagen del QR
@@ -198,13 +217,19 @@ class TicketPrinterService:
             img.paste(qr_img, (x_pos, y))
             y += qr_size + 10
             
-            # Número separado en grande: "1 2 3 4 5 6"
-            numeric_spaced = ' '.join(list(numeric_sale_id))
-            draw.text((width // 2, y), numeric_spaced, fill='black', font=font_bold, anchor='mm')
-            y += line_height + 5
-            
-            # Número completo en pequeño: "123456"
-            draw.text((width // 2, y), numeric_sale_id, fill='black', font=font, anchor='mm')
+            # Código visible debajo del QR:
+            # - Si hay display_code del TicketEntrega, mostrarlo
+            # - Si no, mostrar sale_id numérico como antes
+            visible_code = display_code or numeric_sale_id
+
+            # Texto "espaciado" para legibilidad si es corto
+            if len(visible_code) <= 16:
+                spaced = ' '.join(list(visible_code))
+                draw.text((width // 2, y), spaced, fill='black', font=font_bold, anchor='mm')
+                y += line_height + 5
+                draw.text((width // 2, y), visible_code, fill='black', font=font, anchor='mm')
+            else:
+                draw.text((width // 2, y), visible_code, fill='black', font=font_bold, anchor='mm')
             
         except Exception as e:
             logger.error(f"Error al generar código de barras: {e}")

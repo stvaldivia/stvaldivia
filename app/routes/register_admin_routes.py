@@ -8,7 +8,7 @@ from app.models.product_models import Product
 from datetime import datetime
 from flask import current_app
 from app.helpers.printer_helper import PrinterHelper
-from app.helpers.seed_test_register import seed_test_register
+from app.helpers.seed_test_data import seed_test_register_and_product, seed_test_cashier_user  # TEST / QA ONLY – DO NOT USE IN PROD LOGIC
 import json
 import logging
 
@@ -562,7 +562,7 @@ def edit_register(register_id):
             db.session.rollback()
             current_app.logger.error(f"Error al actualizar TPV: {e}", exc_info=True)
             flash(f'Error al actualizar TPV: {str(e)}', 'error')
-                return render_template('admin/registers/form.html', register=register, available_categories=available_categories, available_printers=available_printers)
+            return render_template('admin/registers/form.html', register=register, available_categories=available_categories, available_printers=available_printers)
     
     # Obtener impresoras disponibles
     try:
@@ -743,32 +743,34 @@ def reportes():
 
 @register_admin_bp.route('/seed-test', methods=['POST'])
 def seed_test():
-    """Endpoint protegido para crear/actualizar caja de prueba + producto de prueba"""
+    """
+    TEST / QA ONLY – DO NOT USE IN PROD LOGIC
+    
+    Endpoint protegido para crear/actualizar caja de prueba + producto de prueba
+    """
     if not session.get('admin_logged_in'):
         flash('No autorizado', 'error')
         return redirect(url_for('auth.login_admin'))
     
     try:
-        success, status, register, product = seed_test_register()
+        # TEST / QA ONLY – DO NOT USE IN PROD LOGIC
+        success, message, register, product = seed_test_register_and_product(db)
+        success_emp, message_emp, employee = seed_test_cashier_user(db)
         
-        if success:
-            # Flash message unificado según requisitos
-            flash('✅ Caja y producto de prueba listos para usar', 'success')
-            if status == 'created':
-                logger.info(f"✅ Seed completo: Caja {register.id} y Producto {product.id} creados")
-            elif status == 'updated':
-                logger.info(f"✅ Seed completo: Caja {register.id} y Producto {product.id} actualizados")
-            elif status == 'mixed':
-                logger.info(f"✅ Seed completo: Caja {register.id} y Producto {product.id} (uno creado, otro actualizado)")
-            else:
-                logger.info(f"✅ Seed completo: {status}")
+        if success and success_emp:
+            db.session.commit()
+            flash(f'✅ {message}. {message_emp}', 'success')
+            logger.info(f"✅ Seed completo: {message}. {message_emp}")
         else:
-            flash(f'❌ {status}', 'error')
-            logger.error(f"❌ Error en seed: {status}")
+            db.session.rollback()
+            combined = f"{message} | {message_emp}"
+            flash(f'❌ {combined}', 'error')
+            logger.error(f"❌ Error en seed: {combined}")
         
         return redirect(url_for('register_admin.list_registers'))
         
     except Exception as e:
+        db.session.rollback()
         current_app.logger.error(f"Error en seed_test: {e}", exc_info=True)
         flash(f'Error al crear datos de prueba: {str(e)}', 'error')
         return redirect(url_for('register_admin.list_registers'))

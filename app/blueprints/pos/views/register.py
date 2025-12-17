@@ -314,15 +314,42 @@ def register():
 
         # P0-002: Validar que existe jornada activa antes de abrir caja
         from app.models.jornada_models import Jornada
-        fecha_hoy = datetime.now(CHILE_TZ).strftime('%Y-%m-%d')
+        # IMPORTANT: No amarrar a "fecha de hoy". La jornada abierta es la fuente de verdad,
+        # y en local puede haber jornadas abiertas con shift_date distinto.
         jornada_actual = Jornada.query.filter_by(
-            fecha_jornada=fecha_hoy,
             estado_apertura='abierto'
-        ).first()
+        ).order_by(Jornada.fecha_jornada.desc()).first()
         
         if not jornada_actual:
-            flash("No hay jornada abierta. Debes abrir una jornada antes de abrir una caja.", "error")
-            return redirect(url_for('caja.register'))
+            # En local/dev, permitir abrir Caja Test creando una jornada de prueba automáticamente
+            try:
+                local_only = bool(current_app.config.get('LOCAL_ONLY', False))
+                enable_auto = bool(current_app.config.get('ENABLE_AUTO_OPEN_JORNADA', False))
+                allow_auto_open = local_only or enable_auto
+
+                if allow_auto_open:
+                    # Usar shift_date si existe; fallback a hoy (Chile)
+                    fecha = (shift_date or datetime.now(CHILE_TZ).strftime('%Y-%m-%d'))
+                    jornada_actual = Jornada(
+                        fecha_jornada=fecha,
+                        tipo_turno='Test',
+                        nombre_fiesta='Jornada Test (Local)',
+                        horario_apertura_programado='00:00',
+                        horario_cierre_programado='23:59',
+                        estado_apertura='abierto',
+                        abierto_en=datetime.utcnow(),
+                        abierto_por=session.get('pos_employee_name') or 'local'
+                    )
+                    db.session.add(jornada_actual)
+                    db.session.flush()
+                    logger.warning(f"🧪 Jornada auto-creada en local: {jornada_actual.id} ({jornada_actual.fecha_jornada})")
+                else:
+                    flash("No hay jornada abierta. Debes abrir una jornada antes de abrir una caja.", "error")
+                    return redirect(url_for('caja.register'))
+            except Exception as e:
+                logger.error(f"Error al auto-crear jornada en local: {e}", exc_info=True)
+                flash("No hay jornada abierta. Debes abrir una jornada antes de abrir una caja.", "error")
+                return redirect(url_for('caja.register'))
         
         if lock_register(register_id, employee_id, employee_name):
             # P0-001: Crear RegisterSession (estado explícito de caja)

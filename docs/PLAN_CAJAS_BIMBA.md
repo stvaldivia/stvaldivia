@@ -628,3 +628,4 @@ close_notes = db.Column(Text, nullable=True)
 
 **Plan listo para implementación. Priorizar MVP 1 (operación básica) antes de avanzar a MVP 2 y MVP 3.**
 
+

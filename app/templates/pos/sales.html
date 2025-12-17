@@ -1361,8 +1361,19 @@
     window.showToast = showToast;
     
     // Variables globales
-    let selectedPaymentType = null;
+    // SINGLE SOURCE OF TRUTH: window.paymentState
+    window.paymentState = {
+        type: null,
+        provider: 'GETNET'
+    };
     let paymentConfirmCallback = null;
+
+    function setPaymentProvider(provider) {
+        // NO setear payment_type aquí, solo provider
+        window.paymentState.provider = String(provider || '').trim() || 'GETNET';
+        console.log('provider_active:', window.paymentState.provider);
+    }
+    window.setPaymentProvider = setPaymentProvider;
     
     // ============================================
     // FUNCIÓN UTILITARIA: toNumber
@@ -1545,8 +1556,9 @@
         
         // Habilitar/deshabilitar botones de pago
         const paymentButtons = document.querySelectorAll('.payment-btn');
+        const hasItems = cart.length > 0 && total > 0;
         paymentButtons.forEach(btn => {
-            btn.disabled = cart.length === 0 || total === 0;
+            btn.disabled = !hasItems;
         });
     }
     window.updateCartDisplay = updateCartDisplay;
@@ -1720,12 +1732,43 @@
     function showPaymentConfirm(paymentType) {
         if (!paymentType || (typeof paymentType === 'string' && paymentType.trim() === '')) {
             console.error('Tipo de pago no especificado:', paymentType);
-            alert('Error: Tipo de pago no especificado');
+            alert('Selecciona un método de pago');
             return;
         }
         
-        selectedPaymentType = String(paymentType).trim();
-        console.log('Guardando tipo de pago:', selectedPaymentType);
+        // Normalizar paymentType a valores en inglés
+        const paymentTypeMap = {
+            'Efectivo': 'cash',
+            'Débito': 'debit',
+            'Crédito': 'credit',
+            'Transferencia': 'transfer',
+            'QR': 'qr',
+            'Cash': 'cash',
+            'Debit': 'debit',
+            'Credit': 'credit',
+            'Transfer': 'transfer',
+            'cash': 'cash',
+            'debit': 'debit',
+            'credit': 'credit',
+            'transfer': 'transfer',
+            'qr': 'qr'
+        };
+        
+        const normalized = paymentTypeMap[paymentType] || String(paymentType).trim().toLowerCase();
+        
+        // Actualizar window.paymentState como single source of truth
+        window.paymentState.type = normalized;
+        if (normalized === 'cash') {
+            window.paymentState.provider = 'NONE';
+        } else if (normalized === 'debit' || normalized === 'credit') {
+            // Débito y Crédito SIEMPRE usan GETNET
+            window.paymentState.provider = 'GETNET';
+        } else {
+            // Otros métodos (transfer, qr) usan GETNET por defecto
+            window.paymentState.provider = window.paymentState.provider || 'GETNET';
+        }
+        
+        console.log('Guardando tipo de pago:', normalized, 'provider:', window.paymentState.provider);
         
         const modal = document.getElementById('payment-confirm-modal');
         const typeDisplay = document.getElementById('payment-type-display');
@@ -1736,18 +1779,15 @@
             return;
         }
         
-        const paymentTypes = {
-            'Efectivo': 'Efectivo',
-            'Débito': 'Débito',
-            'Crédito': 'Crédito',
-            'Cortesía': 'Cortesía',
-            'Cortesia': 'Cortesía',
-            'Courtesy': 'Cortesía',
-            'Cash': 'Efectivo',
-            'Debit': 'Débito',
-            'Credit': 'Crédito'
+        const PAYMENT_LABELS = {
+            cash: 'Efectivo',
+            debit: 'Débito',
+            credit: 'Crédito',
+            transfer: 'Transferencia',
+            qr: 'QR',
+            courtesy: 'Cortesía'
         };
-        const paymentTypeSpanish = paymentTypes[selectedPaymentType] || selectedPaymentType;
+        const paymentTypeSpanish = PAYMENT_LABELS[normalized] || normalized;
         
         if (typeDisplay) {
             typeDisplay.textContent = paymentTypeSpanish;
@@ -1761,7 +1801,8 @@
         
         const confirmBtn = document.getElementById('payment-confirm-ok');
         if (confirmBtn) {
-            confirmBtn.setAttribute('data-payment-type', selectedPaymentType);
+            // SIEMPRE setear el botón con el valor normalizado
+            confirmBtn.setAttribute('data-payment-type', normalized);
             setTimeout(() => confirmBtn.focus(), 100);
         }
     }
@@ -1965,16 +2006,20 @@
         console.log('confirmPaymentProcess llamado');
         
         const confirmBtn = document.getElementById('payment-confirm-ok');
-        const paymentTypeFromBtn = confirmBtn?.getAttribute('data-payment-type');
-        const paymentType = paymentTypeFromBtn || selectedPaymentType;
+        const btnType = confirmBtn?.dataset?.paymentType || confirmBtn?.getAttribute('data-payment-type');
+        const fallbackType = window.paymentState?.type;
+        const paymentType = btnType || fallbackType || 'cash';
         
-        console.log('paymentType final:', paymentType);
+        console.log('paymentType final:', paymentType, 'btnType:', btnType, 'fallback:', fallbackType);
         
         if (!paymentType || String(paymentType).trim() === '') {
             console.error('Error: Tipo de pago no encontrado');
-            alert('Error: Tipo de pago no encontrado. Por favor, selecciona el medio de pago nuevamente.');
+            alert('Selecciona un método de pago');
             return;
         }
+        
+        // Actualizar window.paymentState antes de procesar (por si venía del botón)
+        window.paymentState.type = String(paymentType).trim();
         
         closePaymentConfirm();
         processPaymentInternal(String(paymentType).trim());
@@ -1986,7 +2031,7 @@
         console.log('processPaymentInternal llamado con:', paymentType);
         
         if (!paymentType || String(paymentType).trim() === '') {
-            alert('Error: Tipo de pago no especificado');
+            alert('Selecciona un método de pago');
             return;
         }
         
@@ -1994,12 +2039,20 @@
             'Efectivo': 'Efectivo',
             'Débito': 'Débito',
             'Crédito': 'Crédito',
+            'Transferencia': 'Transferencia',
+            'QR': 'QR',
             'Cortesía': 'Cortesía',
             'Cortesia': 'Cortesía',
             'Courtesy': 'Cortesía',
             'Cash': 'Efectivo',
             'Debit': 'Débito',
-            'Credit': 'Crédito'
+            'Credit': 'Crédito',
+            // Valores en inglés (lowercase) para compatibilidad
+            'cash': 'Efectivo',
+            'debit': 'Débito',
+            'credit': 'Crédito',
+            'transfer': 'Transferencia',
+            'qr': 'QR'
         };
         
         const normalizedType = String(paymentType).trim();
@@ -2028,19 +2081,78 @@
         }
         
         try {
-            const paymentTypeToSend = paymentTypeSpanish.trim();
+            // =========================================================
+            // FIX FRONTEND: Normalizar payment_type antes de crear venta
+            // =========================================================
+            const VALID_PAYMENT_VALUES = new Set(["cash", "debit", "credit", "transfer", "qr"]);
+            
+            // Mapear paymentType a valor en inglés si viene en español
+            const paymentTypeMap = {
+                'Efectivo': 'cash',
+                'Débito': 'debit',
+                'Crédito': 'credit',
+                'Transferencia': 'transfer',
+                'QR': 'qr',
+                'Cash': 'cash',
+                'Debit': 'debit',
+                'Credit': 'credit',
+                'Transfer': 'transfer',
+                'cash': 'cash',
+                'debit': 'debit',
+                'credit': 'credit',
+                'transfer': 'transfer',
+                'qr': 'qr'
+            };
+            
+            const rawPayment = paymentTypeMap[paymentType] || (paymentType || '').trim().toLowerCase();
+
+            if (!rawPayment || !VALID_PAYMENT_VALUES.has(rawPayment)) {
+                console.error("payment_type inválido/vacío:", rawPayment, "original:", paymentType);
+                alert("Selecciona un método de pago");
+                return;
+            }
+
+            const paymentTypeNormalized = rawPayment;
+            
+            // NORMALIZACIÓN FINAL: Asegurar provider correcto
+            let provider = window.paymentState?.provider || '';
+            if (paymentTypeNormalized === 'cash') {
+                provider = 'NONE';
+            } else if (paymentTypeNormalized === 'debit' || paymentTypeNormalized === 'credit') {
+                // Si es débito/crédito y no hay provider, forzar GETNET
+                if (!provider || provider.trim() === '' || provider === 'NONE') {
+                    provider = 'GETNET';
+                }
+            } else {
+                // Para otros métodos (transfer, qr), usar GETNET si no hay provider
+                if (!provider || provider.trim() === '') {
+                    provider = 'GETNET';
+                }
+            }
+            
+            // NO permitir debit/credit con provider NONE
+            if ((paymentTypeNormalized === 'debit' || paymentTypeNormalized === 'credit') && provider === 'NONE') {
+                console.error('Error: Débito/Crédito no puede tener provider NONE');
+                alert('Error: Débito y Crédito requieren GETNET como proveedor');
+                return;
+            }
             
             // Preparar datos para enviar
             const saleData = {
-                payment_type: paymentTypeToSend,
+                payment_type: paymentTypeNormalized,
+                payment_provider: provider,
                 cart: localCart
             };
+
+            // DEBUG DURO
+            console.log("PAYMENT_STATE", window.paymentState);
+            console.log("SALE_DATA_FINAL", saleData);
             
             {% if is_superadmin_register %}
             // Agregar datos de superadmin si aplica
             // Si el pago es cortesía, no requerir tipo_operacion y motivo del formulario
             // (se generará automáticamente en el backend)
-            if (paymentTypeToSend !== 'Cortesía') {
+            if ((paymentTypeSpanish || '').trim() !== 'Cortesía') {
                 const tipoOperacion = document.getElementById('tipo-operacion')?.value || '';
                 const motivo = document.getElementById('motivo-operacion')?.value?.trim() || '';
                 if (tipoOperacion) {
@@ -2234,25 +2346,25 @@
         <div class="payment-buttons">
             <button 
                 class="payment-btn cash" 
-                onclick="if(typeof window.processPayment === 'function') { window.processPayment('Efectivo'); } else { console.error('processPayment no disponible'); alert('Error: processPayment no disponible'); }"
+                onclick="if(typeof window.processPayment === 'function') { window.processPayment('cash'); } else { console.error('processPayment no disponible'); alert('Error: processPayment no disponible'); }"
                 {% if not cart or total == 0 %}disabled{% endif %}>
                 💵 EFECTIVO
             </button>
             <button 
                 class="payment-btn debit" 
-                onclick="if(typeof window.processPayment === 'function') { window.processPayment('Débito'); } else { console.error('processPayment no disponible'); alert('Error: processPayment no disponible'); }"
+                onclick="if(typeof window.processPayment === 'function') { window.processPayment('debit'); } else { console.error('processPayment no disponible'); alert('Error: processPayment no disponible'); }"
                 {% if not cart or total == 0 %}disabled{% endif %}>
                 💳 DÉBITO
             </button>
             <button 
                 class="payment-btn credit" 
-                onclick="if(typeof window.processPayment === 'function') { window.processPayment('Crédito'); } else { console.error('processPayment no disponible'); alert('Error: processPayment no disponible'); }"
+                onclick="if(typeof window.processPayment === 'function') { window.processPayment('credit'); } else { console.error('processPayment no disponible'); alert('Error: processPayment no disponible'); }"
                 {% if not cart or total == 0 %}disabled{% endif %}>
                 💳 CRÉDITO
             </button>
             <button 
                 class="payment-btn getnet" 
-                onclick="if(typeof window.processPaymentGETNET === 'function') { window.processPaymentGETNET(); } else { console.error('processPaymentGETNET no disponible'); alert('Error: processPaymentGETNET no disponible'); }"
+                onclick="window.setPaymentProvider('GETNET'); alert('Selecciona Débito o Crédito para pagar con tarjeta');"
                 style="background: linear-gradient(135deg, #00c853 0%, #00e676 100%); border: 2px solid #00c853;"
                 {% if not cart or total == 0 %}disabled{% endif %}>
                 🏦 GETNET
@@ -2534,6 +2646,20 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     // Configurar event listener centralizado para product-card
     setupProductCardListeners();
+    
+    // Inicializar método de pago por defecto según configuración de la caja
+    const getnetBtn = document.querySelector('.payment-btn.getnet');
+    if (getnetBtn && !getnetBtn.disabled) {
+        // Si GETNET está visible y habilitado, inicializar paymentType como crédito
+        window.paymentState.type = 'credit';
+        window.paymentState.provider = 'GETNET';
+        console.log('✅ Método de pago inicializado: credit (GETNET)');
+    } else {
+        // Si no hay GETNET, usar efectivo por defecto
+        window.paymentState.type = 'cash';
+        window.paymentState.provider = 'NONE';
+        console.log('✅ Método de pago inicializado: cash (NONE)');
+    }
     
     // Esperar a que syncCartFromServer esté disponible
     // El primer script define syncCartFromServer, pero puede no estar listo inmediatamente

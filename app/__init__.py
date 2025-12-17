@@ -357,24 +357,30 @@ def create_app():
         from app.routes.inventory_admin_routes import inventory_admin_bp
         app.register_blueprint(inventory_admin_bp)
         app.logger.info("✅ Blueprint de administración de inventario registrado")
-        
-        # Registrar blueprint de administración de cajas
-        try:
-            from app.routes.register_admin_routes import register_admin_bp
-            app.register_blueprint(register_admin_bp)
-            
-            # Registrar blueprint de dashboard de TPV
-            from app.routes.tpv_dashboard_routes import tpv_dashboard_bp
-            app.register_blueprint(tpv_dashboard_bp)
-            app.logger.info("✅ Blueprint de administración de cajas registrado")
-        except Exception as e:
-            app.logger.warning(f"⚠️  No se pudo registrar el blueprint de administración de cajas: {e}")
-        except ImportError as e:
-            app.logger.error(f"❌ Error al registrar blueprint de administración de cajas: {e}")
     except ImportError as e:
         app.logger.warning(f"⚠️  No se pudo registrar el blueprint de administración de inventario: {e}")
     except Exception as e:
         app.logger.error(f"❌ Error al registrar blueprint de administración de inventario: {e}")
+    
+    # Registrar blueprint de administración de cajas (independiente de inventario)
+    try:
+        from app.routes.register_admin_routes import register_admin_bp
+        app.register_blueprint(register_admin_bp)
+        app.logger.info("✅ Blueprint de administración de cajas registrado")
+        
+        # Registrar blueprint de dashboard de TPV
+        try:
+            from app.routes.tpv_dashboard_routes import tpv_dashboard_bp
+            app.register_blueprint(tpv_dashboard_bp)
+            app.logger.info("✅ Blueprint de dashboard de TPV registrado")
+        except ImportError as e:
+            app.logger.warning(f"⚠️  No se pudo registrar el blueprint de dashboard de TPV: {e}")
+        except Exception as e:
+            app.logger.error(f"❌ Error al registrar blueprint de dashboard de TPV: {e}")
+    except ImportError as e:
+        app.logger.error(f"❌ Error al registrar blueprint de administración de cajas: {e}")
+    except Exception as e:
+        app.logger.warning(f"⚠️  No se pudo registrar el blueprint de administración de cajas: {e}")
     
     # Registrar blueprint de recetas (API)
     try:

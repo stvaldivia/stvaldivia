@@ -78,6 +78,9 @@ class RegisterSessionService:
             # Verificar que no haya otra sesión OPEN para esta caja
             existing_session = RegisterSessionService.get_active_session(register_id, jornada_id)
             if existing_session:
+                # Permitir retomar si la sesión abierta pertenece al mismo empleado
+                if str(existing_session.opened_by_employee_id) == str(employee_id):
+                    return True, existing_session, "Sesión ya estaba abierta (retomada)"
                 return False, None, f"Ya existe una sesión abierta para esta caja (abierta por {existing_session.opened_by_employee_name})"
             
             # Generar idempotency_key

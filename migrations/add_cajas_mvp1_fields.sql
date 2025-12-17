@@ -118,3 +118,4 @@ AND column_name IN ('cash_count', 'payment_totals', 'ticket_count', 'cash_differ
                      'incidents', 'close_notes')
 ORDER BY column_name;
 
+

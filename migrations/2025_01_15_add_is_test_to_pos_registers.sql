@@ -39,3 +39,4 @@ FROM pg_indexes
 WHERE tablename = 'pos_registers'
 AND indexname = 'idx_pos_registers_is_test';
 
+

@@ -216,7 +216,49 @@ class PosService:
         """
         Obtiene lista de cajas locales
         """
-        # Por ahora definimos las cajas estáticamente, luego podrían ir a BD
+        # Preferir cajas desde BD (pos_registers). Si no hay datos, usar fallback estático.
+        try:
+            from app.models.pos_models import PosRegister
+            from app.helpers.production_check import is_production
+            from sqlalchemy import or_
+
+            include_test = not is_production()  # En producción, ocultar cajas de prueba
+
+            query = PosRegister.query.filter(PosRegister.is_active == True)
+
+            # Ocultar cajas solo-superadmin en el selector POS (empleados)
+            # (puede venir como NULL en migraciones antiguas)
+            if hasattr(PosRegister, 'superadmin_only'):
+                query = query.filter(or_(PosRegister.superadmin_only == False, PosRegister.superadmin_only.is_(None)))
+
+            if not include_test and hasattr(PosRegister, 'is_test'):
+                query = query.filter(or_(PosRegister.is_test == False, PosRegister.is_test.is_(None)))
+
+            regs = query.order_by(PosRegister.created_at.desc()).all()
+
+            if regs:
+                result: List[Dict[str, Any]] = []
+                for r in regs:
+                    is_test_val = bool(getattr(r, 'is_test', False))
+                    name = r.name or f"Caja {r.id}"
+                    display_name = name
+                    # Señal visual para test en local (solo UI; no contaminar register_name en URL)
+                    if is_test_val and include_test:
+                        display_name = f"🧪 {name}"
+
+                    result.append({
+                        'id': str(r.id),
+                        'name': name,
+                        'display_name': display_name,
+                        'code': getattr(r, 'code', None),
+                        'is_test': is_test_val,
+                    })
+                return result
+
+        except Exception as e:
+            logger.error(f"Error al obtener cajas desde BD: {e}", exc_info=True)
+
+        # Fallback estático (si no hay tablas o no hay datos)
         return [
             {'id': '1', 'name': 'Barra Principal'},
             {'id': '2', 'name': 'Barra Terraza'},

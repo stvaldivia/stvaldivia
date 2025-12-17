@@ -133,3 +133,4 @@ git stash pop  # Recuperar cambios
 - Git para Windows: https://git-scm.com/download/win
 - Python para Windows: https://www.python.org/downloads/
 
+

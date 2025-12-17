@@ -190,3 +190,4 @@ docs(security): add CSP notes + how to update vendor libs
 ✅ **Control total:** Versiones controladas localmente  
 ✅ **Seguridad mejorada:** Sin dependencias externas
 
+

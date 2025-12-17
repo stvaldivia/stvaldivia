@@ -198,3 +198,4 @@ a6e72aa fix(nav): move mobile menu outside overflow containers
 2. **Agregar animación de entrada/salida** más suave
 3. **Agregar cierre al hacer clic fuera del menú** (si no existe)
 
+

@@ -274,6 +274,71 @@ class PosSaleItem(db.Model):
         }
 
 
+class PaymentIntent(db.Model):
+    """
+    PaymentIntent - Intención de pago para procesamiento con agente local (GETNET/KLAP)
+    """
+    __tablename__ = 'payment_intents'
+
+    # Estados válidos (alineados con migrations/2025_01_15_payment_intents.sql)
+    STATUS_CREATED = 'CREATED'
+    STATUS_READY = 'READY'
+    STATUS_IN_PROGRESS = 'IN_PROGRESS'
+    STATUS_APPROVED = 'APPROVED'
+    STATUS_DECLINED = 'DECLINED'
+    STATUS_ERROR = 'ERROR'
+    STATUS_CANCELLED = 'CANCELLED'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Contexto
+    register_id = db.Column(db.String(50), nullable=False, index=True)
+    register_session_id = db.Column(db.Integer, nullable=True, index=True)
+    employee_id = db.Column(db.String(50), nullable=False, index=True)
+    employee_name = db.Column(db.String(200), nullable=False)
+
+    # Monto y moneda
+    amount_total = db.Column(Numeric(10, 2), nullable=False)
+    currency = db.Column(db.String(3), nullable=False, default='CLP')
+
+    # Carrito + hash para idempotencia
+    cart_json = db.Column(Text, nullable=False)
+    cart_hash = db.Column(db.String(64), nullable=False, index=True)
+
+    # Provider y estado
+    provider = db.Column(db.String(50), nullable=False, default='GETNET')
+    status = db.Column(db.String(20), nullable=False, default=STATUS_CREATED, index=True)
+
+    # Referencias del provider
+    provider_ref = db.Column(db.String(200), nullable=True)
+    auth_code = db.Column(db.String(50), nullable=True)
+
+    # Errores
+    error_code = db.Column(db.String(50), nullable=True)
+    error_message = db.Column(Text, nullable=True)
+
+    # Locking para agente
+    locked_by_agent = db.Column(db.String(200), nullable=True)
+    locked_at = db.Column(db.DateTime, nullable=True)
+
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    approved_at = db.Column(db.DateTime, nullable=True)
+
+    # Metadata adicional (JSON string)
+    metadata_json = db.Column(Text, nullable=True)
+
+    __table_args__ = (
+        Index('idx_payment_intents_register_status', 'register_id', 'status'),
+        Index('idx_payment_intents_pending', 'register_id', 'status', 'created_at'),
+    )
+
+    def can_cancel(self) -> bool:
+        """Puede cancelarse si aún no está aprobado/declinado/cancelado."""
+        return self.status in {self.STATUS_READY, self.STATUS_IN_PROGRESS, self.STATUS_CREATED}
+
+
 class PosRegister(db.Model):
     """
     TPV (Terminal Punto de Venta) / Caja Registradora del POS

@@ -251,30 +251,30 @@ class SaleDeliveryService:
                         sale_id=sale_id
                     )
                 
-                if recipe_result and len(recipe_result) >= 2:
-                    success = recipe_result[0]
-                    if success:
-                        # Obtener lista de consumos (tercer elemento del tuple)
-                        ingredients_consumed = recipe_result[2] if len(recipe_result) > 2 else []
-                        if ingredients_consumed:
-                            delivery_type = 'receta'
+                    if recipe_result and len(recipe_result) >= 2:
+                        success = recipe_result[0]
+                        if success:
+                            # Obtener lista de consumos (tercer elemento del tuple)
+                            ingredients_consumed = recipe_result[2] if len(recipe_result) > 2 else []
+                            if ingredients_consumed:
+                                delivery_type = 'receta'
+                            else:
+                                # Producto sin receta, descuenta 1 unidad
+                                delivery_type = 'unidad'
                         else:
-                            # Producto sin receta, descuenta 1 unidad
-                            delivery_type = 'unidad'
+                            current_app.logger.warning(f"⚠️ Error al aplicar receta: {recipe_result[1]}")
+                            # Continuar con entrega aunque haya error en receta
                     else:
-                        current_app.logger.warning(f"⚠️ Error al aplicar receta: {recipe_result[1]}")
-                        # Continuar con entrega aunque haya error en receta
-                else:
-                    current_app.logger.warning(f"⚠️ Respuesta inesperada de apply_recipe_consumption")
-                    
-                    # Verificar si el producto está marcado como kit pero no tiene receta
-                    from app.models.product_models import Product
-                    product = Product.query.filter_by(name=product_name).first()
-                    if product and product.is_kit:
-                        current_app.logger.warning(
-                            f"⚠️ Producto '{product_name}' marcado como kit pero sin receta configurada. "
-                            f"Por favor, configure la receta en la gestión de productos."
-                        )
+                        current_app.logger.warning(f"⚠️ Respuesta inesperada de apply_recipe_consumption")
+                        
+                        # Verificar si el producto está marcado como kit pero no tiene receta
+                        from app.models.product_models import Product
+                        product = Product.query.filter_by(name=product_name).first()
+                        if product and product.is_kit:
+                            current_app.logger.warning(
+                                f"⚠️ Producto '{product_name}' marcado como kit pero sin receta configurada. "
+                                f"Por favor, configure la receta en la gestión de productos."
+                            )
                         
                 except Exception as e:
                     current_app.logger.error(f"Error al aplicar consumo de receta: {e}", exc_info=True)

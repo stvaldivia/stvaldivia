@@ -166,3 +166,4 @@
 - Probar en 320px, 375px, 390px, 768px, 1024px+
 - Verificar cero overflow horizontal
 
+

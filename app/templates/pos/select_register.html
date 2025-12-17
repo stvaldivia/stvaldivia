@@ -98,7 +98,7 @@
             <span class="icon">
                 {% if register.type == 'guardarropia' %}🧥{% else %}💰{% endif %}
             </span>
-            <h3>{{ register.name }}</h3>
+            <h3>{{ register.display_name or register.name }}</h3>
             <p>
                 {% if register.type == 'guardarropia' %}
                     Sistema de guardarropía

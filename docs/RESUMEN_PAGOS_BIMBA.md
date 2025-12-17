@@ -240,3 +240,4 @@ En el formulario de crear/editar caja, después de "Métodos de Pago Habilitados
 
 **Payment Stack BIMBA implementado ✅**
 
+

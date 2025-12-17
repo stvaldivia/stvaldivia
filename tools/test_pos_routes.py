@@ -84,3 +84,4 @@ if __name__ == '__main__':
     print(f"Testing POS routes on: {base_url}\n")
     sys.exit(test_pos_routes(base_url))
 
+

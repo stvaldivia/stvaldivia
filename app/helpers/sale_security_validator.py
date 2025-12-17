@@ -16,7 +16,10 @@ MIN_PRICE = 0  # Precio mínimo
 MAX_PRICE = 9999999  # Precio máximo
 
 # Tipos de pago válidos
-VALID_PAYMENT_TYPES = ['Efectivo', 'Débito', 'Crédito', 'Cash', 'Debit', 'Credit']
+VALID_PAYMENT_TYPES = [
+    'Efectivo', 'Débito', 'Crédito', 'Transferencia', 'QR', 'Prepago',
+    'Cash', 'Debit', 'Credit', 'Transfer', 'Prepaid'
+]
 
 # Límite de tiempo para considerar sesión activa (30 minutos)
 SESSION_ACTIVE_TIMEOUT_MINUTES = 30
@@ -235,13 +238,21 @@ def validate_payment_type(payment_type: str) -> Tuple[bool, Optional[str], Optio
             'DEBIT': 'Débito',
             'DÉBITO': 'Débito',
             'CREDIT': 'Crédito',
-            'CRÉDITO': 'Crédito'
+            'CRÉDITO': 'Crédito',
+            'TRANSFER': 'Transferencia',
+            'TRANSFERENCIA': 'Transferencia',
+            'QR': 'QR',
+            'PREPAID': 'Prepago',
+            'PREPAGO': 'Prepago'
         }
         
         normalized = payment_type_map.get(payment_type_upper)
         
         if not normalized:
-            return False, f"Tipo de pago inválido: {payment_type}. Tipos válidos: Efectivo, Débito, Crédito", None
+            return False, (
+                f"Tipo de pago inválido: {payment_type}. "
+                "Tipos válidos: Efectivo, Débito, Crédito, Transferencia, QR, Prepago"
+            ), None
         
         return True, None, normalized
         

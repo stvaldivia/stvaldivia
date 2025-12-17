@@ -210,3 +210,4 @@ registers = PosRegister.query.filter_by(
 
 **Documentación Caja de Prueba** ✅
 
+

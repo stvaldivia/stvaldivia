@@ -140,3 +140,4 @@ fix(security): allow required CSP sources for socket.io and cdn
 2. **Probar Socket.IO:** Confirmar que métricas y notificaciones funcionan
 3. **Revisar CDNs:** Verificar que todos los recursos se cargan correctamente
 
+

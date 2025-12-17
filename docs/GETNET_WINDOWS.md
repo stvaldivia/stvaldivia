@@ -244,3 +244,4 @@ pip install pyserial
 
 **Documentación GETNET Windows Serial** ✅
 
+

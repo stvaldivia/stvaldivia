@@ -193,7 +193,15 @@ function updatePinDisplay() {
 
 {% block content %}
 <div class="pos-login-container">
-    <h1 style="font-size: 3rem; margin-bottom: 30px;">🧥 Guardarropía</h1>
+    {% set puesto = puesto or ('caja' if register_id else 'guardarropia') %}
+    {% set form_action = form_action or (url_for('guardarropia.login') if puesto == 'guardarropia' else url_for('caja.login')) %}
+    <h1 style="font-size: 3rem; margin-bottom: 30px;">
+        {% if puesto == 'caja' %}
+            💰 Caja{% if register_name %}: {{ register_name }}{% endif %}
+        {% else %}
+            🧥 Guardarropía
+        {% endif %}
+    </h1>
     <p style="text-align: center; color: #aaa; margin-bottom: 30px; font-size: 1.1rem;">
         Selecciona tu nombre para comenzar
     </p>
@@ -230,7 +238,7 @@ function updatePinDisplay() {
     </p>
     
     <div id="pin-section" style="display: {% if previous_employee_id %}block{% else %}none{% endif %};">
-        <form method="POST" action="{{ url_for('caja.login_old') }}">
+        <form method="POST" action="{{ form_action }}">
             {% if register_id %}<input type="hidden" name="register_id" value="{{ register_id }}">{% endif %}
             {% if register_name %}<input type="hidden" name="register_name" value="{{ register_name }}">{% endif %}
             <input type="hidden" name="employee_id" id="employee_id" value="{{ previous_employee_id }}">

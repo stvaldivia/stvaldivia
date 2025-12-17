@@ -409,3 +409,4 @@ ls -la app/templates/admin/cajas/reportes.html
 
 **Runbook completado ✅**
 
+

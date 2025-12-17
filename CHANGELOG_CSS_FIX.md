@@ -84,3 +84,4 @@ dc67a24 fix(css): reorder css load + cache busting
    - Verificar menú móvil funciona correctamente
    - Confirmar tablas se convierten a cards en móvil
 
+

@@ -74,3 +74,4 @@ WHERE table_name = 'register_sessions'
 AND column_name IN ('payment_provider_used_primary_count', 'payment_provider_used_backup_count', 'fallback_events')
 ORDER BY column_name;
 
+

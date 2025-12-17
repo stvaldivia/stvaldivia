@@ -645,7 +645,30 @@ def api_create_sale():
         # VALIDACIONES DE SEGURIDAD COMPLETAS
         # ==========================================
         data = request.get_json()
-        payment_type = data.get('payment_type')
+        payment_type = data.get("payment_type")
+        payment_provider = data.get("payment_provider")
+
+        if not payment_type:
+            return jsonify({
+                "success": False,
+                "error": "Debe seleccionarse un método de pago"
+            }), 400
+        
+        # VALIDACIÓN SUAVE: Asignar GETNET por defecto si falta provider para tarjetas
+        if payment_type in ['debit', 'credit']:
+            if not payment_provider or payment_provider.strip() == '' or payment_provider == 'NONE':
+                logger.warning(
+                    f"⚠️ PAYMENT_FLOW: {payment_type} sin provider, asignando GETNET por defecto. "
+                    f"Employee: {employee_id}, Register: {register_id}"
+                )
+                payment_provider = 'GETNET'
+        
+        # Logging claro del flujo de pago
+        if payment_type in ['debit', 'credit']:
+            logger.info(
+                f"✅ PAYMENT_FLOW: {payment_type} + {payment_provider} - "
+                f"Employee: {employee_id}, Register: {register_id}"
+            )
         cart = session.get('pos_cart', [])
         
         # Calcular total
@@ -697,6 +720,7 @@ def api_create_sale():
             total = pos_service.calculate_total(cart)
         
         # Normalizar tipo de pago (ya validado por comprehensive_sale_validation)
+        # Mantener este valor para cálculo de pagos y persistencia (NO sobrescribir más abajo).
         _, _, payment_type_normalized = validate_payment_type(payment_type)
         
         # Validar que la caja no esté cerrada
@@ -746,6 +770,36 @@ def api_create_sale():
         # Validar que solo superadmin pueda usar caja SUPERADMIN
         if is_superadmin_register and not is_superadmin:
             return jsonify({'success': False, 'error': 'No autorizado para usar esta caja'}), 403
+
+        # --- FIX BEGIN ---
+        # Validar contra la caja SOLO si payment_methods está definido
+        allowed_methods = register_obj.payment_methods
+        payment_type_norm = str(payment_type).strip().lower() if payment_type is not None else ''
+
+        if allowed_methods:
+            # allowed_methods puede venir como JSON string
+            if isinstance(allowed_methods, str):
+                try:
+                    allowed_methods = json.loads(allowed_methods)
+                except Exception:
+                    allowed_methods = []
+
+            # Normalizar lista (lowercase/strip) y soportar strings simples
+            if isinstance(allowed_methods, (list, tuple, set)):
+                allowed_norm = {
+                    str(m).strip().lower()
+                    for m in allowed_methods
+                    if m is not None and str(m).strip() != ''
+                }
+            else:
+                allowed_norm = {str(allowed_methods).strip().lower()} if str(allowed_methods).strip() else set()
+
+            if allowed_norm and payment_type_norm not in allowed_norm:
+                return jsonify({
+                    "success": False,
+                    "error": f"Método de pago no permitido para esta caja: {payment_type_norm}"
+                }), 400
+        # --- FIX END ---
         
         # Obtener datos de operación especial si es caja SUPERADMIN
         tipo_operacion = None
@@ -754,8 +808,8 @@ def api_create_sale():
         is_test = False
         
         # Detectar si el payment_type es "Cortesía" (nuevo medio de pago para superadmin)
-        payment_type_normalized = payment_type.upper().replace('Í', 'I').replace('í', 'i') if payment_type else ''
-        if payment_type_normalized in ['CORTESIA', 'COURTESY']:
+        payment_type_upper = payment_type.upper().replace('Í', 'I').replace('í', 'i') if payment_type else ''
+        if payment_type_upper in ['CORTESIA', 'COURTESY']:
             if not is_superadmin_register:
                 return jsonify({'success': False, 'error': 'Cortesía solo está disponible en la caja de superadmin'}), 403
             is_courtesy = True
@@ -826,6 +880,14 @@ def api_create_sale():
                     raise Exception(f"La caja está siendo usada por {lock_info.get('employee_name', 'otro cajero')}")
             
             # shift_date y jornada_id ya obtenidos de active_session arriba (P0-004)
+
+            # LOG TEMPORAL (DEBUG)
+            print("SALE_CREATE DEBUG =>", {
+                "payment_type": payment_type,
+                "payment_provider": payment_provider,
+                "register_id": register_obj.id if register_obj else None,
+                "register_payment_methods": register_obj.payment_methods if register_obj else None
+            })
             
             # Calcular montos por método de pago usando Decimal
             # Si es cortesía, todos los pagos deben ser 0
@@ -836,8 +898,10 @@ def api_create_sale():
                 payment_credit = 0.0
             else:
                 total_decimal = to_decimal(total)
+                # Normalizado en español por validate_payment_type()
+                # Nota: Transferencia/QR se contabilizan como "no-efectivo" en payment_debit por ahora.
                 payment_cash = round_currency(total_decimal) if payment_type_normalized == 'Efectivo' else 0.0
-                payment_debit = round_currency(total_decimal) if payment_type_normalized == 'Débito' else 0.0
+                payment_debit = round_currency(total_decimal) if payment_type_normalized in ['Débito', 'Transferencia', 'QR', 'Prepago'] else 0.0
                 payment_credit = round_currency(total_decimal) if payment_type_normalized == 'Crédito' else 0.0
             
             # ==========================================
@@ -861,9 +925,7 @@ def api_create_sale():
                 )
                 return jsonify({'success': False, 'error': error_msg}), 400
             
-            if payment_methods_with_value == 0 and not is_courtesy:
-                error_msg = 'Debe seleccionarse un método de pago'
-                return jsonify({'success': False, 'error': error_msg}), 400
+            # Nota: la ausencia de payment_type se valida arriba.
             
             # Preparar items para la venta
             # Usar el mismo método de cálculo que calculate_total para consistencia
@@ -1091,6 +1153,11 @@ def api_create_sale():
                     'register_name': session.get('pos_register_name', 'POS'),
                     'employee_name': employee_name
                 }
+                
+                # Si existe ticket QR (FASE 1), pasar qr_token/display_code al servicio de impresión
+                if ticket_created and ticket_obj:
+                    sale_data['qr_token'] = ticket_obj.qr_token
+                    sale_data['ticket_display_code'] = ticket_obj.display_code
                 
                 # Obtener configuración de impresora del TPV
                 printer_config = None

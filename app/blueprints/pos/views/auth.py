@@ -22,63 +22,79 @@ def home():
 
 @caja_bp.route('/login', methods=['GET', 'POST'])
 def login():
-    """Login del POS - Muestra selección de cajas disponibles"""
+    """Login del POS - Autenticación por empleado + PIN (flujo nuevo)"""
     # Limpiar sesión de guardarropía si existe (para evitar conflictos)
     if session.get('guardarropia_logged_in'):
         session.pop('guardarropia_logged_in', None)
         session.pop('guardarropia_employee_id', None)
         session.pop('guardarropia_jornada_id', None)
         session.pop('guardarropia_employee_name', None)
-    
-    # Obtener cajas disponibles
-    default_registers = [
-        {'id': '1', 'name': 'Caja 1'},
-        {'id': '2', 'name': 'Caja 2'},
-        {'id': '3', 'name': 'Caja 3'},
-        {'id': '4', 'name': 'Caja 4'},
-        {'id': '5', 'name': 'Caja 5'},
-        {'id': '6', 'name': 'Caja 6'},
-    ]
-    
-    # Agregar Guardarropía como opción
-    registers = [
-        {'id': 'GUARDARROPIA', 'name': '🧥 Guardarropía', 'type': 'guardarropia'}
-    ]
-    
-    try:
-        # Intentar obtener cajas desde el servicio POS
-        api_registers = pos_service.get_registers()
-        if api_registers and len(api_registers) > 0:
-            # Agregar cajas regulares
-            for reg in api_registers:
-                if isinstance(reg, dict):
-                    reg['type'] = 'regular'
-                    registers.append(reg)
-                else:
-                    # Si es un objeto, convertir a dict
-                    registers.append({
-                        'id': str(getattr(reg, 'id', reg.get('id', ''))),
-                        'name': getattr(reg, 'name', reg.get('name', f"Caja {getattr(reg, 'id', reg.get('id', ''))}")),
-                        'type': 'regular'
-                    })
-        else:
-            # Usar cajas por defecto
-            for reg in default_registers:
-                reg['type'] = 'regular'
-                registers.append(reg)
-    except Exception as e:
-        logger.error(f"Error al obtener cajas: {e}")
-        # Agregar cajas por defecto
-        for reg in default_registers:
-            reg['type'] = 'regular'
-            registers.append(reg)
-    
-    return render_template('pos/select_register.html', registers=registers)
+
+    # Si ya está logueado en POS, ir directo a selección de caja (flujo nuevo)
+    if session.get('pos_logged_in'):
+        return redirect(url_for('caja.register'))
+
+    if request.method == 'POST':
+        pin = (request.form.get('pin') or '').strip()
+        employee_id = request.form.get('employee_id')
+
+        if not pin or not employee_id:
+            flash("Debes ingresar tu PIN.", "error")
+            employees = obtener_empleados_habilitados_para_puesto("caja")
+            return render_template('pos/login.html', employees=employees, puesto='caja')
+
+        employee = authenticate_employee(None, pin=pin, employee_id=employee_id)
+        if employee:
+            employee_id_str = str(employee["id"]) if employee.get("id") else None
+            puede_acceder, mensaje_validacion, jornada_id = puede_abrir_puesto(employee_id_str, "caja")
+
+            if not puede_acceder:
+                flash(mensaje_validacion, "error")
+                employee_name = employee.get("name", "Desconocido")
+                logger.warning(f"⚠️  Intento de acceso denegado: {employee_name} - {mensaje_validacion}")
+                employees = obtener_empleados_habilitados_para_puesto("caja")
+                return render_template('pos/login.html', employees=employees, puesto='caja')
+
+            session['pos_employee_id'] = employee_id_str
+            session["jornada_id"] = jornada_id
+            session['pos_employee_name'] = employee.get('name', 'Empleado')
+            session['pos_logged_in'] = True
+            session['show_fortune_cookie'] = True
+
+            employee_name = employee.get("name", "Empleado")
+            logger.info(f"✅ Login Caja exitoso: {employee_name}")
+            init_session()
+            try:
+                welcome_msg = f"{get_time_based_greeting()} {get_welcome_message(employee_name)}"
+            except Exception:
+                welcome_msg = f"Bienvenido, {employee_name}!"
+            flash(welcome_msg, "success")
+
+            return redirect(url_for('caja.register', show_fortune='true'))
+
+        flash("PIN incorrecto. Intenta nuevamente.", "error")
+
+    employees = obtener_empleados_habilitados_para_puesto("caja")
+    if not employees:
+        # Mantener mensajes similares a Guardarropía para UX en local
+        try:
+            from app.models.jornada_models import Jornada
+            jornada_abierta = Jornada.query.filter_by(estado_apertura='abierto').order_by(
+                Jornada.fecha_jornada.desc()
+            ).first()
+            if not jornada_abierta:
+                flash("No hay un turno abierto actualmente. Abre un turno desde el panel administrativo antes de acceder a Caja.", "warning")
+            else:
+                flash("No hay cajeros asignados en el turno actual. Asigna cajeros en la planilla del turno desde el panel administrativo.", "warning")
+        except Exception:
+            pass
+
+    return render_template('pos/login.html', employees=employees, puesto='caja')
 
 
 @caja_bp.route('/login_old', methods=['GET', 'POST'])
 def login_old():
-    """Login del POS - usa autenticación local para cajas regulares"""
+    """DEPRECATED: Login del POS antiguo (compatibilidad). Preferir /caja/login + /caja/register"""
     # Obtener register_id desde query params
     register_id = request.args.get('register_id')
     register_name = request.args.get('register_name')
@@ -90,7 +106,7 @@ def login_old():
         if not pin or not employee_id:
             flash("Debes ingresar tu PIN.", "error")
             employees = obtener_empleados_habilitados_para_puesto("caja")
-            return render_template('pos/login.html', employees=employees, register_id=register_id, register_name=register_name)
+            return render_template('pos/login.html', employees=employees, register_id=register_id, register_name=register_name, puesto='caja', form_action=url_for('caja.login_old'))
         
         employee = authenticate_employee(None, pin=pin, employee_id=employee_id)
         
@@ -103,7 +119,7 @@ def login_old():
                 employee_name = employee.get("name", "Desconocido")
                 logger.warning(f"⚠️  Intento de acceso denegado: {employee_name} - {mensaje_validacion}")
                 employees = obtener_empleados_habilitados_para_puesto("caja")
-                return render_template("pos/login.html", employees=employees, register_id=register_id, register_name=register_name)
+                return render_template("pos/login.html", employees=employees, register_id=register_id, register_name=register_name, puesto='caja', form_action=url_for('caja.login_old'))
             
             employee_id_str = str(employee['id']) if employee.get('id') else None
             session['pos_employee_id'] = employee_id_str
@@ -129,13 +145,13 @@ def login_old():
             flash("PIN incorrecto. Intenta nuevamente.", "error")
             # IMPORTANTE: Mantener register_id y register_name para permitir reintentos
             employees = obtener_empleados_habilitados_para_puesto("caja")
-            return render_template('pos/login.html', employees=employees, register_id=register_id, register_name=register_name)
+            return render_template('pos/login.html', employees=employees, register_id=register_id, register_name=register_name, puesto='caja', form_action=url_for('caja.login_old'))
     
     employees = obtener_empleados_habilitados_para_puesto("caja")
     if not employees:
         logger.warning("⚠️ No hay empleados habilitados para Caja")
         flash("No hay cajeros asignados en el turno actual. Por favor, contacta al administrador.", "warning")
-    return render_template('pos/login.html', employees=employees, register_id=register_id, register_name=register_name)
+    return render_template('pos/login.html', employees=employees, register_id=register_id, register_name=register_name, puesto='caja', form_action=url_for('caja.login_old'))
 
 
 @caja_bp.route('/api/verify-pin', methods=['POST'])

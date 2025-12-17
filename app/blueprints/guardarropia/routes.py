@@ -57,7 +57,7 @@ def login():
         if not pin or not employee_id:
             flash("Debes ingresar tu PIN.", "error")
             employees = obtener_empleados_habilitados_para_puesto("guardarropia")
-            return render_template('pos/login.html', employees=employees)
+            return render_template('pos/login.html', employees=employees, puesto='guardarropia')
         
         employee = authenticate_employee(None, pin=pin, employee_id=employee_id)
         
@@ -70,7 +70,7 @@ def login():
                 employee_name = employee.get("name", "Desconocido")
                 logger.warning(f"⚠️  Intento de acceso denegado a guardarropía: {employee_name} - {mensaje_validacion}")
                 employees = obtener_empleados_habilitados_para_puesto("guardarropia")
-                return render_template("pos/login.html", employees=employees)
+                return render_template("pos/login.html", employees=employees, puesto='guardarropia')
             
             employee_id_str = str(employee['id']) if employee.get('id') else None
             session['guardarropia_employee_id'] = employee_id_str
@@ -108,7 +108,7 @@ def login():
         else:
             logger.warning("⚠️ No hay empleados habilitados para Guardarropía en el turno actual")
             flash("No hay trabajadores asignados a Guardarropía en el turno actual. Por favor, asigna trabajadores a Guardarropía en la planilla del turno desde el panel administrativo.", "warning")
-    return render_template('pos/login.html', employees=employees)
+    return render_template('pos/login.html', employees=employees, puesto='guardarropia')
 
 
 @guardarropia_bp.route('/')

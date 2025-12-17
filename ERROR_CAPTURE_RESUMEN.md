@@ -160,3 +160,4 @@ python3 tools/smoke_test_admin.py
 
 **Sistema listo para capturar y analizar errores. Ejecutar smoke test y navegar admin para generar reporte inicial.**
 
+

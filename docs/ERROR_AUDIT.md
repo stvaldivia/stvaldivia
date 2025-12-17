@@ -297,3 +297,4 @@ python3 tools/smoke_test_admin.py
 - `tools/smoke_test_admin.py` - Script de smoke test
 - `SECURITY_CSP.md` - Documentación CSP
 
+
