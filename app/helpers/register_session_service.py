@@ -252,7 +252,7 @@ class RegisterSessionService:
             # Obtener ventas de esta sesión
             sales_query = base_filter
             
-            # Calcular totales por método de pago
+            # BIMBA: Calcular totales por método de pago (cash/debit/credit)
             payment_totals_result = db.session.query(
                 func.sum(PosSale.payment_cash).label('cash'),
                 func.sum(PosSale.payment_debit).label('debit'),
@@ -278,6 +278,73 @@ class RegisterSessionService:
                 'debit': float(payment_totals_result.debit or 0) if payment_totals_result else 0.0,
                 'credit': float(payment_totals_result.credit or 0) if payment_totals_result else 0.0
             }
+            
+            # BIMBA: Calcular totales por provider (GETNET/KLAP/NONE) para conciliación
+            provider_totals_result = db.session.query(
+                PosSale.payment_provider,
+                func.sum(PosSale.total_amount).label('total')
+            ).filter(
+                PosSale.register_id == register_session.register_id,
+                PosSale.shift_date == register_session.shift_date,
+                PosSale.is_cancelled == False,
+                PosSale.no_revenue == False
+            )
+            
+            # Aplicar ventana temporal
+            if register_session.opened_at:
+                opened_at_naive = register_session.opened_at
+                if opened_at_naive.tzinfo:
+                    opened_at_naive = opened_at_naive.replace(tzinfo=None)
+                provider_totals_result = provider_totals_result.filter(PosSale.created_at >= opened_at_naive)
+            
+            provider_totals_result = provider_totals_result.group_by(PosSale.payment_provider).all()
+            
+            # Construir dict de totales por provider
+            provider_totals = {}
+            payment_provider_used_primary_count = 0
+            payment_provider_used_backup_count = 0
+            
+            for row in provider_totals_result:
+                provider = row.payment_provider or 'NONE'
+                total = float(row.total or 0)
+                provider_totals[provider] = total
+                
+                # Contar transacciones por provider
+                if provider == 'GETNET':
+                    payment_provider_used_primary_count = db.session.query(func.count(PosSale.id)).filter(
+                        PosSale.register_id == register_session.register_id,
+                        PosSale.shift_date == register_session.shift_date,
+                        PosSale.payment_provider == 'GETNET',
+                        PosSale.is_cancelled == False,
+                        PosSale.no_revenue == False
+                    )
+                    if register_session.opened_at:
+                        opened_at_naive = register_session.opened_at
+                        if opened_at_naive.tzinfo:
+                            opened_at_naive = opened_at_naive.replace(tzinfo=None)
+                        payment_provider_used_primary_count = payment_provider_used_primary_count.filter(
+                            PosSale.created_at >= opened_at_naive
+                        )
+                    payment_provider_used_primary_count = payment_provider_used_primary_count.scalar() or 0
+                elif provider == 'KLAP':
+                    payment_provider_used_backup_count = db.session.query(func.count(PosSale.id)).filter(
+                        PosSale.register_id == register_session.register_id,
+                        PosSale.shift_date == register_session.shift_date,
+                        PosSale.payment_provider == 'KLAP',
+                        PosSale.is_cancelled == False,
+                        PosSale.no_revenue == False
+                    )
+                    if register_session.opened_at:
+                        opened_at_naive = register_session.opened_at
+                        if opened_at_naive.tzinfo:
+                            opened_at_naive = opened_at_naive.replace(tzinfo=None)
+                        payment_provider_used_backup_count = payment_provider_used_backup_count.filter(
+                            PosSale.created_at >= opened_at_naive
+                        )
+                    payment_provider_used_backup_count = payment_provider_used_backup_count.scalar() or 0
+            
+            # Agregar provider_totals al payment_totals para reportes
+            payment_totals['by_provider'] = provider_totals
             
             # Contar tickets (número de ventas)
             ticket_count = sales_query.count()
@@ -312,6 +379,10 @@ class RegisterSessionService:
                 register_session.incidents = json.dumps(incidents)
             if close_notes:
                 register_session.close_notes = close_notes
+            
+            # BIMBA: Guardar contadores de providers para conciliación
+            register_session.payment_provider_used_primary_count = payment_provider_used_primary_count
+            register_session.payment_provider_used_backup_count = payment_provider_used_backup_count
             
             db.session.commit()
             

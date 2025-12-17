@@ -6,6 +6,32 @@
 
 ---
 
+## 🏗️ ARQUITECTURA BIMBA (CRÍTICO)
+
+### POS Propio (BIMBAVERSO) = Fuente de Verdad
+- **Todas las ventas** se registran en nuestro POS propio
+- **Inventario** se descuenta desde nuestro sistema
+- **Catálogo** y productos están en nuestro sistema
+- **GETNET/KLAP NO manejan ventas**, solo procesan pagos
+
+### GETNET/KLAP = Procesadores de Pago
+- **Solo procesan** la transacción de pago (captura y confirmación)
+- **NO manejan** catálogo, inventario ni ventas "oficiales"
+- Se registran en la venta como `payment_provider` para:
+  - Conciliación
+  - Reportes
+  - Fallback tracking
+
+### Separación: Método vs Proveedor
+- **payment_method**: Forma de pago (cash, debit, credit, transfer, prepaid, qr)
+- **payment_provider**: Procesador (GETNET, KLAP, NONE)
+- Ejemplos:
+  - Efectivo: `method=cash`, `provider=NONE`
+  - Débito GETNET: `method=debit`, `provider=GETNET`
+  - Débito fallback KLAP: `method=debit`, `provider=KLAP`
+
+---
+
 ## 📋 DECISIÓN ESTRATÉGICA
 
 ### Provider Principal: GETNET
@@ -48,27 +74,43 @@ Cambiar a KLAP en **< 60 segundos** sin perder ventas.
    - Error en pantalla del terminal
    - Cliente esperando en fila
 
-2. **Activar KLAP inmediatamente:**
+2. **Registrar venta en POS propio (BIMBAVERSO):**
+   - **IMPORTANTE:** Primero registrar la venta en nuestro POS
+   - Seleccionar productos, confirmar venta
+   - **Inventario se descuenta automáticamente**
+   - Seleccionar método de pago: débito/crédito
+   - **Seleccionar provider: KLAP** (en lugar de GETNET)
+
+3. **Procesar pago con KLAP:**
    - Tomar celular con app KLAP instalada (debe estar cargado y con datos móviles)
    - Abrir app KLAP
    - Ingresar monto de la venta
    - Presentar celular al cliente para pago sin contacto
-
-3. **Procesar pago:**
    - Cliente acerca tarjeta/celular al celular
-   - Confirmar pago exitoso en app
+   - Confirmar pago exitoso en app KLAP
+
+4. **Confirmar venta en POS:**
+   - Confirmar que el pago fue exitoso
+   - La venta queda registrada con `payment_provider=KLAP`
    - Continuar con siguiente cliente
 
-4. **Registrar fallback:**
+5. **Registrar fallback:**
    - Anotar hora y razón de falla
    - Continuar operando con KLAP hasta que GETNET se recupere
+   - Todas las ventas durante fallback se registran con `provider=KLAP`
 
-5. **Volver a GETNET cuando se recupere:**
+6. **Volver a GETNET cuando se recupere:**
    - Probar terminal GETNET con venta pequeña
    - Si funciona, volver a usar GETNET
    - Registrar fin del fallback
+   - Nuevas ventas se registran con `provider=GETNET`
 
 ### Tiempo Objetivo: < 60 segundos
+
+### ⚠️ CRÍTICO: Flujo Correcto
+1. **Venta primero** en POS propio (inventario se descuenta)
+2. **Pago después** con GETNET/KLAP
+3. **Provider se registra** en la venta para conciliación
 
 ---
 

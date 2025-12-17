@@ -158,6 +158,14 @@ class PosSale(db.Model):
     jornada_id = db.Column(db.Integer, db.ForeignKey('jornadas.id'), nullable=False, index=True)  # P0-004: Asociación fuerte
     synced_to_phppos = db.Column(db.Boolean, default=False, nullable=False, index=True)  # Si se sincronizó a PHP POS
     
+    # BIMBA: Asociación con sesión de caja (trazabilidad)
+    register_session_id = db.Column(db.Integer, db.ForeignKey('register_sessions.id'), nullable=True, index=True)
+    
+    # BIMBA: Payment Stack - Separar método de pago vs proveedor
+    # payment_type = método (cash/debit/credit/transfer/prepaid/qr)
+    # payment_provider = procesador (GETNET/KLAP/NONE)
+    payment_provider = db.Column(db.String(50), nullable=True, index=True)  # GETNET, KLAP, NONE (null = NONE)
+    
     # Campos para caja SUPERADMIN
     is_courtesy = db.Column(db.Boolean, default=False, nullable=False, index=True)  # Cortesía (monto 0)
     is_test = db.Column(db.Boolean, default=False, nullable=False, index=True)  # Prueba de deploy
@@ -185,6 +193,9 @@ class PosSale(db.Model):
     # Relación con items - eager loading por defecto para evitar N+1 queries
     items = db.relationship('PosSaleItem', backref='sale', lazy='joined', cascade='all, delete-orphan')
     
+    # Relación con sesión de caja
+    register_session = db.relationship('RegisterSession', backref='pos_sales', lazy=True)
+    
     # Índices compuestos para consultas comunes
     __table_args__ = (
         Index('idx_pos_sales_register_date', 'register_id', 'shift_date'),
@@ -194,6 +205,8 @@ class PosSale(db.Model):
         Index('idx_pos_sales_jornada', 'jornada_id'),  # P0-004
         Index('idx_pos_sales_no_revenue', 'no_revenue', 'is_courtesy', 'is_test'),  # P0-006
         Index('idx_pos_sales_cancelled', 'is_cancelled'),  # P0-008
+        Index('idx_pos_sales_register_session', 'register_session_id'),  # BIMBA: Trazabilidad
+        Index('idx_pos_sales_payment_provider', 'payment_provider'),  # BIMBA: Conciliación por provider
     )
     
     def to_dict(self):
@@ -213,6 +226,9 @@ class PosSale(db.Model):
             'shift_date': self.shift_date,
             'jornada_id': self.jornada_id,
             'synced_to_phppos': self.synced_to_phppos,
+            # BIMBA: Trazabilidad y Payment Stack
+            'register_session_id': self.register_session_id,
+            'payment_provider': self.payment_provider,  # GETNET, KLAP, NONE
             'is_courtesy': self.is_courtesy,
             'is_test': self.is_test,
             'no_revenue': self.no_revenue,

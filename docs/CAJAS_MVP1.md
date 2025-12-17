@@ -6,6 +6,43 @@
 
 ---
 
+## 🏗️ ARQUITECTURA BIMBA (CRÍTICO)
+
+### POS Propio (BIMBAVERSO) = Fuente de Verdad
+- **Todas las ventas** se registran en nuestro POS propio (`pos_sales`)
+- **Inventario** se descuenta automáticamente desde nuestro sistema
+- **Catálogo** y productos están en nuestro sistema
+- **GETNET/KLAP NO son sistemas POS**, solo procesadores de pago
+
+### GETNET/KLAP = Procesadores de Pago
+- **Solo procesan** la transacción de pago (captura y confirmación)
+- **NO manejan** catálogo, inventario ni ventas "oficiales"
+- Se registran en `pos_sales.payment_provider` para:
+  - Conciliación con extractos bancarios
+  - Reportes de uso por provider
+  - Tracking de fallback
+
+### Separación: Método vs Proveedor
+- **payment_method** (`payment_type`): Forma de pago (cash, debit, credit, transfer, prepaid, qr)
+- **payment_provider**: Procesador (GETNET, KLAP, NONE)
+- Ejemplos:
+  - Efectivo: `payment_type=cash`, `payment_provider=NONE`
+  - Débito GETNET: `payment_type=debit`, `payment_provider=GETNET`
+  - Débito fallback KLAP: `payment_type=debit`, `payment_provider=KLAP`
+
+### Flujo Operativo Real
+1. **Caja abre sesión** (`RegisterSession`)
+2. **POS propio vende** (registra en `pos_sales`, descuenta inventario)
+3. **En cada venta se selecciona:**
+   - Método de pago (cash/debit/credit)
+   - Proveedor (GETNET/KLAP/NONE)
+4. **Cierre de sesión:**
+   - Arqueo efectivo
+   - Totales por método/proveedor desde nuestras ventas
+   - Reporte de fallback_events (manual por ahora)
+
+---
+
 ## 📋 CHECKLIST DE IMPLEMENTACIÓN
 
 ### ✅ Modelos y Migración
