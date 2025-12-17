@@ -1,20 +1,22 @@
 """
-Helper para crear/actualizar caja de prueba idempotente
+Helper para crear/actualizar caja de prueba idempotente + producto de prueba
 """
 import json
 import logging
 from app.models import db
 from app.models.pos_models import PosRegister
+from app.models.product_models import Product
 
 logger = logging.getLogger(__name__)
 
 
 def seed_test_register():
     """
-    Crea o actualiza la caja de prueba TEST001 de forma idempotente
+    Crea o actualiza la caja de prueba TEST001 + producto TEST100 de forma idempotente
     
     Returns:
-        Tuple[bool, str, PosRegister]: (success, message, register)
+        Tuple[bool, str, PosRegister, Product]: (success, status, register, product)
+        status puede ser: "created", "updated", o mensaje de error
     """
     try:
         # Buscar caja existente por code o name
@@ -73,9 +75,8 @@ def seed_test_register():
             test_register.provider_config = test_config['provider_config']
             test_register.updated_at = db.func.now()
             
-            db.session.commit()
-            
-            return True, "updated", test_register
+            register_status = "updated"
+            register = test_register
         
         else:
             # Crear nueva caja de prueba
@@ -101,14 +102,86 @@ def seed_test_register():
             )
             
             db.session.add(new_register)
-            db.session.commit()
+            db.session.flush()  # Para obtener ID
             
-            logger.info(f"✅ Caja de prueba creada: {new_register.id}")
+            register_status = "created"
+            register = new_register
+        
+        # ==========================================
+        # SEED: PRODUCTO TEST100
+        # ==========================================
+        test_product_name = "TEST PRODUCTO $100"
+        test_product = Product.query.filter_by(name=test_product_name).first()
+        
+        if test_product:
+            # Actualizar producto existente
+            logger.info(f"✅ Actualizando producto de prueba existente: {test_product.id}")
             
-            return True, "created", new_register
+            test_product.price = 100
+            test_product.is_active = True
+            test_product.is_kit = False  # Producto simple sin receta
+            test_product.category = "TEST"
+            test_product.cost_price = 0
+            test_product.stock_quantity = 0
+            test_product.stock_minimum = 0
+            
+            # Si existe external_id, actualizarlo
+            if hasattr(test_product, 'external_id'):
+                test_product.external_id = "TEST100"
+            
+            product_status = "updated"
+        else:
+            # Crear nuevo producto de prueba
+            logger.info("✅ Creando nuevo producto de prueba")
+            
+            test_product = Product(
+                name=test_product_name,
+                category="TEST",
+                price=100,
+                cost_price=0,
+                stock_quantity=0,
+                stock_minimum=0,
+                is_active=True,
+                is_kit=False  # Producto simple sin receta
+            )
+            
+            # Si existe external_id, asignarlo
+            if hasattr(Product, 'external_id'):
+                test_product.external_id = "TEST100"
+            
+            db.session.add(test_product)
+            product_status = "created"
+        
+        db.session.commit()
+        
+        # ==========================================
+        # SMOKE TEST: Verificar que existen
+        # ==========================================
+        verify_register = PosRegister.query.filter_by(code='TEST001').first()
+        verify_product = Product.query.filter_by(name=test_product_name).first()
+        
+        if not verify_register:
+            logger.error("⚠️ Smoke test falló: caja TEST001 no encontrada después de seed")
+            return False, "Error: Caja no se creó correctamente", None, None
+        
+        if not verify_product:
+            logger.error("⚠️ Smoke test falló: producto TEST100 no encontrado después de seed")
+            return False, "Error: Producto no se creó correctamente", None, None
+        
+        logger.info(f"✅ Smoke test OK: Caja {verify_register.id} y Producto {verify_product.id} verificados")
+        
+        # Determinar status general
+        if register_status == "created" and product_status == "created":
+            overall_status = "created"
+        elif register_status == "updated" and product_status == "updated":
+            overall_status = "updated"
+        else:
+            overall_status = "mixed"  # Uno creado, otro actualizado
+        
+        return True, overall_status, register, test_product
         
     except Exception as e:
         db.session.rollback()
-        logger.error(f"Error al crear/actualizar caja de prueba: {e}", exc_info=True)
-        return False, f"Error: {str(e)}", None
+        logger.error(f"Error al crear/actualizar caja/producto de prueba: {e}", exc_info=True)
+        return False, f"Error: {str(e)}", None, None
 
