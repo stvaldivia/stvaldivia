@@ -1,0 +1,329 @@
+"""
+Servicio para gestionar sesiones de caja (RegisterSession)
+P0-001, P0-003, P0-010: Estado explícito de caja
+"""
+from typing import Optional, Dict, Any, Tuple
+from datetime import datetime
+from flask import current_app, session, request
+from app.models import db
+from app.models.pos_models import RegisterSession, PosRegister
+from app.models.jornada_models import Jornada
+from app.helpers.timezone_utils import CHILE_TZ
+import hashlib
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class RegisterSessionService:
+    """Servicio para gestionar sesiones de caja"""
+    
+    @staticmethod
+    def get_active_session(register_id: str, jornada_id: Optional[int] = None) -> Optional[RegisterSession]:
+        """
+        Obtiene la sesión activa (OPEN) de una caja
+        
+        Args:
+            register_id: ID de la caja
+            jornada_id: ID de la jornada (opcional, para validación)
+            
+        Returns:
+            RegisterSession activa o None
+        """
+        try:
+            query = RegisterSession.query.filter_by(
+                register_id=str(register_id),
+                status='OPEN'
+            )
+            
+            if jornada_id:
+                query = query.filter_by(jornada_id=jornada_id)
+            
+            return query.first()
+        except Exception as e:
+            logger.error(f"Error al obtener sesión activa: {e}", exc_info=True)
+            return None
+    
+    @staticmethod
+    def open_session(
+        register_id: str,
+        employee_id: str,
+        employee_name: str,
+        jornada_id: int,
+        initial_cash: Optional[float] = None
+    ) -> Tuple[bool, Optional[RegisterSession], str]:
+        """
+        Abre una nueva sesión de caja
+        
+        Args:
+            register_id: ID de la caja
+            employee_id: ID del empleado
+            employee_name: Nombre del empleado
+            jornada_id: ID de la jornada (OBLIGATORIO)
+            initial_cash: Monto inicial de efectivo (opcional)
+            
+        Returns:
+            Tuple[bool, Optional[RegisterSession], str]: (éxito, sesión, mensaje)
+        """
+        try:
+            # P0-002: Validar que existe jornada activa
+            jornada = Jornada.query.get(jornada_id)
+            if not jornada:
+                return False, None, "Jornada no encontrada"
+            
+            if jornada.estado_apertura != 'abierto':
+                return False, None, f"La jornada no está abierta (estado: {jornada.estado_apertura})"
+            
+            # Verificar que no haya otra sesión OPEN para esta caja
+            existing_session = RegisterSessionService.get_active_session(register_id, jornada_id)
+            if existing_session:
+                return False, None, f"Ya existe una sesión abierta para esta caja (abierta por {existing_session.opened_by_employee_name})"
+            
+            # Generar idempotency_key
+            key_data = f"{register_id}_{jornada_id}_{employee_id}_{datetime.now(CHILE_TZ).strftime('%Y%m%d%H%M')}"
+            idempotency_key = hashlib.sha256(key_data.encode()).hexdigest()[:64]
+            
+            # Verificar que no exista sesión con esta key
+            existing_key = RegisterSession.query.filter_by(idempotency_key_open=idempotency_key).first()
+            if existing_key:
+                return True, existing_key, "Sesión ya existe (idempotencia)"
+            
+            # Crear nueva sesión
+            new_session = RegisterSession(
+                register_id=str(register_id),
+                opened_by_employee_id=str(employee_id),
+                opened_by_employee_name=employee_name,
+                opened_at=datetime.now(CHILE_TZ).replace(tzinfo=None),
+                status='OPEN',
+                shift_date=jornada.fecha_jornada,
+                jornada_id=jornada_id,
+                initial_cash=initial_cash,
+                idempotency_key_open=idempotency_key
+            )
+            
+            db.session.add(new_session)
+            db.session.commit()
+            
+            # Registrar auditoría
+            RegisterSessionService._log_audit(
+                event_type='REGISTER_SESSION_OPENED',
+                register_id=register_id,
+                register_session_id=new_session.id,
+                jornada_id=jornada_id,
+                actor_user_id=employee_id,
+                actor_name=employee_name,
+                payload={'initial_cash': initial_cash}
+            )
+            
+            # FASE 8: Emitir evento SocketIO para visor de cajas
+            try:
+                from app import socketio
+                socketio.emit('register_activity', {
+                    'register_id': register_id,
+                    'action': 'opened',
+                    'cashier_id': employee_id,
+                    'cashier_name': employee_name,
+                    'timestamp': datetime.now(CHILE_TZ).isoformat()
+                }, namespace='/admin')
+            except Exception as e:
+                logger.warning(f"Error al emitir evento de apertura de caja: {e}")
+            
+            logger.info(f"✅ Sesión de caja abierta: {register_id} por {employee_name} (Jornada {jornada_id})")
+            return True, new_session, "Sesión abierta correctamente"
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error al abrir sesión de caja: {e}", exc_info=True)
+            return False, None, f"Error al abrir sesión: {str(e)}"
+    
+    @staticmethod
+    def start_close_session(register_session_id: int, employee_id: str, employee_name: str) -> Tuple[bool, str]:
+        """
+        Inicia el cierre de una sesión (cambia a PENDING_CLOSE)
+        
+        Args:
+            register_session_id: ID de la sesión
+            employee_id: ID del empleado que inicia el cierre
+            employee_name: Nombre del empleado
+            
+        Returns:
+            Tuple[bool, str]: (éxito, mensaje)
+        """
+        try:
+            register_session = RegisterSession.query.get(register_session_id)
+            if not register_session:
+                return False, "Sesión no encontrada"
+            
+            if register_session.status != 'OPEN':
+                return False, f"La sesión no está abierta (estado: {register_session.status})"
+            
+            register_session.status = 'PENDING_CLOSE'
+            db.session.commit()
+            
+            # FASE 8: Emitir evento SocketIO para visor de cajas
+            try:
+                from app import socketio
+                from datetime import datetime
+                from app.helpers.timezone_utils import CHILE_TZ
+                socketio.emit('register_activity', {
+                    'register_id': register_session.register_id,
+                    'action': 'pending_close',
+                    'cashier_id': employee_id,
+                    'cashier_name': employee_name,
+                    'timestamp': datetime.now(CHILE_TZ).isoformat()
+                }, namespace='/admin')
+            except Exception as e:
+                logger.warning(f"Error al emitir evento de cierre pendiente: {e}")
+            
+            # Registrar auditoría
+            RegisterSessionService._log_audit(
+                event_type='REGISTER_SESSION_PENDING_CLOSE',
+                register_id=register_session.register_id,
+                register_session_id=register_session_id,
+                jornada_id=register_session.jornada_id,
+                actor_user_id=employee_id,
+                actor_name=employee_name
+            )
+            
+            logger.info(f"✅ Sesión {register_session_id} en estado PENDING_CLOSE")
+            return True, "Cierre iniciado"
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error al iniciar cierre de sesión: {e}", exc_info=True)
+            return False, f"Error: {str(e)}"
+    
+    @staticmethod
+    def close_session(
+        register_session_id: int,
+        closed_by: str,
+        employee_id: Optional[str] = None
+    ) -> Tuple[bool, str]:
+        """
+        Cierra una sesión (cambia a CLOSED)
+        
+        Args:
+            register_session_id: ID de la sesión
+            closed_by: Nombre de quien cierra
+            employee_id: ID del empleado (opcional)
+            
+        Returns:
+            Tuple[bool, str]: (éxito, mensaje)
+        """
+        try:
+            register_session = RegisterSession.query.get(register_session_id)
+            if not register_session:
+                return False, "Sesión no encontrada"
+            
+            if register_session.status not in ['OPEN', 'PENDING_CLOSE']:
+                return False, f"La sesión no puede cerrarse (estado: {register_session.status})"
+            
+            register_session.status = 'CLOSED'
+            register_session.closed_at = datetime.now(CHILE_TZ).replace(tzinfo=None)
+            register_session.closed_by = closed_by
+            
+            db.session.commit()
+            
+            # FASE 8: Emitir evento SocketIO para visor de cajas
+            try:
+                from app import socketio
+                socketio.emit('register_activity', {
+                    'register_id': register_session.register_id,
+                    'action': 'closed',
+                    'cashier_id': employee_id or closed_by,
+                    'cashier_name': closed_by,
+                    'timestamp': datetime.now(CHILE_TZ).isoformat()
+                }, namespace='/admin')
+            except Exception as e:
+                logger.warning(f"Error al emitir evento de cierre: {e}")
+            
+            # Registrar auditoría
+            RegisterSessionService._log_audit(
+                event_type='REGISTER_SESSION_CLOSED',
+                register_id=register_session.register_id,
+                register_session_id=register_session_id,
+                jornada_id=register_session.jornada_id,
+                actor_user_id=employee_id or closed_by,
+                actor_name=closed_by
+            )
+            
+            logger.info(f"✅ Sesión {register_session_id} cerrada por {closed_by}")
+            return True, "Sesión cerrada correctamente"
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error al cerrar sesión: {e}", exc_info=True)
+            return False, f"Error: {str(e)}"
+    
+    @staticmethod
+    def can_sell_in_register(register_id: str, jornada_id: Optional[int] = None) -> Tuple[bool, Optional[str]]:
+        """
+        Verifica si se pueden hacer ventas en una caja (P0-005)
+        
+        Args:
+            register_id: ID de la caja
+            jornada_id: ID de la jornada (opcional)
+            
+        Returns:
+            Tuple[bool, Optional[str]]: (puede_vender, mensaje_error)
+        """
+        try:
+            # Buscar sesión activa
+            active_session = RegisterSessionService.get_active_session(register_id, jornada_id)
+            
+            if not active_session:
+                return False, "No hay sesión abierta para esta caja. Debe abrir la caja antes de vender."
+            
+            if not active_session.can_sell():
+                return False, f"La caja está en estado {active_session.status}. No se pueden hacer ventas."
+            
+            # Validar jornada activa
+            jornada = Jornada.query.get(active_session.jornada_id)
+            if not jornada:
+                return False, "Jornada asociada no encontrada"
+            
+            if jornada.estado_apertura != 'abierto':
+                return False, f"La jornada no está abierta (estado: {jornada.estado_apertura})"
+            
+            return True, None
+            
+        except Exception as e:
+            logger.error(f"Error al verificar si se puede vender: {e}", exc_info=True)
+            return False, f"Error al verificar estado de caja: {str(e)}"
+    
+    @staticmethod
+    def _log_audit(
+        event_type: str,
+        register_id: Optional[str] = None,
+        register_session_id: Optional[int] = None,
+        jornada_id: Optional[int] = None,
+        actor_user_id: Optional[str] = None,
+        actor_name: Optional[str] = None,
+        payload: Optional[Dict[str, Any]] = None,
+        severity: str = 'info'
+    ):
+        """Registra evento de auditoría (P0-013, P0-014)"""
+        try:
+            from app.models.pos_models import SaleAuditLog
+            import json
+            
+            audit_log = SaleAuditLog(
+                event_type=event_type,
+                severity=severity,
+                actor_user_id=actor_user_id or session.get('pos_employee_id') or session.get('admin_username'),
+                actor_name=actor_name or session.get('pos_employee_name') or session.get('admin_username', 'Sistema'),
+                register_id=register_id,
+                register_session_id=register_session_id,
+                jornada_id=jornada_id,
+                payload_json=json.dumps(payload) if payload else None,
+                ip_address=request.remote_addr if request else None,
+                session_id=session.get('session_id')
+            )
+            
+            db.session.add(audit_log)
+            db.session.commit()
+            
+        except Exception as e:
+            logger.error(f"Error al registrar auditoría: {e}", exc_info=True)
+            # No fallar la operación principal si falla la auditoría
+

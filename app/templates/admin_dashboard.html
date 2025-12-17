@@ -1,0 +1,878 @@
+{% extends "base.html" %}
+{% block title %}Dashboard Administrativo - Panel de Control BIMBA{% endblock %}
+{% block meta_description %}Panel de control administrativo del sistema BIMBA. Monitoreo en tiempo real de entregas, turnos y estadísticas del negocio.{% endblock %}
+
+{% block head_extra %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+<style>
+    .dashboard-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: var(--spacing-sm, 0.75rem);
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    @media (min-width: 768px) {
+        .dashboard-container {
+            padding: var(--spacing-md, 1rem);
+        }
+    }
+    
+    @media (min-width: 1024px) {
+        .dashboard-container {
+            padding: var(--spacing-lg, 1.5rem);
+        }
+    }
+    
+    /* Banner de Estado del Sistema */
+    .system-status-banner {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 30px;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+    
+    .status-indicator {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+    
+    .status-indicator.success {
+        background: #4caf50;
+        box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+    }
+    
+    .status-indicator.warning {
+        background: #ff9800;
+        box-shadow: 0 0 10px rgba(255, 152, 0, 0.5);
+    }
+    
+    .status-indicator.danger {
+        background: #f44336;
+        box-shadow: 0 0 10px rgba(244, 67, 54, 0.5);
+    }
+    
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    
+    .status-content {
+        flex: 1;
+    }
+    
+    .status-title {
+        color: #fff;
+        font-size: clamp(1rem, 2.5vw, 1.2rem);
+        font-weight: 700;
+        margin: 0 0 var(--spacing-xs, 0.5rem) 0;
+    }
+    
+    .status-message {
+        color: #94a3b8;
+        font-size: clamp(0.875rem, 2vw, 0.95rem);
+        margin: 0;
+    }
+    
+    /* Grid de Métricas Principales */
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: var(--spacing-sm, 0.75rem);
+        margin-bottom: var(--spacing-md, 1rem);
+    }
+    
+    @media (min-width: 480px) {
+        .metrics-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+    
+    @media (min-width: 768px) {
+        .metrics-grid {
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: var(--spacing-md, 1rem);
+            margin-bottom: var(--spacing-lg, 1.5rem);
+        }
+    }
+    
+    .metric-card {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+        padding: var(--spacing-md, 1rem);
+        transition: all 0.3s ease;
+    }
+    
+    @media (min-width: 768px) {
+        .metric-card {
+            padding: var(--spacing-lg, 1.5rem);
+        }
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        border-color: rgba(102, 126, 234, 0.3);
+    }
+    
+    .metric-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+    
+    .metric-title {
+        color: #94a3b8;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin: 0;
+    }
+    
+    .metric-icon {
+        font-size: 1.5rem;
+    }
+    
+    .metric-value {
+        color: #fff;
+        font-size: clamp(1.5rem, 4vw, 2rem);
+        font-weight: 700;
+        margin: var(--spacing-xs, 0.5rem) 0;
+    }
+    
+    .metric-change {
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    
+    .metric-change.positive {
+        color: #4caf50;
+    }
+    
+    .metric-change.negative {
+        color: #f44336;
+    }
+    
+    .metric-change.neutral {
+        color: #94a3b8;
+    }
+    
+    /* Sección de Gráficos */
+    .charts-section {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: var(--spacing-sm, 0.75rem);
+        margin-bottom: var(--spacing-md, 1rem);
+    }
+    
+    @media (min-width: 768px) {
+        .charts-section {
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: var(--spacing-md, 1rem);
+            margin-bottom: var(--spacing-lg, 1.5rem);
+        }
+    }
+    
+    .chart-card {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+        padding: var(--spacing-md, 1rem);
+    }
+    
+    @media (min-width: 768px) {
+        .chart-card {
+            padding: var(--spacing-lg, 1.5rem);
+        }
+    }
+    
+    .chart-title {
+        color: #fff;
+        font-size: clamp(1rem, 2.5vw, 1.1rem);
+        font-weight: 600;
+        margin: 0 0 var(--spacing-md, 1rem) 0;
+    }
+    
+    .chart-container {
+        position: relative;
+        height: clamp(200px, 40vw, 300px);
+        width: 100%;
+        overflow-x: auto;
+    }
+    
+    /* Alertas */
+    .alerts-section {
+        margin-bottom: 30px;
+    }
+    
+    .alert-card {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border-left: 4px solid;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        transition: all 0.3s ease;
+    }
+    
+    .alert-card:hover {
+        transform: translateX(5px);
+    }
+    
+    .alert-card.warning {
+        border-left-color: #ff9800;
+        background: rgba(255, 152, 0, 0.1);
+    }
+    
+    .alert-card.danger {
+        border-left-color: #f44336;
+        background: rgba(244, 67, 54, 0.1);
+    }
+    
+    .alert-card.info {
+        border-left-color: #2196f3;
+        background: rgba(33, 150, 243, 0.1);
+    }
+    
+    .alert-icon {
+        font-size: 2rem;
+    }
+    
+    .alert-content {
+        flex: 1;
+    }
+    
+    .alert-title {
+        color: #fff;
+        font-size: 1rem;
+        font-weight: 600;
+        margin: 0 0 5px 0;
+    }
+    
+    .alert-message {
+        color: #94a3b8;
+        font-size: 0.9rem;
+        margin: 0;
+    }
+    
+    .alert-action {
+        color: #667eea;
+        text-decoration: none;
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+    
+    .alert-action:hover {
+        text-decoration: underline;
+    }
+    
+    /* Comparativas */
+    .comparatives-section {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .comparative-card {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+        padding: 25px;
+    }
+    
+    .comparative-title {
+        color: #94a3b8;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        margin: 0 0 15px 0;
+    }
+    
+    .comparative-values {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    
+    .comparative-value {
+        color: #fff;
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+    
+    .comparative-label {
+        color: #94a3b8;
+        font-size: 0.85rem;
+    }
+    
+    .comparative-change {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+    
+    /* Loading State */
+    .loading-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #94a3b8;
+    }
+    
+    .spinner {
+        border: 3px solid rgba(102, 126, 234, 0.3);
+        border-top: 3px solid #667eea;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 20px;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #94a3b8;
+    }
+    
+    .empty-state-icon {
+        font-size: 4rem;
+        margin-bottom: 15px;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .charts-section {
+            grid-template-columns: 1fr;
+        }
+        
+        .metrics-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <!-- Banner de Estado del Sistema -->
+    <div class="system-status-banner" id="system-status-banner">
+        <div class="status-indicator" id="status-indicator"></div>
+        <div class="status-content">
+            <h2 class="status-title" id="status-title">Cargando estado del sistema...</h2>
+            <p class="status-message" id="status-message">Obteniendo información...</p>
+        </div>
+    </div>
+    
+    <!-- Alertas Proactivas -->
+    <div class="alerts-section" id="alerts-section" style="display: none;">
+        <h3 style="color: #fff; margin-bottom: 15px; font-size: 1.2rem;">⚠️ Alertas</h3>
+        <div id="alerts-container"></div>
+    </div>
+    
+    <!-- Métricas Principales -->
+    <div class="metrics-grid" id="metrics-grid">
+        <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Cargando métricas...</p>
+        </div>
+    </div>
+    
+    <!-- Comparativas -->
+    <div class="comparatives-section" id="comparatives-section" style="display: none;">
+        <div class="comparative-card">
+            <h4 class="comparative-title">Ventas</h4>
+            <div class="comparative-values">
+                <div>
+                    <div class="comparative-value" id="ventas-hoy">$0</div>
+                    <div class="comparative-label">Hoy</div>
+                </div>
+                <div>
+                    <div class="comparative-value" id="ventas-ayer">$0</div>
+                    <div class="comparative-label">Ayer</div>
+                </div>
+            </div>
+            <div class="comparative-change" id="ventas-change">
+                <span>0%</span>
+            </div>
+        </div>
+        
+        <div class="comparative-card">
+            <h4 class="comparative-title">Entregas</h4>
+            <div class="comparative-values">
+                <div>
+                    <div class="comparative-value" id="entregas-hoy">0</div>
+                    <div class="comparative-label">Hoy</div>
+                </div>
+                <div>
+                    <div class="comparative-value" id="entregas-ayer">0</div>
+                    <div class="comparative-label">Ayer</div>
+                </div>
+            </div>
+            <div class="comparative-change" id="entregas-change">
+                <span>0%</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Gráficos -->
+    <div class="charts-section" id="charts-section" style="display: none;">
+        <div class="chart-card">
+            <h3 class="chart-title">Ventas por Hora</h3>
+            <div class="chart-container">
+                <canvas id="chart-ventas-hora"></canvas>
+            </div>
+        </div>
+        
+        <div class="chart-card">
+            <h3 class="chart-title">Métodos de Pago</h3>
+            <div class="chart-container">
+                <canvas id="chart-metodos-pago"></canvas>
+            </div>
+        </div>
+        
+    </div>
+</div>
+
+<script>
+    // Variables globales
+    let metricsData = null;
+    let charts = {};
+    let socket = null;
+    let updateInterval = null;
+    
+    // Configuración de Chart.js
+    Chart.defaults.color = '#94a3b8';
+    Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
+    Chart.defaults.backgroundColor = 'rgba(102, 126, 234, 0.2)';
+    
+    // Conectar a Socket.IO para actualizaciones en tiempo real
+    function connectSocketIO() {
+        try {
+            socket = io('/admin_stats', {
+                transports: ['websocket', 'polling']
+            });
+            
+            socket.on('connect', function() {
+                console.log('✅ Conectado a Socket.IO para métricas');
+            });
+            
+            socket.on('metrics_update', function(data) {
+                console.log('📊 Actualización de métricas recibida');
+                if (data.metrics) {
+                    updateDashboard(data.metrics);
+                }
+            });
+            
+            socket.on('disconnect', function() {
+                console.log('❌ Desconectado de Socket.IO');
+            });
+        } catch (error) {
+            console.error('Error conectando a Socket.IO:', error);
+        }
+    }
+    
+    // Cargar métricas iniciales
+    async function loadMetrics() {
+        try {
+            const response = await fetch('/admin/api/dashboard/metrics');
+            const data = await response.json();
+            
+            if (data.success && data.metrics) {
+                metricsData = data.metrics;
+                updateDashboard(data.metrics);
+            } else {
+                console.error('Error en respuesta de métricas:', data);
+                // Si hay error en system_status, mostrar estado por defecto
+                if (data.metrics && data.metrics.system_status && data.metrics.system_status.estado === 'error') {
+                    updateSystemStatus({
+                        estado: 'indeterminado',
+                        icon: '⚠️',
+                        color: 'warning',
+                        mensaje: 'Sistema operativo'
+                    });
+                }
+                showError(data.error || 'Error al cargar métricas');
+            }
+        } catch (error) {
+            console.error('Error cargando métricas:', error);
+            // Mostrar estado por defecto en caso de error
+            updateSystemStatus({
+                estado: 'indeterminado',
+                icon: '⚠️',
+                color: 'warning',
+                mensaje: 'Sistema operativo'
+            });
+            showError('Error de conexión al cargar métricas');
+        }
+    }
+    
+    // Actualizar dashboard completo
+    function updateDashboard(metrics) {
+        metricsData = metrics;
+        
+        // Actualizar estado del sistema
+        updateSystemStatus(metrics.system_status);
+        
+        // Actualizar métricas principales
+        updateMainMetrics(metrics);
+        
+        // Actualizar comparativas
+        updateComparatives(metrics.comparativas);
+        
+        // Actualizar gráficos
+        updateCharts(metrics.graficos);
+        
+        // Actualizar alertas
+        updateAlerts(metrics.alertas);
+    }
+    
+    // Actualizar banner de estado
+    function updateSystemStatus(status) {
+        const indicator = document.getElementById('status-indicator');
+        const title = document.getElementById('status-title');
+        const message = document.getElementById('status-message');
+        
+        if (!indicator || !title || !message) return;
+        
+        // Si no hay status o hay un error, mostrar mensaje por defecto
+        if (!status || status.estado === 'error') {
+            indicator.className = 'status-indicator warning';
+            title.textContent = '⚠️ Estado del Sistema';
+            message.textContent = 'Sistema operativo';
+            return;
+        }
+        
+        // Si no hay status o hay un error, mostrar mensaje por defecto
+        if (!status || status.estado === 'error') {
+            indicator.className = 'status-indicator warning';
+            title.textContent = '⚠️ Estado del Sistema';
+            message.textContent = 'Sistema operativo';
+            return;
+        }
+        
+        indicator.className = `status-indicator ${status.color || 'warning'}`;
+        title.textContent = `${status.icon || '⏰'} ${status.mensaje || 'Estado desconocido'}`;
+        
+        let statusText = '';
+        if (status.horas_abierto) {
+            statusText = `Abierto hace ${status.horas_abierto} horas`;
+        }
+        if (status.fecha) {
+            statusText += ` • ${status.fecha}`;
+        }
+        if (status.tipo) {
+            statusText += ` • ${status.tipo}`;
+        }
+        
+        message.textContent = statusText || 'Sistema operativo';
+    }
+    
+    // Actualizar métricas principales
+    function updateMainMetrics(metrics) {
+        const grid = document.getElementById('metrics-grid');
+        if (!grid) return;
+        
+        const turno = metrics.turno_actual || {};
+        const ventas = metrics.ventas || {};
+        const entregas = metrics.entregas || {};
+        const kioskos = metrics.kioskos || {};
+        const equipo = metrics.equipo || {};
+        
+        grid.innerHTML = `
+            <div class="metric-card">
+                <div class="metric-header">
+                    <h4 class="metric-title">Ventas del Turno</h4>
+                    <span class="metric-icon">💳</span>
+                </div>
+                <div class="metric-value">$${formatNumber(ventas.turno?.monto || 0)}</div>
+                <div class="metric-change neutral">
+                    <span>${ventas.turno?.total || 0} ventas</span>
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-header">
+                    <h4 class="metric-title">Entregas del Turno</h4>
+                    <span class="metric-icon">🍺</span>
+                </div>
+                <div class="metric-value">${entregas.turno || 0}</div>
+                <div class="metric-change neutral">
+                    <span>Total: ${entregas.hoy || 0}</span>
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-header">
+                    <h4 class="metric-title">Equipo</h4>
+                    <span class="metric-icon">👥</span>
+                </div>
+                <div class="metric-value">${equipo.total_trabajadores || 0}</div>
+                <div class="metric-change neutral">
+                    <span>Trabajadores activos</span>
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-header">
+                    <h4 class="metric-title">Kioskos</h4>
+                    <span class="metric-icon">📱</span>
+                </div>
+                <div class="metric-value">$${formatNumber(kioskos.monto_turno || 0)}</div>
+                <div class="metric-change neutral">
+                    <span>${kioskos.pagos_turno || 0} pagos</span>
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-header">
+                    <h4 class="metric-title">Costo Turno</h4>
+                    <span class="metric-icon">💵</span>
+                </div>
+                <div class="metric-value">$${formatNumber(turno.costo_total || 0)}</div>
+                <div class="metric-change neutral">
+                    <span>${turno.planilla_count || 0} trabajadores</span>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Actualizar comparativas
+    function updateComparatives(comparativas) {
+        if (!comparativas) return;
+        
+        const section = document.getElementById('comparatives-section');
+        if (section) section.style.display = 'grid';
+        
+        // Ventas
+        const ventas = comparativas.ventas || {};
+        document.getElementById('ventas-hoy').textContent = `$${formatNumber(ventas.hoy || 0)}`;
+        document.getElementById('ventas-ayer').textContent = `$${formatNumber(ventas.ayer || 0)}`;
+        
+        const ventasChange = document.getElementById('ventas-change');
+        if (ventasChange) {
+            const variacion = ventas.variacion || 0;
+            const tendencia = ventas.tendencia || 'equal';
+            ventasChange.className = `comparative-change ${tendencia === 'up' ? 'positive' : tendencia === 'down' ? 'negative' : 'neutral'}`;
+            ventasChange.innerHTML = `
+                <span>${variacion > 0 ? '↑' : variacion < 0 ? '↓' : '='}</span>
+                <span>${Math.abs(variacion).toFixed(1)}%</span>
+            `;
+        }
+        
+        // Entregas
+        const entregas = comparativas.entregas || {};
+        document.getElementById('entregas-hoy').textContent = entregas.hoy || 0;
+        document.getElementById('entregas-ayer').textContent = entregas.ayer || 0;
+        
+        const entregasChange = document.getElementById('entregas-change');
+        if (entregasChange) {
+            const variacion = entregas.variacion || 0;
+            const tendencia = entregas.tendencia || 'equal';
+            entregasChange.className = `comparative-change ${tendencia === 'up' ? 'positive' : tendencia === 'down' ? 'negative' : 'neutral'}`;
+            entregasChange.innerHTML = `
+                <span>${variacion > 0 ? '↑' : variacion < 0 ? '↓' : '='}</span>
+                <span>${Math.abs(variacion).toFixed(1)}%</span>
+            `;
+        }
+    }
+    
+    // Actualizar gráficos
+    function updateCharts(graficos) {
+        if (!graficos) return;
+        
+        const section = document.getElementById('charts-section');
+        if (section) section.style.display = 'grid';
+        
+        // Gráfico de ventas por hora
+        updateVentasPorHoraChart(graficos.ventas_por_hora || {});
+        
+        // Gráfico de métodos de pago
+        updateMetodosPagoChart(graficos.metodos_pago || {});
+        
+    }
+    
+    function updateVentasPorHoraChart(data) {
+        const ctx = document.getElementById('chart-ventas-hora');
+        if (!ctx) return;
+        
+        const horas = Object.keys(data).sort((a, b) => parseInt(a) - parseInt(b));
+        const valores = horas.map(h => data[h] || 0);
+        
+        if (charts.ventasHora) {
+            charts.ventasHora.destroy();
+        }
+        
+        charts.ventasHora = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: horas.map(h => `${h}:00`),
+                datasets: [{
+                    label: 'Ventas',
+                    data: valores,
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            color: '#94a3b8'
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)'
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            color: '#94a3b8'
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.05)'
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    function updateMetodosPagoChart(data) {
+        const ctx = document.getElementById('chart-metodos-pago');
+        if (!ctx) return;
+        
+        if (charts.metodosPago) {
+            charts.metodosPago.destroy();
+        }
+        
+        charts.metodosPago = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Efectivo', 'Débito', 'Crédito'],
+                datasets: [{
+                    data: [
+                        data.cash || 0,
+                        data.debit || 0,
+                        data.credit || 0
+                    ],
+                    backgroundColor: [
+                        '#4caf50',
+                        '#2196f3',
+                        '#ff9800'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: '#94a3b8',
+                            padding: 15
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Actualizar alertas
+    function updateAlerts(alertas) {
+        const section = document.getElementById('alerts-section');
+        const container = document.getElementById('alerts-container');
+        
+        if (!section || !container) return;
+        
+        if (!alertas || alertas.length === 0) {
+            section.style.display = 'none';
+            return;
+        }
+        
+        section.style.display = 'block';
+        container.innerHTML = alertas.map(alerta => `
+            <div class="alert-card ${alerta.tipo || 'info'}">
+                <div class="alert-icon">${alerta.icon || '⚠️'}</div>
+                <div class="alert-content">
+                    <h4 class="alert-title">${alerta.titulo || 'Alerta'}</h4>
+                    <p class="alert-message">${alerta.mensaje || ''}</p>
+                </div>
+                ${alerta.accion ? `<a href="${alerta.accion}" class="alert-action">Ver →</a>` : ''}
+            </div>
+        `).join('');
+    }
+    
+    // Utilidades
+    function formatNumber(num) {
+        return new Intl.NumberFormat('es-CL').format(Math.round(num));
+    }
+    
+    function showError(message) {
+        const grid = document.getElementById('metrics-grid');
+        if (grid) {
+            grid.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">❌</div>
+                    <h3>Error al cargar métricas</h3>
+                    <p>${message}</p>
+                    <button onclick="loadMetrics()" class="btn btn-primary" style="margin-top: 20px;">Reintentar</button>
+                </div>
+            `;
+        }
+    }
+    
+    // Inicializar
+    document.addEventListener('DOMContentLoaded', function() {
+        loadMetrics();
+        connectSocketIO();
+        
+        // Actualizar cada 30 segundos
+        updateInterval = setInterval(loadMetrics, 30000);
+    });
+    
+    // Limpiar al salir
+    window.addEventListener('beforeunload', function() {
+        if (updateInterval) {
+            clearInterval(updateInterval);
+        }
+        if (socket) {
+            socket.disconnect();
+        }
+    });
+</script>
+{% endblock %}

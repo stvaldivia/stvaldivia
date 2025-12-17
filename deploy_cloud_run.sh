@@ -1,0 +1,117 @@
+#!/bin/bash
+# Script para deploy automático en Cloud Run
+# Ejecutar después de: gcloud auth login
+
+set -e  # Salir si hay errores
+
+echo "🚀 DEPLOY AUTOMÁTICO A CLOUD RUN"
+echo "=================================="
+echo ""
+
+# Configurar proyecto
+PROJECT_ID="stvaldiviacl"
+REGION="southamerica-west1"
+SERVICE_NAME="bimba"
+
+echo "📋 Configuración:"
+echo "  Proyecto: $PROJECT_ID"
+echo "  Región: $REGION"
+echo "  Servicio: $SERVICE_NAME"
+echo ""
+
+# Verificar autenticación
+echo "🔐 Verificando autenticación..."
+if ! gcloud auth list --filter=status:ACTIVE --format="value(account)" | grep -q .; then
+    echo "❌ ERROR: No hay cuenta autenticada"
+    echo "Ejecuta primero: gcloud auth login"
+    exit 1
+fi
+
+ACTIVE_ACCOUNT=$(gcloud auth list --filter=status:ACTIVE --format="value(account)" | head -1)
+echo "✅ Autenticado como: $ACTIVE_ACCOUNT"
+echo ""
+
+# Configurar proyecto
+echo "⚙️  Configurando proyecto..."
+gcloud config set project $PROJECT_ID
+gcloud config get-value project
+echo ""
+
+# Habilitar APIs necesarias
+echo "🔧 Habilitando APIs..."
+gcloud services enable run.googleapis.com \
+    cloudbuild.googleapis.com \
+    containerregistry.googleapis.com \
+    --project=$PROJECT_ID || echo "⚠️  Algunas APIs ya están habilitadas"
+echo ""
+
+# Variables de entorno
+FLASK_ENV="production"
+FLASK_SECRET_KEY="pHcn36mrPP3nCWT8LfYr0UfKbGxVZ0WtV8qN3nU4lt8GVe1D3Jh_Vi_nYalWxFNc2dun8nzyJsMjr-qcS3Lm4Q"
+DATABASE_URL="postgresql://bimba_user:qbiqpVcv9zJPVB0aaA9YwfAJSzFIGroUBcwJHNhzsas=@/bimba?host=/cloudsql/pelagic-river-479014-a3:us-central1:bimba-db"
+
+echo "📦 Variables de entorno configuradas:"
+echo "  FLASK_ENV=$FLASK_ENV"
+echo "  FLASK_SECRET_KEY=***"
+echo "  DATABASE_URL=***"
+echo ""
+
+# Verificar que Dockerfile existe
+if [ ! -f "Dockerfile" ]; then
+    echo "❌ ERROR: Dockerfile no encontrado"
+    exit 1
+fi
+
+echo "✅ Dockerfile encontrado"
+echo ""
+
+# Deploy a Cloud Run
+echo "🚀 Iniciando deploy a Cloud Run..."
+echo "   Esto puede tardar 5-10 minutos..."
+echo ""
+
+gcloud run deploy $SERVICE_NAME \
+    --source . \
+    --region=$REGION \
+    --platform=managed \
+    --allow-unauthenticated \
+    --set-env-vars="FLASK_ENV=$FLASK_ENV,FLASK_SECRET_KEY=$FLASK_SECRET_KEY,DATABASE_URL=$DATABASE_URL" \
+    --memory=512Mi \
+    --cpu=1 \
+    --timeout=300 \
+    --max-instances=10 \
+    --min-instances=0 \
+    --project=$PROJECT_ID
+
+echo ""
+echo "✅ DEPLOY COMPLETADO"
+echo ""
+
+# Obtener URL del servicio
+echo "🔗 Obteniendo URL del servicio..."
+SERVICE_URL=$(gcloud run services describe $SERVICE_NAME \
+    --region=$REGION \
+    --format="value(status.url)" \
+    --project=$PROJECT_ID)
+
+echo ""
+echo "=================================="
+echo "✅ SERVICIO DESPLEGADO EXITOSAMENTE"
+echo "=================================="
+echo ""
+echo "📍 URL del servicio:"
+echo "   $SERVICE_URL"
+echo ""
+echo "🧪 Probando endpoint..."
+curl -s "$SERVICE_URL/api/v1/public/evento/hoy" | head -c 200
+echo ""
+echo ""
+echo "📊 Ver logs:"
+echo "   gcloud run services logs read $SERVICE_NAME --region=$REGION --limit=50"
+echo ""
+echo "🎯 Próximos pasos:"
+echo "   1. Crear Load Balancer con IP estática"
+echo "   2. Configurar DNS para apuntar al Load Balancer"
+echo "   3. Configurar SSL automático"
+echo ""
+
