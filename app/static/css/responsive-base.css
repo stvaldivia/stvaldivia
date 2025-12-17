@@ -37,9 +37,11 @@
 }
 
 /* ============================================
-   RESET Y BASE
+   RESET Y BASE (Mobile-First)
    ============================================ */
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
@@ -48,14 +50,27 @@ html {
   -ms-text-size-adjust: 100%;
   overflow-x: hidden;
   width: 100%;
-  max-width: 100vw;
+  max-width: 100%;
 }
 
 body {
   width: 100%;
-  max-width: 100vw;
+  max-width: 100%;
   overflow-x: hidden;
   position: relative;
+}
+
+/* Prevenir overflow en elementos multimedia */
+img,
+video,
+canvas,
+svg,
+iframe,
+embed,
+object {
+  max-width: 100%;
+  height: auto;
+  display: block;
 }
 
 /* ============================================
@@ -388,7 +403,7 @@ body {
    ============================================ */
 .no-overflow {
   width: 100%;
-  max-width: 100vw;
+  max-width: 100%;
   overflow-x: hidden;
 }
 
@@ -419,5 +434,18 @@ img, video, iframe, embed, object {
     text-align: center;
   }
 }
+
+/* ============================================
+   CLASES DEBUG (NO ACTIVAR POR DEFECTO)
+   ============================================ */
+.debug-layout * {
+  outline: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.debug-overflow * {
+  outline: 1px solid rgba(255, 0, 0, 0.20);
+}
+
+/* Para activar debug: agregar clase .debug-layout o .debug-overflow al body */
 
 
