@@ -298,12 +298,12 @@
 
 <script>
 function confirmSeedTest(event) {
-    if (!confirm('Esto creará/actualizará la CAJA TEST (TEST001). ¿Continuar?')) {
+    if (!confirm('Esto creará/actualizará la CAJA TEST (TEST001) y el producto TEST100. ¿Continuar?')) {
         return false;
     }
     
-    // Deshabilitar botón para evitar doble click
-    const btn = document.getElementById('seed-test-btn');
+    // Deshabilitar botón para evitar doble click (buscar ambos posibles IDs)
+    const btn = document.getElementById('seed-test-btn') || document.getElementById('seed-test-btn-empty');
     if (btn) {
         btn.disabled = true;
         btn.textContent = '⏳ Procesando...';
