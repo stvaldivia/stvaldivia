@@ -10,6 +10,9 @@ from flask import current_app
 from app.helpers.printer_helper import PrinterHelper
 from app.helpers.seed_test_register import seed_test_register
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 register_admin_bp = Blueprint('register_admin', __name__, url_prefix='/admin/cajas')
 
