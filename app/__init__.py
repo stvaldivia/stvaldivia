@@ -171,6 +171,9 @@ def create_app():
     app.config['FLASK_ENV'] = os.environ.get('FLASK_ENV', 'development')
     app.config['FLASK_DEBUG'] = os.environ.get('FLASK_DEBUG', 'True').lower() == 'true'
     
+    # Debug errors mode (para captura de errores en producción si es necesario)
+    app.config['DEBUG_ERRORS'] = os.environ.get('DEBUG_ERRORS', '0') == '1'
+    
     # Cache-busting para CSS (actualizar cuando cambien estilos)
     app.config['CSS_VERSION'] = os.environ.get('CSS_VERSION', '20250115-01')
     
