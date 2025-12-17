@@ -706,7 +706,7 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
 <script>
 // Gráfico de Consumo por Hora del Turno (Curva de Compra)
 const hourlyCtx = document.getElementById('hourlyChart').getContext('2d');

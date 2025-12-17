@@ -847,10 +847,10 @@
     </script>
 
     <!-- Scripts cargados al final para no bloquear el renderizado -->
-    <!-- SocketIO -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.0/socket.io.js" defer></script>
-    <!-- Chart.js para gráficos -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer></script>
+    <!-- SocketIO (self-hosted) -->
+    <script src="{{ url_for('static', filename='vendor/socket.io.min.js') }}" defer></script>
+    <!-- Chart.js para gráficos (self-hosted) -->
+    <script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}" defer></script>
 
     <!-- Módulos JavaScript reutilizables (optimización) -->
     <script src="{{ url_for('static', filename='js/utils/dateFormatter.js') }}"></script>

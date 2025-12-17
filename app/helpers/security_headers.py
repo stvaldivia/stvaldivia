@@ -32,11 +32,12 @@ def setup_security_headers(app: Flask):
         is_production = os.environ.get('FLASK_ENV', '').lower() == 'production' or is_cloud_run
         
         # Content Security Policy (ajustar según necesidades)
-        # Base CSP común
-        script_src = "'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.socket.io"
-        style_src = "'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com"
-        img_src = "'self' data: https:"
-        font_src = "'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com data:"
+        # Self-hosted: todas las librerías están en /static/vendor/
+        # Base CSP común - sin dependencias de CDNs
+        script_src = "'self' 'unsafe-inline'"
+        style_src = "'self' 'unsafe-inline'"
+        img_src = "'self' data:"
+        font_src = "'self' data:"
         
         # connect-src: diferenciar DEV vs PROD
         if is_production:

@@ -3,8 +3,8 @@
 {% block meta_description %}Panel de control administrativo del sistema BIMBA. Monitoreo en tiempo real de entregas, turnos y estadísticas del negocio.{% endblock %}
 
 {% block head_extra %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/socket.io.min.js') }}"></script>
 <style>
     .dashboard-container {
         max-width: 1400px;

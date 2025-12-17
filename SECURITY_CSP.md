@@ -1,7 +1,18 @@
 # 🔒 Content Security Policy (CSP) - Documentación
 
-**Fecha:** 2025-01-15  
+**Fecha:** 2025-01-15 (actualizado)  
 **Ubicación:** `app/helpers/security_headers.py`
+
+---
+
+## ⚠️ CAMBIO IMPORTANTE: SELF-HOSTING DE LIBRERÍAS
+
+**Desde 2025-01-15:** Todas las librerías JavaScript están self-hosted en `/app/static/vendor/`:
+- ✅ Socket.IO 4.5.4 → `app/static/vendor/socket.io.min.js`
+- ✅ Chart.js 4.4.0 → `app/static/vendor/chart.umd.min.js`
+- ✅ QRCode.js 1.0.0 → `app/static/vendor/qrcode.min.js`
+
+**Razón:** Eliminar dependencias de CDNs externos y fortalecer la CSP (solo `'self'`).
 
 ---
 
@@ -44,20 +55,17 @@ Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' h
 
 ### `style-src`
 **Valores permitidos:**
-- `'self'` - Estilos del mismo origen
+- `'self'` - Estilos del mismo origen (incluye `/static/css/`)
 - `'unsafe-inline'` - Estilos inline (necesario para estilos dinámicos)
-- `https://cdn.jsdelivr.net` - CDN para estilos de librerías
-- `https://cdnjs.cloudflare.com` - CDN alternativo
 
-**Motivo:** Permite estilos inline generados dinámicamente y desde CDNs.
+**Motivo:** Permite estilos inline generados dinámicamente. Todos los estilos están en `/static/css/`.
 
 ### `img-src`
 **Valores permitidos:**
-- `'self'` - Imágenes del mismo origen
+- `'self'` - Imágenes del mismo origen (incluye `/static/img/`)
 - `data:` - Imágenes en base64 (usado para logos y avatares)
-- `https:` - Imágenes desde cualquier origen HTTPS
 
-**Motivo:** Permite imágenes desde cualquier origen HTTPS (necesario para avatares, logos externos, etc.).
+**Motivo:** Permite imágenes del mismo origen y datos inline. **Cambio:** Eliminado `https:` para mayor seguridad (solo imágenes propias).
 
 ### `font-src`
 **Valores permitidos:**
