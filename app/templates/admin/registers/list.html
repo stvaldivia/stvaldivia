@@ -277,9 +277,21 @@
     <div class="empty-state">
         <h3>No hay puntos de venta registrados</h3>
         <p>Crea tu primer TPV para comenzar</p>
-        <a href="{{ url_for('register_admin.create_register') }}" class="btn-create" style="margin-top: 20px; display: inline-block;">
-            ➕ Crear Primer TPV
-        </a>
+        <div style="display: flex; flex-direction: column; gap: 12px; align-items: center; margin-top: 20px;">
+            <a href="{{ url_for('register_admin.create_register') }}" class="btn-create" style="display: inline-block;">
+                ➕ Crear Primer TPV
+            </a>
+            <!-- TEST / QA ONLY – DO NOT USE IN PROD LOGIC -->
+            <form method="POST" action="{{ url_for('register_admin.seed_test') }}" style="display: inline; margin: 0;" id="seed-test-form-empty" onsubmit="return confirmSeedTest(event);">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <button type="submit" class="btn-create" id="seed-test-btn-empty" style="background: rgba(0, 230, 118, 0.3); border: 1px solid rgba(0, 230, 118, 0.5); color: #00e676; font-weight: bold;">
+                    🧪 Crear / Actualizar Caja de Prueba
+                </button>
+                <div style="font-size: 0.75rem; color: #aaa; margin-top: 4px; text-align: center;">
+                    Crea TEST001 + producto $100 (idempotente)
+                </div>
+            </form>
+        </div>
     </div>
     {% endif %}
 </div>
