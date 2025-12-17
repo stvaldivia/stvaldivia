@@ -1,6 +1,7 @@
 # Mejoras de Seguridad - Headers HTTP y Configuración
 # Aplicar en app/__init__.py después de crear la app
 
+import os
 from flask import Flask
 
 def setup_security_headers(app: Flask):
@@ -26,16 +27,33 @@ def setup_security_headers(app: Flask):
         # Referrer Policy
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
         
+        # Detectar entorno (DEV vs PROD)
+        is_cloud_run = bool(os.environ.get('K_SERVICE') or os.environ.get('GAE_ENV') or os.environ.get('CLOUD_RUN_SERVICE'))
+        is_production = os.environ.get('FLASK_ENV', '').lower() == 'production' or is_cloud_run
+        
         # Content Security Policy (ajustar según necesidades)
-        # Permite recursos desde el mismo origen y CDNs comunes
+        # Base CSP común
+        script_src = "'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.socket.io"
+        style_src = "'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com"
+        img_src = "'self' data: https:"
+        font_src = "'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com data:"
+        
+        # connect-src: diferenciar DEV vs PROD
+        if is_production:
+            # PRODUCCIÓN: Solo dominio real con wss (WebSocket seguro)
+            connect_src = "'self' ws: wss: https://stvaldivia.cl wss://stvaldivia.cl"
+        else:
+            # DESARROLLO: Permitir localhost y ws/wss para desarrollo local
+            connect_src = "'self' ws: wss: http://localhost:* ws://localhost:* wss://localhost:* https://stvaldivia.cl wss://stvaldivia.cl"
+        
         csp = (
-            "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.socket.io; "
-            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
-            "img-src 'self' data: https:; "
-            "font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com data:; "
-            "connect-src 'self' ws://localhost:* wss://localhost:* ws://stvaldivia.cl:* wss://stvaldivia.cl:* https://stvaldivia.cl:*; "
-            "frame-ancestors 'self';"
+            f"default-src 'self'; "
+            f"script-src {script_src}; "
+            f"style-src {style_src}; "
+            f"img-src {img_src}; "
+            f"font-src {font_src}; "
+            f"connect-src {connect_src}; "
+            f"frame-ancestors 'self';"
         )
         response.headers['Content-Security-Policy'] = csp
         
