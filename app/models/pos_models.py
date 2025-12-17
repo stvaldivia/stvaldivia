@@ -289,6 +289,12 @@ class PosRegister(db.Model):
     fallback_config = db.Column(Text, nullable=True)  # JSON: configuración de fallback
     fast_lane_config = db.Column(Text, nullable=True)  # JSON: configuración de fast lane
     
+    # Payment Stack BIMBA: GETNET principal + KLAP backup
+    payment_provider_primary = db.Column(db.String(50), default='GETNET', nullable=False)  # GETNET, KLAP, etc.
+    payment_provider_backup = db.Column(db.String(50), nullable=True)  # KLAP, null si no hay backup
+    provider_config = db.Column(Text, nullable=True)  # JSON: configuración por proveedor (terminal_id, merchant_id, etc)
+    fallback_policy = db.Column(Text, nullable=True)  # JSON: reglas de cuándo usar backup
+    
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
@@ -343,6 +349,20 @@ class PosRegister(db.Model):
         STATUS_ERROR,
     ]
     
+    # Payment Providers BIMBA
+    PROVIDER_GETNET = 'GETNET'
+    PROVIDER_KLAP = 'KLAP'
+    PROVIDER_SUMUP = 'SUMUP'  # No recomendado pero disponible
+    
+    PAYMENT_PROVIDERS = [
+        PROVIDER_GETNET,
+        PROVIDER_KLAP,
+        PROVIDER_SUMUP,
+    ]
+    
+    # Payment Strategy
+    STRATEGY_GETNET_PRIMARY_KLAP_BACKUP = 'GETNET_PRIMARY_KLAP_BACKUP'
+    
     def to_dict(self):
         """Convierte el modelo a diccionario"""
         printer_config_dict = None
@@ -388,6 +408,20 @@ class PosRegister(db.Model):
             except:
                 fast_lane_config_dict = None
         
+        provider_config_dict = None
+        if self.provider_config:
+            try:
+                provider_config_dict = json.loads(self.provider_config)
+            except:
+                provider_config_dict = None
+        
+        fallback_policy_dict = None
+        if self.fallback_policy:
+            try:
+                fallback_policy_dict = json.loads(self.fallback_policy)
+            except:
+                fallback_policy_dict = None
+        
         return {
             'id': str(self.id),
             'name': self.name,
@@ -411,6 +445,11 @@ class PosRegister(db.Model):
             'operational_status': self.operational_status,
             'fallback_config': fallback_config_dict,
             'fast_lane_config': fast_lane_config_dict,
+            # Payment Stack BIMBA
+            'payment_provider_primary': self.payment_provider_primary,
+            'payment_provider_backup': self.payment_provider_backup,
+            'provider_config': provider_config_dict,
+            'fallback_policy': fallback_policy_dict,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
@@ -482,6 +521,11 @@ class RegisterSession(db.Model):
     incidents = db.Column(Text, nullable=True)  # JSON array: incidentes durante la sesión
     close_notes = db.Column(Text, nullable=True)  # Notas del cierre
     
+    # Payment Stack BIMBA: Tracking de uso de providers y fallback
+    payment_provider_used_primary_count = db.Column(db.Integer, default=0, nullable=False)  # Transacciones con provider principal
+    payment_provider_used_backup_count = db.Column(db.Integer, default=0, nullable=False)  # Transacciones con provider backup
+    fallback_events = db.Column(Text, nullable=True)  # JSON array: eventos de fallback [{timestamp, reason, from_provider, to_provider, handled_by_user_id}]
+    
     # Cierre
     closed_at = db.Column(db.DateTime, nullable=True)
     closed_by = db.Column(db.String(200), nullable=True)
@@ -527,6 +571,13 @@ class RegisterSession(db.Model):
             except:
                 incidents_list = None
         
+        fallback_events_list = None
+        if self.fallback_events:
+            try:
+                fallback_events_list = json.loads(self.fallback_events)
+            except:
+                fallback_events_list = None
+        
         return {
             'id': self.id,
             'register_id': self.register_id,
@@ -544,6 +595,10 @@ class RegisterSession(db.Model):
             'cash_difference': float(self.cash_difference) if self.cash_difference else None,
             'incidents': incidents_list,
             'close_notes': self.close_notes,
+            # Payment Stack BIMBA
+            'payment_provider_used_primary_count': self.payment_provider_used_primary_count,
+            'payment_provider_used_backup_count': self.payment_provider_used_backup_count,
+            'fallback_events': fallback_events_list,
             'closed_at': self.closed_at.isoformat() if self.closed_at else None,
             'closed_by': self.closed_by,
             'created_at': self.created_at.isoformat() if self.created_at else None,

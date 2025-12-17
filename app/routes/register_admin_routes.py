@@ -187,6 +187,45 @@ def create_register():
                     flash('Error: fast_lane_config debe ser un JSON válido', 'error')
                     return render_template('admin/registers/form.html', register=None, available_categories=available_categories, available_printers=available_printers)
             
+            # Payment Stack BIMBA: Procesar campos de payment providers
+            payment_provider_primary = request.form.get('payment_provider_primary', 'GETNET').strip()
+            payment_provider_backup = request.form.get('payment_provider_backup', '').strip() or None
+            
+            # Validar providers
+            valid_providers = ['GETNET', 'KLAP', 'SUMUP']
+            if payment_provider_primary not in valid_providers:
+                flash(f'Provider principal inválido: {payment_provider_primary}', 'error')
+                return render_template('admin/registers/form.html', register=None, available_categories=available_categories, available_printers=available_printers)
+            
+            if payment_provider_backup and payment_provider_backup not in valid_providers:
+                flash(f'Provider backup inválido: {payment_provider_backup}', 'error')
+                return render_template('admin/registers/form.html', register=None, available_categories=available_categories, available_printers=available_printers)
+            
+            # Procesar provider_config
+            provider_config_json = None
+            provider_config_raw = request.form.get('provider_config', '').strip()
+            if provider_config_raw:
+                try:
+                    provider_config_dict = json.loads(provider_config_raw)
+                    provider_config_json = json.dumps(provider_config_dict)
+                except json.JSONDecodeError:
+                    flash('Error: provider_config debe ser un JSON válido', 'error')
+                    return render_template('admin/registers/form.html', register=None, available_categories=available_categories, available_printers=available_printers)
+            
+            # Procesar fallback_policy (construir desde campos del formulario)
+            fallback_enabled = request.form.get('fallback_enabled') == 'on'
+            max_switch_time = int(request.form.get('max_switch_time', 60))
+            backup_devices_required = int(request.form.get('backup_devices_required', 2))
+            
+            # Construir fallback_policy JSON
+            fallback_policy_dict = {
+                'enabled': fallback_enabled,
+                'trigger_events': ['pos_offline', 'pos_error', 'printer_error_optional'],
+                'max_switch_time_seconds': max_switch_time,
+                'backup_devices_required': backup_devices_required
+            }
+            fallback_policy_json = json.dumps(fallback_policy_dict)
+            
             # Crear nuevo TPV
             new_register = PosRegister(
                 name=name,
@@ -210,6 +249,11 @@ def create_register():
                 operational_status=operational_status,
                 fallback_config=fallback_config_json,
                 fast_lane_config=fast_lane_config_json,
+                # Payment Stack BIMBA
+                payment_provider_primary=payment_provider_primary,
+                payment_provider_backup=payment_provider_backup,
+                provider_config=provider_config_json,
+                fallback_policy=fallback_policy_json,
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow()
             )
@@ -364,6 +408,45 @@ def edit_register(register_id):
                     flash('Error: fast_lane_config debe ser un JSON válido', 'error')
                     return render_template('admin/registers/form.html', register=register, available_categories=available_categories, available_printers=available_printers)
             
+            # Payment Stack BIMBA: Procesar campos de payment providers
+            payment_provider_primary = request.form.get('payment_provider_primary', 'GETNET').strip()
+            payment_provider_backup = request.form.get('payment_provider_backup', '').strip() or None
+            
+            # Validar providers
+            valid_providers = ['GETNET', 'KLAP', 'SUMUP']
+            if payment_provider_primary not in valid_providers:
+                flash(f'Provider principal inválido: {payment_provider_primary}', 'error')
+                return render_template('admin/registers/form.html', register=register, available_categories=available_categories, available_printers=available_printers)
+            
+            if payment_provider_backup and payment_provider_backup not in valid_providers:
+                flash(f'Provider backup inválido: {payment_provider_backup}', 'error')
+                return render_template('admin/registers/form.html', register=register, available_categories=available_categories, available_printers=available_printers)
+            
+            # Procesar provider_config
+            provider_config_json = None
+            provider_config_raw = request.form.get('provider_config', '').strip()
+            if provider_config_raw:
+                try:
+                    provider_config_dict = json.loads(provider_config_raw)
+                    provider_config_json = json.dumps(provider_config_dict)
+                except json.JSONDecodeError:
+                    flash('Error: provider_config debe ser un JSON válido', 'error')
+                    return render_template('admin/registers/form.html', register=register, available_categories=available_categories, available_printers=available_printers)
+            
+            # Procesar fallback_policy (construir desde campos del formulario)
+            fallback_enabled = request.form.get('fallback_enabled') == 'on'
+            max_switch_time = int(request.form.get('max_switch_time', 60))
+            backup_devices_required = int(request.form.get('backup_devices_required', 2))
+            
+            # Construir fallback_policy JSON
+            fallback_policy_dict = {
+                'enabled': fallback_enabled,
+                'trigger_events': ['pos_offline', 'pos_error', 'printer_error_optional'],
+                'max_switch_time_seconds': max_switch_time,
+                'backup_devices_required': backup_devices_required
+            }
+            fallback_policy_json = json.dumps(fallback_policy_dict)
+            
             # Actualizar TPV
             register.name = name
             register.code = code
@@ -386,6 +469,11 @@ def edit_register(register_id):
             register.operational_status = operational_status
             register.fallback_config = fallback_config_json
             register.fast_lane_config = fast_lane_config_json
+            # Payment Stack BIMBA
+            register.payment_provider_primary = payment_provider_primary
+            register.payment_provider_backup = payment_provider_backup
+            register.provider_config = provider_config_json
+            register.fallback_policy = fallback_policy_json
             register.updated_at = datetime.utcnow()
             
             db.session.commit()

@@ -316,6 +316,125 @@
                     </div>
                     <div class="help-text">Selecciona los métodos de pago habilitados para esta caja</div>
                 </div>
+            </div>
+            
+            <!-- Payment Stack BIMBA: GETNET + KLAP -->
+            <div class="form-group" style="margin-top: 30px; padding-top: 20px; border-top: 2px solid rgba(102, 126, 234, 0.3);">
+                <label style="font-size: 1.1rem; color: #667eea; margin-bottom: 15px; display: block;">
+                    💳 Pagos (Low Friction) - GETNET + KLAP
+                </label>
+                <div class="help-text" style="margin-bottom: 15px;">
+                    Estrategia de pagos: GETNET principal + KLAP backup para minimizar fricción operativa
+                </div>
+                
+                <div class="form-group">
+                    <label for="payment_provider_primary">Provider Principal *</label>
+                    <select id="payment_provider_primary" name="payment_provider_primary" required style="width: 100%; padding: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #e8e8e8; font-size: 1rem; box-sizing: border-box;">
+                        <option value="GETNET" {% if not register or register.payment_provider_primary == 'GETNET' %}selected{% endif %}>🏦 GETNET (Banco Santander) - Recomendado</option>
+                        <option value="KLAP" {% if register and register.payment_provider_primary == 'KLAP' %}selected{% endif %}>📱 KLAP (Tap On Phone)</option>
+                        <option value="SUMUP" {% if register and register.payment_provider_primary == 'SUMUP' %}selected{% endif %}>💳 SUMUP (No recomendado)</option>
+                    </select>
+                    <div class="help-text">Provider principal de pagos. GETNET es el recomendado por estabilidad y soporte.</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="payment_provider_backup">Provider Backup</label>
+                    <select id="payment_provider_backup" name="payment_provider_backup" style="width: 100%; padding: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #e8e8e8; font-size: 1rem; box-sizing: border-box;">
+                        <option value="">-- Sin backup --</option>
+                        <option value="KLAP" {% if register and register.payment_provider_backup == 'KLAP' %}selected{% endif %}>📱 KLAP (Tap On Phone) - Recomendado</option>
+                        <option value="GETNET" {% if register and register.payment_provider_backup == 'GETNET' %}selected{% endif %}>🏦 GETNET</option>
+                    </select>
+                    <div class="help-text">Provider de backup cuando falla el principal. KLAP es recomendado porque usa celulares existentes.</div>
+                </div>
+                
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" 
+                               id="fallback_enabled" 
+                               name="fallback_enabled"
+                               {% if register and fallback_policy %}
+                                   {% if fallback_policy.get('enabled') %}checked{% endif %}
+                               {% else %}
+                                   checked
+                               {% endif %}>
+                        <label for="fallback_enabled">Fallback habilitado</label>
+                    </div>
+                    <div class="help-text">Permite cambiar automáticamente al provider backup cuando falla el principal</div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Requisitos Fallback (Checklist)</label>
+                    <div style="padding: 15px; background: rgba(102, 126, 234, 0.05); border-radius: 8px; border: 1px solid rgba(102, 126, 234, 0.2);">
+                        <div class="checkbox-group" style="margin-bottom: 10px;">
+                            <input type="checkbox" id="req_nfc" name="fallback_requirements" value="nfc" checked disabled>
+                            <label for="req_nfc" style="margin: 0; cursor: default;">📱 Celulares con NFC habilitado</label>
+                        </div>
+                        <div class="checkbox-group" style="margin-bottom: 10px;">
+                            <input type="checkbox" id="req_chargers" name="fallback_requirements" value="chargers" checked disabled>
+                            <label for="req_chargers" style="margin: 0; cursor: default;">🔌 Cargadores disponibles</label>
+                        </div>
+                        <div class="checkbox-group" style="margin-bottom: 10px;">
+                            <input type="checkbox" id="req_mobile_data" name="fallback_requirements" value="mobile_data" checked disabled>
+                            <label for="req_mobile_data" style="margin: 0; cursor: default;">📶 Datos móviles activos (WiFi backup)</label>
+                        </div>
+                        <div class="help-text" style="margin-top: 10px; color: #667eea;">
+                            <strong>Nota:</strong> Estos requisitos son obligatorios para operar con KLAP como backup. Verificar al inicio de cada turno.
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="max_switch_time">Tiempo Máximo de Cambio (segundos)</label>
+                    <input type="number" 
+                           id="max_switch_time" 
+                           name="max_switch_time" 
+                           min="30" 
+                           max="300" 
+                           step="10"
+                           value="{% if register and fallback_policy %}{{ fallback_policy.get('max_switch_time_seconds', 60) }}{% else %}60{% endif %}"
+                           style="width: 100%; padding: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #e8e8e8; font-size: 1rem; box-sizing: border-box;">
+                    <div class="help-text">Tiempo máximo para cambiar de provider principal a backup cuando falla (default: 60 segundos)</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="backup_devices_required">Cantidad Mínima de Celulares Backup</label>
+                    <input type="number" 
+                           id="backup_devices_required" 
+                           name="backup_devices_required" 
+                           min="1" 
+                           max="10" 
+                           step="1"
+                           value="{% if register and fallback_policy %}{{ fallback_policy.get('backup_devices_required', 2) }}{% else %}2{% endif %}"
+                           style="width: 100%; padding: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #e8e8e8; font-size: 1rem; box-sizing: border-box;">
+                    <div class="help-text">Número mínimo de celulares con app KLAP instalada requeridos para operar backup (default: 2)</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="provider_config">Configuración de Providers (JSON)</label>
+                    <textarea id="provider_config" name="provider_config" rows="6" placeholder='{"GETNET": {"terminal_id": "GETNET-123", "merchant_id": "MERCHANT-456"}, "KLAP": {"merchant_id": "KLAP-789", "api_key": "..."}}' style="width: 100%; padding: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #e8e8e8; font-size: 0.9rem; font-family: monospace; box-sizing: border-box; resize: vertical;">{% if register and register.provider_config %}{{ register.provider_config }}{% endif %}</textarea>
+                    <div class="help-text">JSON con configuración por proveedor (terminal_id, merchant_id, api_key, etc). Placeholders por ahora, se completará con integración real.</div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="fallback_policy">Política de Fallback (JSON)</label>
+                    <textarea id="fallback_policy" name="fallback_policy" rows="5" placeholder='{"enabled": true, "trigger_events": ["pos_offline", "pos_error", "printer_error_optional"], "max_switch_time_seconds": 60, "backup_devices_required": 2}' style="width: 100%; padding: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #e8e8e8; font-size: 0.9rem; font-family: monospace; box-sizing: border-box; resize: vertical;">{% if register and register.fallback_policy %}{{ register.fallback_policy }}{% endif %}</textarea>
+                    <div class="help-text">JSON con reglas de cuándo activar fallback. trigger_events: ["pos_offline", "pos_error", "printer_error_optional", "network_error"]</div>
+                </div>
+                
+                <div style="padding: 15px; background: rgba(255, 152, 0, 0.1); border-radius: 8px; border: 1px solid rgba(255, 152, 0, 0.3); margin-top: 15px;">
+                    <p style="color: #ff9800; font-size: 0.9rem; margin: 0;">
+                        <strong>⚠️ Validaciones por Tipo de Caja:</strong><br>
+                        • <strong>TOTEM:</strong> Backup permitido pero operativo manual (no integrado aún)<br>
+                        • <strong>HUMANA/OFICINA:</strong> Backup KLAP recomendado<br>
+                        • <strong>VIRTUAL:</strong> Provider principal GETNET (integración real en fase posterior)
+                    </p>
+                </div>
+            </div>
+            
+            <div class="form-group" style="margin-top: 30px; padding-top: 20px; border-top: 2px solid rgba(102, 126, 234, 0.3);">
+                <label style="font-size: 1.1rem; color: #667eea; margin-bottom: 15px; display: block;">
+                    👤 Responsabilidad
+                </label>
                 
                 <div class="form-group">
                     <label for="responsible_user_id">Usuario Responsable (ID)</label>

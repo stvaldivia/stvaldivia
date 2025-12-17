@@ -332,17 +332,62 @@ close_notes = 'Cierre normal, sin incidentes'
 
 ---
 
+## 💳 ESTRATEGIA DE PAGOS (GETNET + KLAP)
+
+### Decisión Estratégica
+- **Provider Principal:** GETNET (Banco Santander)
+- **Provider Backup:** KLAP (Tap On Phone)
+- **Estrategia:** GETNET_PRIMARY_KLAP_BACKUP
+
+### Configuración por Tipo de Caja
+
+**TOTEM:**
+- Principal: GETNET
+- Backup: KLAP (operativo manual, no integrado aún)
+
+**HUMANA/OFICINA:**
+- Principal: GETNET
+- Backup: KLAP (recomendado y operativo)
+
+**VIRTUAL:**
+- Principal: GETNET
+- Backup: No aplica (integración real en fase posterior)
+
+### Campos Agregados (Payment Stack)
+
+**PosRegister:**
+- `payment_provider_primary` (default: GETNET)
+- `payment_provider_backup` (KLAP o null)
+- `provider_config` (JSON: configuración por proveedor)
+- `fallback_policy` (JSON: reglas de fallback)
+
+**RegisterSession:**
+- `payment_provider_used_primary_count` (contador GETNET)
+- `payment_provider_used_backup_count` (contador KLAP)
+- `fallback_events` (JSON array: eventos de fallback)
+
+### Documentación Operativa
+Ver `docs/PAGOS_BIMBA.md` para:
+- Procedimientos de fallback
+- Checklists de inicio/cierre
+- Requisitos KLAP
+- Contactos de soporte
+
+---
+
 ## 🔄 PRÓXIMOS PASOS (MVP2 y MVP3)
 
 ### MVP2 (No incluido en MVP1)
 - Caja virtual con QR
 - Validación rápida en pista/puerta
+- Integración real con GETNET API
 
 ### MVP3 (No incluido en MVP1)
 - Fast lane (cola rápida)
-- Fallback cuando totem falla
+- Fallback automatizado cuando totem falla
 - Offline light
 - Métricas avanzadas
+- Integración real con KLAP API
 
 ---
 
