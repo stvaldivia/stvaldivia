@@ -12,6 +12,8 @@
 https://stvaldivia.cl/caja
 ```
 
+**Nota:** `/caja` redirige automáticamente a `/caja/login`
+
 ### Desarrollo Local
 ```
 http://localhost:5001/caja
@@ -23,7 +25,8 @@ http://localhost:5001/caja
 
 ### Paso 1: Login del Cajero
 
-**URL:** `https://stvaldivia.cl/caja/login`
+**URL:** `https://stvaldivia.cl/caja/login`  
+**Alternativa:** `https://stvaldivia.cl/caja` (redirige automáticamente a login)
 
 **Método:** GET (pantalla) o POST (autenticación)
 

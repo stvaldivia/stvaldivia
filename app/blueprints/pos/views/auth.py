@@ -14,6 +14,12 @@ from app.blueprints.pos.services import pos_service
 
 logger = logging.getLogger(__name__)
 
+@caja_bp.route('/', methods=['GET'])
+@caja_bp.route('', methods=['GET'])
+def home():
+    """Home del POS - Redirige a login"""
+    return redirect(url_for('caja.login'))
+
 @caja_bp.route('/login', methods=['GET', 'POST'])
 def login():
     """Login del POS - Muestra selección de cajas disponibles"""
