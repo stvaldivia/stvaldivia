@@ -108,7 +108,7 @@ body {
   -webkit-backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border-color);
   box-shadow: var(--elevation-2);
-  z-index: 9999;
+  z-index: 10000;
   transition: all var(--transition-normal);
   overflow-x: hidden;
   box-sizing: border-box;
@@ -134,7 +134,8 @@ body {
   padding: var(--space-3, 0.75rem) var(--space-5, 3rem);
   flex-wrap: nowrap;
   gap: var(--space-3, 0.75rem);
-  overflow-x: hidden;
+  overflow-x: visible;
+  overflow-y: visible;
   box-sizing: border-box;
 }
 
@@ -159,11 +160,43 @@ body {
   margin-left: auto;
 }
 
-/* En desktop, mantener display flex */
+/* Menú desktop (dentro del nav, solo visible en >=1024px) */
+.admin-nav-desktop {
+  display: none;
+}
+
 @media (min-width: 1024px) {
-  .admin-nav-right {
+  .admin-nav-desktop {
     display: flex !important;
   }
+}
+
+/* Menú móvil (fuera del nav, solo visible en <768px cuando está abierto) */
+.mobile-menu {
+  display: none;
+  position: fixed;
+  top: 60px;
+  left: 0;
+  width: 100%;
+  max-width: 100%;
+  height: calc(100vh - 60px);
+  flex-direction: column;
+  background: var(--bg-surface, #1a1a2e);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  box-shadow: var(--shadow-lg, 0 10px 30px rgba(0, 0, 0, 0.5));
+  z-index: 99999;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding: var(--spacing-sm, 0.75rem);
+  gap: var(--spacing-xs, 0.5rem);
+  box-sizing: border-box;
+}
+
+.mobile-menu.mobile-menu-open {
+  display: flex;
 }
 
 /* IMPORTANTE: Esta regla se maneja dentro del media query @media (max-width: 1023px) más abajo */
@@ -334,73 +367,20 @@ body.has-admin-nav {
     position: relative;
   }
   
-  /* Estilos del menú móvil cuando está oculto (por defecto) */
-  .admin-nav-right:not(.mobile-menu-open),
-  #mobile-menu:not(.mobile-menu-open) {
-    display: none !important;
-    position: fixed !important;
-    top: 60px !important;
-    left: 0 !important;
-    right: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    background: var(--bg-surface, #1a1a2e) !important;
-    backdrop-filter: blur(10px) !important;
-    -webkit-backdrop-filter: blur(10px) !important;
-    border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.1)) !important;
-    box-shadow: var(--shadow-lg, 0 10px 30px rgba(0, 0, 0, 0.5)) !important;
-    flex-direction: column !important;
-    padding: var(--spacing-sm, 0.75rem) !important;
-    gap: var(--spacing-xs, 0.5rem) !important;
-    z-index: 10000 !important;
-    max-height: calc(100vh - 60px) !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    box-sizing: border-box !important;
-    -webkit-overflow-scrolling: touch !important;
-    opacity: 0 !important;
-    visibility: hidden !important;
-    transform: translateY(-20px) !important;
-    transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease !important;
-    pointer-events: none !important;
+  /* Menú móvil oculto por defecto */
+  .mobile-menu {
+    display: none;
   }
   
-  /* IMPORTANTE: Esta regla debe tener MAYOR especificidad para mostrar el menú */
-  /* Usar múltiples selectores para máxima compatibilidad */
-  .admin-nav-right.mobile-menu-open,
-  .admin-nav-right.mobile-menu-open[style*="display"],
-  .admin-nav-right[style*="display: flex"],
-  .admin-nav-right[style*="display:flex"],
-  #mobile-menu.mobile-menu-open,
-  #mobile-menu[style*="display: flex"],
-  #mobile-menu[style*="display:flex"] {
+  /* Menú móvil abierto */
+  .mobile-menu.mobile-menu-open,
+  #mobile-menu.mobile-menu-open {
     display: flex !important;
-    position: fixed !important;
-    top: 60px !important;
-    left: 0 !important;
-    right: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    background: var(--bg-surface, #1a1a2e) !important;
-    backdrop-filter: blur(10px) !important;
-    -webkit-backdrop-filter: blur(10px) !important;
-    border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.1)) !important;
-    box-shadow: var(--shadow-lg, 0 10px 30px rgba(0, 0, 0, 0.5)) !important;
-    flex-direction: column !important;
-    padding: var(--spacing-sm, 0.75rem) !important;
-    gap: var(--spacing-xs, 0.5rem) !important;
-    z-index: 10000 !important;
-    max-height: calc(100vh - 60px) !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    box-sizing: border-box !important;
-    -webkit-overflow-scrolling: touch !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-    transform: translateY(0) !important;
-    transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s ease !important;
-    pointer-events: auto !important;
-    animation: slideDown 0.3s ease-out !important;
+  }
+  
+  /* Ocultar menú desktop en móvil */
+  .admin-nav-desktop {
+    display: none !important;
   }
   
   @keyframes slideDown {
@@ -454,43 +434,21 @@ body.has-admin-nav {
   }
 }
 
+@media (min-width: 768px) {
+  /* Ocultar menú móvil en tablet/desktop */
+  .mobile-menu {
+    display: none !important;
+  }
+}
+
 @media (min-width: 1024px) {
   .mobile-menu-toggle {
     display: none !important;
   }
   
-  /* En desktop, el menú siempre visible y estático */
-  .admin-nav-right,
-  #mobile-menu {
+  /* En desktop, mostrar menú desktop normal */
+  .admin-nav-desktop {
     display: flex !important;
-    position: static !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-    transform: none !important;
-    pointer-events: auto !important;
-    width: auto !important;
-    max-width: none !important;
-    background: transparent !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    border-top: none !important;
-    box-shadow: none !important;
-    flex-direction: row !important;
-    padding: 0 !important;
-    gap: var(--space-2) !important;
-    z-index: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
-    top: auto !important;
-    left: auto !important;
-    right: auto !important;
-  }
-  
-  /* En desktop, ignorar clase mobile-menu-open */
-  .admin-nav-right.mobile-menu-open,
-  #mobile-menu.mobile-menu-open {
-    display: flex !important;
-    position: static !important;
   }
 }
 

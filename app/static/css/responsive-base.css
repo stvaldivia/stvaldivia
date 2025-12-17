@@ -448,4 +448,33 @@ img, video, iframe, embed, object {
 
 /* Para activar debug: agregar clase .debug-layout o .debug-overflow al body */
 
+/* ============================================
+   ELIMINAR CLIPPING POR OVERFLOW EN MÓVIL (CRÍTICO)
+   ============================================ */
+@media (max-width: 767px) {
+  /* Asegurar que contenedores padres no recorten el menú móvil */
+  body,
+  html,
+  .app,
+  .dashboard,
+  .dashboard-container,
+  .main-content,
+  #main-content,
+  .container,
+  .main-container {
+    overflow-x: visible !important;
+    overflow-y: auto !important;
+  }
+  
+  /* El nav puede tener overflow-x hidden, pero no debe afectar al menú móvil */
+  .admin-top-nav {
+    overflow-x: visible !important;
+  }
+  
+  /* El contenedor del nav puede tener overflow, pero el menú móvil está fuera */
+  .admin-nav-container {
+    overflow-x: visible !important;
+  }
+}
+
 

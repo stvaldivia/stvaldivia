@@ -95,7 +95,8 @@
             <button class="mobile-menu-toggle" aria-label="Menú" type="button" id="mobile-menu-toggle-btn">
                 <span class="hamburger-icon">☰</span>
             </button>
-            <div class="admin-nav-right" id="mobile-menu">
+            <!-- Menú desktop (visible solo en >=1024px) -->
+            <div class="admin-nav-right admin-nav-desktop">
                 <a href="/admin"
                     class="admin-nav-btn {% if request.endpoint == 'routes.admin_dashboard' %}active{% endif %}"
                     aria-label="Inicio">
@@ -146,6 +147,58 @@
             </div>
         </div>
     </nav>
+    <!-- Menú móvil (fuera del nav para evitar clipping por overflow) -->
+    {% if session.get('admin_logged_in') %}
+    <div class="admin-nav-right mobile-menu" id="mobile-menu">
+        <a href="/admin"
+            class="admin-nav-btn {% if request.endpoint == 'routes.admin_dashboard' %}active{% endif %}"
+            aria-label="Inicio">
+            🏠 Home
+        </a>
+        <a href="{{ url_for('routes.admin_logs') }}"
+            class="admin-nav-btn {% if request.endpoint == 'routes.admin_logs' %}active{% endif %}"
+            aria-label="Ver Tickets de Entregas">
+            📋 Tickets
+        </a>
+        <a href="{{ url_for('survey.survey_admin') }}"
+            class="admin-nav-btn {% if request.endpoint and request.endpoint.startswith('survey.') %}active{% endif %}"
+            aria-label="Administrar Encuestas">
+            📝 Encuestas
+        </a>
+        <a href="{{ url_for('inventory_admin.dashboard') }}"
+            class="admin-nav-btn {% if request.path.startswith('/admin/inventario') or request.path.startswith('/admin/inventory') or request.path.startswith('/admin/ingredients') or request.endpoint == 'routes.register_inventory' or request.endpoint == 'routes.view_inventory' or request.endpoint and ('inventory' in request.endpoint or 'ingredient' in request.endpoint) %}active{% endif %}"
+            aria-label="Gestionar Inventario">
+            📦 Inventario
+        </a>
+        <a href="{{ url_for('equipo.listar') }}"
+            class="admin-nav-btn {% if request.endpoint and request.endpoint.startswith('equipo.') %}active{% endif %}"
+            aria-label="Gestionar Equipo">
+            👥 Equipo
+        </a>
+        <a href="{{ url_for('guardarropia_admin.admin_index') }}"
+            class="admin-nav-btn {% if request.endpoint and (request.endpoint.startswith('guardarropia.') or request.endpoint.startswith('guardarropia_admin.')) %}active{% endif %}"
+            aria-label="Gestionar Guardarropía">
+            🧥 Guardarropía
+        </a>
+        <a href="{{ url_for('routes.admin_turnos') }}"
+            class="admin-nav-btn {% if request.endpoint == 'routes.admin_turnos' %}active{% endif %}"
+            aria-label="Apertura y Cierre de Turnos">
+            ⏰ Apertura y Cierre
+        </a>
+        <a href="{{ url_for('routes.admin_programacion') }}"
+            class="admin-nav-btn {% if request.endpoint == 'routes.admin_programacion' or request.path.startswith('/admin/programacion') %}active{% endif %}"
+            aria-label="Programación de Eventos">
+            📅 Programación
+        </a>
+        <a href="{{ url_for('routes.admin_panel_control') }}"
+            class="admin-nav-btn {% if request.endpoint == 'routes.admin_panel_control' %}active{% endif %}"
+            aria-label="Panel de Control">
+            🎛️ Panel de Control
+        </a>
+        <a href="{{ url_for('auth.logout_admin') }}" class="admin-nav-btn logout-btn"
+            aria-label="Cerrar Sesión de Administrador">🔓 Salir</a>
+    </div>
+    {% endif %}
     {% endif %}
 
     <div id="main-content" class="container">
