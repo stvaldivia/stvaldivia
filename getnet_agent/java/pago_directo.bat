@@ -39,12 +39,56 @@ pause
 REM Cambiar al directorio del script
 cd /d "%~dp0"
 
+REM Copiar JARs desde sdk/ si no existen en el directorio actual
+if exist "sdk\POSIntegradoGetnet.jar" (
+    if not exist "POSIntegradoGetnet.jar" (
+        copy "sdk\POSIntegradoGetnet.jar" "POSIntegradoGetnet.jar"
+    )
+)
+if exist "sdk\jSerialComm-2.9.3.jar" (
+    if not exist "jSerialComm-2.9.3.jar" (
+        copy "sdk\jSerialComm-2.9.3.jar" "jSerialComm-2.9.3.jar"
+    )
+)
+if exist "sdk\gson-2.10.1.jar" (
+    if not exist "gson-2.10.1.jar" (
+        copy "sdk\gson-2.10.1.jar" "gson-2.10.1.jar"
+    )
+)
+
 REM Verificar Java
 where java >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
     echo ERROR: Java no está instalado
     pause
     exit /b 1
+)
+
+REM Verificar JARs necesarios
+if not exist "POSIntegradoGetnet.jar" (
+    if exist "sdk\POSIntegradoGetnet.jar" (
+        copy "sdk\POSIntegradoGetnet.jar" "POSIntegradoGetnet.jar"
+    ) else (
+        echo ERROR: POSIntegradoGetnet.jar no encontrado
+        echo Por favor, copia los JARs del SDK Getnet a este directorio o a sdk/
+        pause
+        exit /b 1
+    )
+)
+if not exist "jSerialComm-2.9.3.jar" (
+    if exist "sdk\jSerialComm-2.9.3.jar" (
+        copy "sdk\jSerialComm-2.9.3.jar" "jSerialComm-2.9.3.jar"
+    ) else (
+        echo ERROR: jSerialComm-2.9.3.jar no encontrado
+        echo Por favor, copia los JARs del SDK Getnet a este directorio o a sdk/
+        pause
+        exit /b 1
+    )
+)
+if not exist "gson-2.10.1.jar" (
+    if exist "sdk\gson-2.10.1.jar" (
+        copy "sdk\gson-2.10.1.jar" "gson-2.10.1.jar"
+    )
 )
 
 REM Construir classpath
