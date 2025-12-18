@@ -41,12 +41,35 @@ echo ✅ Java OK
 echo.
 
 REM ============================================================================
-REM PASO 2: Verificar JARs necesarios
+REM PASO 2: Verificar y copiar JARs necesarios desde sdk/
 REM ============================================================================
 echo [2/5] Verificando archivos JAR necesarios...
 
 set MISSING_JARS=0
 
+REM Copiar JARs desde sdk/ al directorio actual si no existen
+if exist "sdk\POSIntegradoGetnet.jar" (
+    if not exist "POSIntegradoGetnet.jar" (
+        echo Copiando POSIntegradoGetnet.jar desde sdk/...
+        copy "sdk\POSIntegradoGetnet.jar" "POSIntegradoGetnet.jar"
+    )
+)
+
+if exist "sdk\jSerialComm-2.9.3.jar" (
+    if not exist "jSerialComm-2.9.3.jar" (
+        echo Copiando jSerialComm-2.9.3.jar desde sdk/...
+        copy "sdk\jSerialComm-2.9.3.jar" "jSerialComm-2.9.3.jar"
+    )
+)
+
+if exist "sdk\gson-2.10.1.jar" (
+    if not exist "gson-2.10.1.jar" (
+        echo Copiando gson-2.10.1.jar desde sdk/...
+        copy "sdk\gson-2.10.1.jar" "gson-2.10.1.jar"
+    )
+)
+
+REM Verificar json.jar (se descarga automáticamente si falta)
 if not exist "json.jar" (
     echo ❌ FALTA: json.jar
     echo    Descargando desde Maven Central...
@@ -61,26 +84,45 @@ if not exist "json.jar" (
     echo ✅ json.jar encontrado
 )
 
+REM Verificar que todos los JARs necesarios estén presentes
 if not exist "POSIntegradoGetnet.jar" (
     echo ❌ FALTA: POSIntegradoGetnet.jar
-    echo    Por favor, copia este archivo desde el SDK de Getnet
-    set MISSING_JARS=1
+    echo    Buscando en sdk/...
+    if exist "sdk\POSIntegradoGetnet.jar" (
+        copy "sdk\POSIntegradoGetnet.jar" "POSIntegradoGetnet.jar"
+        echo    ✅ Copiado desde sdk/
+    ) else (
+        echo    ❌ No encontrado en sdk/. Por favor, copia este archivo desde el SDK de Getnet
+        set MISSING_JARS=1
+    )
 ) else (
     echo ✅ POSIntegradoGetnet.jar encontrado
 )
 
 if not exist "jSerialComm-2.9.3.jar" (
     echo ❌ FALTA: jSerialComm-2.9.3.jar
-    echo    Por favor, copia este archivo desde el SDK de Getnet
-    set MISSING_JARS=1
+    echo    Buscando en sdk/...
+    if exist "sdk\jSerialComm-2.9.3.jar" (
+        copy "sdk\jSerialComm-2.9.3.jar" "jSerialComm-2.9.3.jar"
+        echo    ✅ Copiado desde sdk/
+    ) else (
+        echo    ❌ No encontrado en sdk/. Por favor, copia este archivo desde el SDK de Getnet
+        set MISSING_JARS=1
+    )
 ) else (
     echo ✅ jSerialComm-2.9.3.jar encontrado
 )
 
 if not exist "gson-2.10.1.jar" (
     echo ❌ FALTA: gson-2.10.1.jar
-    echo    Por favor, copia este archivo desde el SDK de Getnet
-    set MISSING_JARS=1
+    echo    Buscando en sdk/...
+    if exist "sdk\gson-2.10.1.jar" (
+        copy "sdk\gson-2.10.1.jar" "gson-2.10.1.jar"
+        echo    ✅ Copiado desde sdk/
+    ) else (
+        echo    ❌ No encontrado en sdk/. Por favor, copia este archivo desde el SDK de Getnet
+        set MISSING_JARS=1
+    )
 ) else (
     echo ✅ gson-2.10.1.jar encontrado
 )
@@ -88,7 +130,7 @@ if not exist "gson-2.10.1.jar" (
 if %MISSING_JARS% EQU 1 (
     echo.
     echo ERROR: Faltan archivos JAR necesarios
-    echo Por favor, copia los JARs del SDK Getnet a este directorio
+    echo Por favor, copia los JARs del SDK Getnet a este directorio o a sdk/
     pause
     exit /b 1
 )
@@ -103,14 +145,36 @@ echo [3/5] Verificando GetnetAgent.java...
 if not exist "GetnetAgent.java" (
     echo ❌ GetnetAgent.java no encontrado
     echo.
-    echo Este archivo debe ser generado usando setup_getnet_agent_java.sh
-    echo O copiado desde el repositorio.
+    echo Generando GetnetAgent.java usando setup_getnet_agent_java.sh...
     echo.
-    echo Si tienes el script setup, ejecuta:
-    echo   bash setup_getnet_agent_java.sh
-    echo.
-    pause
-    exit /b 1
+    
+    REM Intentar generar con bash (Git Bash o WSL)
+    where bash >nul 2>&1
+    if %ERRORLEVEL% EQU 0 (
+        echo Usando bash para generar GetnetAgent.java...
+        bash setup_getnet_agent_java.sh
+        if exist "GetnetAgent.java" (
+            echo ✅ GetnetAgent.java generado exitosamente
+        ) else (
+            echo ❌ Error al generar GetnetAgent.java
+            echo.
+            echo Por favor, ejecuta manualmente:
+            echo   bash setup_getnet_agent_java.sh
+            echo.
+            echo O copia GetnetAgent.java desde el repositorio.
+            pause
+            exit /b 1
+        )
+    ) else (
+        echo ❌ bash no encontrado (necesario para generar GetnetAgent.java)
+        echo.
+        echo Opciones:
+        echo 1. Instala Git Bash desde https://git-scm.com/download/win
+        echo 2. O copia GetnetAgent.java desde el repositorio
+        echo.
+        pause
+        exit /b 1
+    )
 ) else (
     echo ✅ GetnetAgent.java encontrado
 )

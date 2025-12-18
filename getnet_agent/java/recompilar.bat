@@ -12,6 +12,23 @@ cd /d "%~dp0"
 echo Directorio: %CD%
 echo.
 
+REM Copiar JARs desde sdk/ si no existen en el directorio actual
+if exist "sdk\POSIntegradoGetnet.jar" (
+    if not exist "POSIntegradoGetnet.jar" (
+        copy "sdk\POSIntegradoGetnet.jar" "POSIntegradoGetnet.jar"
+    )
+)
+if exist "sdk\jSerialComm-2.9.3.jar" (
+    if not exist "jSerialComm-2.9.3.jar" (
+        copy "sdk\jSerialComm-2.9.3.jar" "jSerialComm-2.9.3.jar"
+    )
+)
+if exist "sdk\gson-2.10.1.jar" (
+    if not exist "gson-2.10.1.jar" (
+        copy "sdk\gson-2.10.1.jar" "gson-2.10.1.jar"
+    )
+)
+
 REM Verificar que existan los JARs necesarios
 if not exist "json.jar" (
     echo ERROR: No se encuentra json.jar
@@ -22,23 +39,38 @@ if not exist "json.jar" (
 
 if not exist "POSIntegradoGetnet.jar" (
     echo ERROR: No se encuentra POSIntegradoGetnet.jar
-    echo Por favor, copia el JAR del SDK Getnet.
-    pause
-    exit /b 1
+    if exist "sdk\POSIntegradoGetnet.jar" (
+        copy "sdk\POSIntegradoGetnet.jar" "POSIntegradoGetnet.jar"
+        echo Copiado desde sdk/
+    ) else (
+        echo Por favor, copia el JAR del SDK Getnet.
+        pause
+        exit /b 1
+    )
 )
 
 if not exist "jSerialComm-2.9.3.jar" (
     echo ERROR: No se encuentra jSerialComm-2.9.3.jar
-    echo Por favor, copia el JAR del SDK Getnet.
-    pause
-    exit /b 1
+    if exist "sdk\jSerialComm-2.9.3.jar" (
+        copy "sdk\jSerialComm-2.9.3.jar" "jSerialComm-2.9.3.jar"
+        echo Copiado desde sdk/
+    ) else (
+        echo Por favor, copia el JAR del SDK Getnet.
+        pause
+        exit /b 1
+    )
 )
 
 if not exist "gson-2.10.1.jar" (
     echo ERROR: No se encuentra gson-2.10.1.jar
-    echo Por favor, copia el JAR del SDK Getnet.
-    pause
-    exit /b 1
+    if exist "sdk\gson-2.10.1.jar" (
+        copy "sdk\gson-2.10.1.jar" "gson-2.10.1.jar"
+        echo Copiado desde sdk/
+    ) else (
+        echo Por favor, copia el JAR del SDK Getnet.
+        pause
+        exit /b 1
+    )
 )
 
 REM Verificar que Java esté instalado
