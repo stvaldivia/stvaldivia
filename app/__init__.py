@@ -524,8 +524,7 @@ def create_app():
         pass
     
     # Configuración Kiosko
-    # DESACTIVADO TEMPORALMENTE - Para reactivar, cambiar KIOSK_ENABLED a True
-    app.config['KIOSK_ENABLED'] = os.environ.get('KIOSK_ENABLED', 'false').lower() == 'true'
+    app.config['KIOSK_ENABLED'] = os.environ.get('KIOSK_ENABLED', 'true').lower() == 'true'
     
     # Registrar blueprint de Kiosko
     # Crear tablas de la base de datos si no existen (siempre, no solo para kiosko)
