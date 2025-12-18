@@ -19,7 +19,7 @@ REM PASO 1: Verificar Java
 REM ============================================================================
 echo [1/5] Verificando Java...
 where java >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
+if errorlevel 1 (
     echo ERROR: Java no está instalado
     echo Por favor, instala Java JDK 11 o superior desde:
     echo https://adoptium.net/
@@ -28,7 +28,7 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 where javac >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
+if errorlevel 1 (
     echo ERROR: javac (compilador Java) no está instalado
     echo Por favor, instala Java JDK 11 o superior
     pause
@@ -150,7 +150,7 @@ if not exist "GetnetAgent.java" (
     
     REM Intentar generar con bash (Git Bash o WSL)
     where bash >nul 2>&1
-    if %ERRORLEVEL% EQU 0 (
+    if not errorlevel 1 (
         echo Usando bash para generar GetnetAgent.java...
         bash setup_getnet_agent_java.sh
         if exist "GetnetAgent.java" (
@@ -230,7 +230,7 @@ set CLASSPATH=.;json.jar;POSIntegradoGetnet.jar;jSerialComm-2.9.3.jar;gson-2.10.
 
 javac -cp "%CLASSPATH%" GetnetAgent.java
 
-if %ERRORLEVEL% NEQ 0 (
+if errorlevel 1 (
     echo.
     echo ❌ ERROR: La compilación falló
     echo Revisa los errores arriba
