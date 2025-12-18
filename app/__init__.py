@@ -541,7 +541,12 @@ def create_app():
     if app.config['KIOSK_ENABLED']:
         try:
             from .blueprints.kiosk import kiosk_bp
-            app.register_blueprint(kiosk_bp, url_prefix=url_prefix)
+            # El blueprint ya tiene url_prefix='/kiosk', solo agregar APPLICATION_ROOT si existe
+            if url_prefix:
+                combined_prefix = f"{url_prefix}/kiosk" if not url_prefix.endswith('/') else f"{url_prefix}kiosk"
+                app.register_blueprint(kiosk_bp, url_prefix=combined_prefix)
+            else:
+                app.register_blueprint(kiosk_bp)
         except ImportError as e:
             app.logger.warning(f"⚠️  No se pudo registrar el blueprint del kiosko: {e}")
         except Exception as e:
