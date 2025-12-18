@@ -29,12 +29,20 @@ if exist "sdk\gson-2.10.1.jar" (
     )
 )
 
-REM Verificar que existan los JARs necesarios
+REM Verificar json.jar (descargar automáticamente si falta)
 if not exist "json.jar" (
-    echo ERROR: No se encuentra json.jar
-    echo Por favor, descarga json.jar primero.
-    pause
-    exit /b 1
+    echo json.jar no encontrado
+    echo Descargando desde Maven Central...
+    powershell -Command "Invoke-WebRequest -Uri 'https://repo1.maven.org/maven2/org/json/json/20240303/json-20240303.jar' -OutFile 'json.jar'"
+    if exist "json.jar" (
+        echo json.jar descargado exitosamente
+    ) else (
+        echo ERROR: No se pudo descargar json.jar
+        echo Por favor, descarga json.jar manualmente desde:
+        echo https://repo1.maven.org/maven2/org/json/json/20240303/json-20240303.jar
+        pause
+        exit /b 1
+    )
 )
 
 if not exist "POSIntegradoGetnet.jar" (
