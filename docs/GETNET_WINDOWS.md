@@ -34,7 +34,7 @@ ENABLE_GETNET_SERIAL=1
   "GETNET": {
     "mode": "serial",
     "port": "COM4",
-    "baudrate": 9600,
+    "baudrate": 115200,
     "timeout_ms": 30000
   },
   "KLAP": {
@@ -46,8 +46,8 @@ ENABLE_GETNET_SERIAL=1
 
 **Campos GETNET Serial:**
 - `mode`: `"serial"` (obligatorio para comunicación serial)
-- `port`: `"COM4"` (obligatorio, puerto COM en Windows)
-- `baudrate`: `9600` (opcional, default: 9600)
+- `port`: `"COM4"` (obligatorio, puerto COM USB en Windows - verificar en Device Manager)
+- `baudrate`: `115200` (opcional, default: 9600, recomendado: 115200 para terminales Getnet modernos)
 - `timeout_ms`: `30000` (opcional, default: 30000ms = 30s)
 
 **Validación:**
@@ -63,7 +63,7 @@ ENABLE_GETNET_SERIAL=1
 1. Abrir **Device Manager** (Administrador de dispositivos)
 2. Expandir **Ports (COM & LPT)**
 3. Buscar **"USB Serial Device"** o **"GETNET"**
-4. Verificar que aparece como **COM4** (o el puerto correcto)
+4. Verificar que aparece como **COM4** (puerto USB - o el puerto correcto según tu configuración)
 
 ### PowerShell
 
@@ -95,7 +95,7 @@ pip install pyserial
 
 **Uso básico (puerto por defecto COM4):**
 ```bash
-python tools/smoke_getnet_serial.py
+python tools/smoke_getnet_serial.py --port COM4
 ```
 
 **Con puerto específico:**
@@ -105,7 +105,7 @@ python tools/smoke_getnet_serial.py --port COM4
 
 **Con configuración completa:**
 ```bash
-python tools/smoke_getnet_serial.py --port COM4 --baudrate 9600 --timeout 30000
+python tools/smoke_getnet_serial.py --port COM4 --baudrate 115200 --timeout 30000
 ```
 
 ### Salida Esperada (PASS)

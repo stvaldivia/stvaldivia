@@ -1,0 +1,208 @@
+@echo off
+REM ============================================================================
+REM Script completo para instalar, configurar y ejecutar el Agente Getnet
+REM ============================================================================
+
+echo.
+echo ========================================
+echo   AGENTE GETNET JAVA - INSTALACION
+echo ========================================
+echo.
+
+REM Cambiar al directorio del script
+cd /d "%~dp0"
+echo Directorio de trabajo: %CD%
+echo.
+
+REM ============================================================================
+REM PASO 1: Verificar Java
+REM ============================================================================
+echo [1/5] Verificando Java...
+where java >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo ERROR: Java no está instalado
+    echo Por favor, instala Java JDK 11 o superior desde:
+    echo https://adoptium.net/
+    pause
+    exit /b 1
+)
+
+where javac >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo ERROR: javac (compilador Java) no está instalado
+    echo Por favor, instala Java JDK 11 o superior
+    pause
+    exit /b 1
+)
+
+java -version | findstr /i "version"
+javac -version
+echo ✅ Java OK
+echo.
+
+REM ============================================================================
+REM PASO 2: Verificar JARs necesarios
+REM ============================================================================
+echo [2/5] Verificando archivos JAR necesarios...
+
+set MISSING_JARS=0
+
+if not exist "json.jar" (
+    echo ❌ FALTA: json.jar
+    echo    Descargando desde Maven Central...
+    powershell -Command "Invoke-WebRequest -Uri 'https://repo1.maven.org/maven2/org/json/json/20240303/json-20240303.jar' -OutFile 'json.jar'"
+    if exist "json.jar" (
+        echo    ✅ json.jar descargado
+    ) else (
+        echo    ❌ Error al descargar json.jar
+        set MISSING_JARS=1
+    )
+) else (
+    echo ✅ json.jar encontrado
+)
+
+if not exist "POSIntegradoGetnet.jar" (
+    echo ❌ FALTA: POSIntegradoGetnet.jar
+    echo    Por favor, copia este archivo desde el SDK de Getnet
+    set MISSING_JARS=1
+) else (
+    echo ✅ POSIntegradoGetnet.jar encontrado
+)
+
+if not exist "jSerialComm-2.9.3.jar" (
+    echo ❌ FALTA: jSerialComm-2.9.3.jar
+    echo    Por favor, copia este archivo desde el SDK de Getnet
+    set MISSING_JARS=1
+) else (
+    echo ✅ jSerialComm-2.9.3.jar encontrado
+)
+
+if not exist "gson-2.10.1.jar" (
+    echo ❌ FALTA: gson-2.10.1.jar
+    echo    Por favor, copia este archivo desde el SDK de Getnet
+    set MISSING_JARS=1
+) else (
+    echo ✅ gson-2.10.1.jar encontrado
+)
+
+if %MISSING_JARS% EQU 1 (
+    echo.
+    echo ERROR: Faltan archivos JAR necesarios
+    echo Por favor, copia los JARs del SDK Getnet a este directorio
+    pause
+    exit /b 1
+)
+
+echo.
+
+REM ============================================================================
+REM PASO 3: Verificar/Generar GetnetAgent.java
+REM ============================================================================
+echo [3/5] Verificando GetnetAgent.java...
+
+if not exist "GetnetAgent.java" (
+    echo ❌ GetnetAgent.java no encontrado
+    echo.
+    echo Este archivo debe ser generado usando setup_getnet_agent_java.sh
+    echo O copiado desde el repositorio.
+    echo.
+    echo Si tienes el script setup, ejecuta:
+    echo   bash setup_getnet_agent_java.sh
+    echo.
+    pause
+    exit /b 1
+) else (
+    echo ✅ GetnetAgent.java encontrado
+)
+echo.
+
+REM ============================================================================
+REM PASO 4: Configurar variables de entorno
+REM ============================================================================
+echo [4/5] Configurando variables de entorno...
+
+if exist "config_env.bat" (
+    echo Cargando configuración existente...
+    call config_env.bat
+) else (
+    echo No existe config_env.bat. Configurando valores por defecto...
+    set REGISTER_ID=1
+    set BASE_URL=https://stvaldivia.cl
+    
+    echo.
+    echo ⚠️  IMPORTANTE: Debes configurar AGENT_API_KEY
+    echo.
+    set /p AGENT_API_KEY="Ingresa AGENT_API_KEY (debe coincidir con el servidor): "
+    if "%AGENT_API_KEY%"=="" (
+        echo ERROR: AGENT_API_KEY es requerido
+        pause
+        exit /b 1
+    )
+    
+    REM Guardar configuración
+    (
+        echo @echo off
+        echo set REGISTER_ID=%REGISTER_ID%
+        echo set BASE_URL=%BASE_URL%
+        echo set AGENT_API_KEY=%AGENT_API_KEY%
+    ) > config_env.bat
+    
+    echo ✅ Configuración guardada en config_env.bat
+)
+
+echo.
+echo Variables configuradas:
+echo   REGISTER_ID=%REGISTER_ID%
+echo   BASE_URL=%BASE_URL%
+echo   AGENT_API_KEY=%AGENT_API_KEY:~0,30%...
+echo.
+
+REM ============================================================================
+REM PASO 5: Compilar
+REM ============================================================================
+echo [5/5] Compilando agente...
+
+set CLASSPATH=.;json.jar;POSIntegradoGetnet.jar;jSerialComm-2.9.3.jar;gson-2.10.1.jar
+
+javac -cp "%CLASSPATH%" GetnetAgent.java
+
+if %ERRORLEVEL% NEQ 0 (
+    echo.
+    echo ❌ ERROR: La compilación falló
+    echo Revisa los errores arriba
+    pause
+    exit /b 1
+)
+
+echo ✅ Compilación exitosa
+echo.
+
+REM ============================================================================
+REM LISTO - Ejecutar agente
+REM ============================================================================
+echo ========================================
+echo   ✅ INSTALACIÓN COMPLETA
+echo ========================================
+echo.
+echo El agente está listo para ejecutarse.
+echo.
+echo Presiona Enter para iniciar el agente ahora...
+echo O cierra esta venta y ejecuta 'ejecutar.bat' más tarde.
+pause >nul
+
+echo.
+echo Iniciando agente...
+echo (Presiona Ctrl+C para detener)
+echo.
+echo ========================================
+echo.
+
+java -cp "%CLASSPATH%" GetnetAgent
+
+echo.
+echo ========================================
+echo El agente se ha detenido.
+echo ========================================
+pause
+
+
