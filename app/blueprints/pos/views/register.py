@@ -273,8 +273,8 @@ def register():
                                 continue
                             
                             # Ignorar ventas de TEST AGENT o empleados de prueba
-                            employee_name = (sale.employee_name or '').upper()
-                            if 'TEST' in employee_name or 'AGENT' in employee_name:
+                            sale_employee_name = (sale.employee_name or '').upper()
+                            if 'TEST' in sale_employee_name or 'AGENT' in sale_employee_name:
                                 continue
                             
                             sale_employee_id = str(sale.employee_id) if sale.employee_id else None
