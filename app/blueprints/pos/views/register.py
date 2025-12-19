@@ -44,7 +44,7 @@ def register():
     if target_register_id:
         # Intentar abrir la caja directamente
         try:
-            from app.helpers.register_lock_db import lock_register
+            # lock_register ya está importado al principio del archivo
             register_id = str(target_register_id)
             employee_id = session.get('pos_employee_id')
             
