@@ -1,13 +1,15 @@
 import logging
+import json
 from datetime import datetime, timedelta
 import uuid
 from decimal import ROUND_HALF_UP
-from flask import render_template, request, jsonify, session, redirect, url_for, flash, current_app, send_file, send_file
+from flask import render_template, request, jsonify, session, redirect, url_for, flash, current_app, send_file, send_from_directory
 from app.utils.timezone import CHILE_TZ
 from app.blueprints.pos import caja_bp
 from app.blueprints.pos.services import pos_service
 from app.infrastructure.services.ticket_printer_service import TicketPrinterService
 from app.models import PosSale, PosSaleItem, RegisterClose, db
+from app.models.pos_models import PaymentIntent
 from app.helpers.rate_limiter import rate_limit
 from app.helpers.sale_security_validator import (
     validate_session_active, comprehensive_sale_validation,
@@ -26,6 +28,16 @@ from app.helpers.idempotency_helper import generate_sale_idempotency_key
 from app.models.jornada_models import Jornada
 
 logger = logging.getLogger(__name__)
+
+
+def generate_ticket_code(register_code: str, sale_id: int) -> str:
+    """
+    Genera un código de ticket único en formato: caja1-BMB-000123
+    Ejemplo: "caja1-BMB-000123", "caja2-BMB-000456"
+    """
+    # Formatear el ID de venta con ceros a la izquierda (6 dígitos)
+    sale_id_str = str(sale_id).zfill(6)
+    return f"{register_code}-BMB-{sale_id_str}"
 
 @caja_bp.route('/ventas', methods=['GET'])
 def sales():
@@ -329,6 +341,7 @@ def sales():
         total=total,
         employee_name=session.get('pos_employee_name', 'Usuario'),
         register_name=session.get('pos_register_name', 'Caja'),
+        register_id=str(session.get('pos_register_id')) if session.get('pos_register_id') is not None else None,
         employee_sales_count=employee_sales_count,
         is_superadmin_register=is_superadmin_register,
         is_superadmin=is_superadmin
@@ -380,6 +393,9 @@ def api_add_to_cart():
         # Obtener precio
         price = float(product.get('unit_price', 0) or product.get('price', 0))
         
+        # DEBUG: Log el precio obtenido del backend
+        logger.info(f"🔍 DEBUG api_add_to_cart - precio obtenido: item_id={item_id}, price={price}, product={product.get('name', 'unknown')}")
+        
         # Normalizar ID y determinar si es kit
         if 'item_kit_id' in product:
             product_id = str(product['item_kit_id'])
@@ -402,10 +418,17 @@ def api_add_to_cart():
             # Comparar ambos IDs normalizados
             if (item_cart_id and item_cart_id == item_id_str) or (item_cart_id and item_cart_id == product_id_str):
                 item['quantity'] += quantity
-                item['subtotal'] = item['quantity'] * item.get('price', price)
-                # Asegurar que el precio esté actualizado
-                if 'price' not in item or not item.get('price'):
-                    item['price'] = price
+                # Usar el precio que ya tiene el item si existe, sino usar el precio del backend
+                existing_price = item.get('price') or item.get('unit_price')
+                current_price = existing_price if existing_price and existing_price > 0 else price
+                
+                # DEBUG: Log el precio que se está usando
+                if existing_price and existing_price != price:
+                    logger.info(f"🔍 DEBUG api_add_to_cart - usando precio existente: item_id={item_id}, existing_price={existing_price}, backend_price={price}")
+                
+                item['price'] = current_price
+                item['unit_price'] = current_price  # Mantener sincronizado
+                item['subtotal'] = item['quantity'] * current_price
                 item_found = True
                 break
         
@@ -644,9 +667,10 @@ def api_create_sale():
         # ==========================================
         # VALIDACIONES DE SEGURIDAD COMPLETAS
         # ==========================================
-        data = request.get_json()
+        data = request.get_json() or {}
         payment_type = data.get("payment_type")
         payment_provider = data.get("payment_provider")
+        payment_intent_id = data.get("payment_intent_id") or data.get("paymentIntentId")
 
         if not payment_type:
             return jsonify({
@@ -669,7 +693,51 @@ def api_create_sale():
                 f"✅ PAYMENT_FLOW: {payment_type} + {payment_provider} - "
                 f"Employee: {employee_id}, Register: {register_id}"
             )
-        cart = session.get('pos_cart', [])
+        payment_intent = None
+        # Si viene payment_intent_id, usar carrito congelado en PaymentIntent (APPROVED)
+        if payment_intent_id:
+            try:
+                intent_uuid = uuid.UUID(str(payment_intent_id))
+            except Exception:
+                return jsonify({'success': False, 'error': 'payment_intent_id inválido'}), 400
+
+            intent = PaymentIntent.query.get(intent_uuid)
+            if not intent:
+                return jsonify({'success': False, 'error': 'PaymentIntent no encontrado'}), 404
+
+            # Validar que pertenece a esta caja
+            if str(intent.register_id) != str(register_id):
+                return jsonify({'success': False, 'error': 'PaymentIntent no pertenece a esta caja'}), 403
+
+            # Debe estar aprobado por el agente
+            if intent.status != PaymentIntent.STATUS_APPROVED:
+                return jsonify({
+                    'success': False,
+                    'error': f'PaymentIntent no está APPROVED (actual: {intent.status})'
+                }), 400
+
+            # Idempotencia: si ya existe sale_id en metadata_json, devolverlo
+            try:
+                meta = json.loads(intent.metadata_json) if intent.metadata_json else {}
+            except Exception:
+                meta = {}
+            existing_sale_id = meta.get('sale_id')
+            if existing_sale_id:
+                return jsonify({
+                    'success': True,
+                    'sale_id': existing_sale_id,
+                    'message': 'Venta ya creada para este PaymentIntent'
+                })
+
+            try:
+                cart = json.loads(intent.cart_json) if intent.cart_json else []
+            except Exception:
+                cart = []
+            # Reflejar en sesión para compatibilidad con validaciones posteriores
+            session['pos_cart'] = cart
+            payment_intent = intent
+        else:
+            cart = session.get('pos_cart', [])
         
         # Calcular total
         total = pos_service.calculate_total(cart)
@@ -1092,6 +1160,19 @@ def api_create_sale():
             
             # Commit de la transacción
             db.session.commit()
+
+            # Si esta venta viene de un PaymentIntent, persistir vínculo en metadata_json (idempotencia)
+            if payment_intent is not None:
+                try:
+                    meta = json.loads(payment_intent.metadata_json) if payment_intent.metadata_json else {}
+                except Exception:
+                    meta = {}
+                meta['sale_id'] = local_sale_id
+                meta['sale_id_local'] = local_sale.id
+                meta['sale_created_at'] = datetime.now(CHILE_TZ).isoformat()
+                payment_intent.metadata_json = json.dumps(meta, ensure_ascii=False)
+                payment_intent.updated_at = datetime.utcnow()
+                db.session.commit()
             
             # Si llegamos aquí, la transacción fue exitosa
             logger.info(f"✅ Venta guardada localmente (ID local: {local_sale.id}, ID venta: {local_sale_id})")
@@ -1159,56 +1240,11 @@ def api_create_sale():
                     sale_data['qr_token'] = ticket_obj.qr_token
                     sale_data['ticket_display_code'] = ticket_obj.display_code
                 
-                # Obtener configuración de impresora del TPV
-                printer_config = None
-                printer_name = None
-                auto_print = True
-                
-                try:
-                    from app.models.pos_models import PosRegister
-                    from app.helpers.printer_helper import PrinterHelper
-                    
-                    register_obj = PosRegister.query.filter(
-                        (PosRegister.id == int(register_id)) if register_id.isdigit() else (PosRegister.code == register_id)
-                    ).first()
-                    
-                    if register_obj:
-                        printer_config = PrinterHelper.get_printer_config_for_register(register_obj)
-                        printer_name = printer_config.get('printer_name')
-                        auto_print = printer_config.get('auto_print', True)
-                        
-                        # Crear servicio de impresión con impresora del TPV
-                        if printer_name:
-                            printer_service = TicketPrinterService(printer_name=printer_name)
-                        else:
-                            printer_service = TicketPrinterService()
-                    else:
-                        # Fallback: usar impresora por defecto
-                        printer_service = TicketPrinterService()
-                except Exception as e:
-                    logger.warning(f"Error al obtener configuración de impresora del TPV: {e}")
-                    printer_service = TicketPrinterService()
-                    auto_print = True
-                
-                # Imprimir ticket automáticamente solo si auto_print está habilitado
-                print_result = False
-                if auto_print:
-                    print_result = printer_service.print_ticket(
-                        sale_id=local_sale_id,
-                        sale_data=sale_data,
-                        items=cart,
-                        register_name=session.get('pos_register_name', 'POS'),
-                        employee_name=employee_name
-                    )
-                else:
-                    logger.info(f"⏭️  Impresión automática deshabilitada para TPV {register_id}")
-                    print_status = "auto_print_disabled"
-                if print_result:
-                    logger.info(f"✅ Ticket impreso automáticamente para venta {local_sale.id}")
-                    print_status = "impreso"
-                else:
-                    logger.warning(f"⚠️  No se pudo imprimir ticket para venta {local_sale.id}")
-                    print_status = "error_impresion"
+                # NOTA: La impresión se hace desde el cliente Windows (navegador), no desde el servidor Linux
+                # El servidor solo genera la imagen del ticket con QR, que se abre en el navegador para imprimir
+                # Por lo tanto, siempre deshabilitamos auto_print en el servidor
+                print_status = "impresion_desde_cliente"
+                logger.info(f"📄 Ticket generado para venta {local_sale.id} - Se imprimirá desde el cliente Windows")
             except Exception as e:
                 logger.error(f"❌ Error al imprimir ticket automáticamente: {e}", exc_info=True)
                 print_status = "error_impresion"
@@ -1422,3 +1458,326 @@ def print_ticket(ticket_id):
         logger.error(f"Error al imprimir ticket: {e}", exc_info=True)
         flash(f"Error al imprimir ticket: {str(e)}", "error")
         return redirect(url_for('home.index'))
+
+
+# ============================================================================
+# ENDPOINTS SIMPLES PARA INTEGRACIÓN GETNET LOCAL
+# ============================================================================
+
+@caja_bp.route('/api/caja/venta-ok', methods=['POST'])
+@rate_limit(max_requests=30, window_seconds=60)
+def api_venta_ok():
+    """
+    Endpoint simple para registrar ventas exitosas con Getnet.
+    Se llama DESPUÉS de que Getnet confirma el pago localmente.
+    
+    Body esperado:
+    {
+        "total": 15000,
+        "venta": {
+            "caja_codigo": "caja1",
+            "cajero": "usuario_x",
+            "items": [
+                { "sku": "PISCO_SOUR", "nombre": "Pisco Sour", "cantidad": 2, "precio_unitario": 5000 }
+            ]
+        },
+        "getnet": {
+            "responseCode": "0",
+            "responseMessage": "Aprobado",
+            "authorizationCode": "123456"
+        }
+    }
+    """
+    if not session.get('pos_logged_in'):
+        return jsonify({'ok': False, 'error': 'No autenticado'}), 401
+    
+    try:
+        data = request.get_json() or {}
+        total = data.get('total', 0)
+        venta = data.get('venta', {})
+        getnet = data.get('getnet', {})
+        
+        # Validaciones básicas
+        if not total or total <= 0:
+            return jsonify({'ok': False, 'error': 'Total inválido'}), 400
+        
+        # Obtener datos del payload o de la sesión
+        caja_codigo = venta.get('caja_codigo') or session.get('pos_register_id', '')
+        cajero = venta.get('cajero') or session.get('pos_employee_name', 'Cajero')
+        items_raw = venta.get('items', [])
+        
+        if not items_raw or len(items_raw) == 0:
+            return jsonify({'ok': False, 'error': 'Carrito vacío. No hay items en la venta.'}), 400
+        
+        # Obtener datos de sesión para validación
+        register_id = session.get('pos_register_id')
+        employee_id = session.get('pos_employee_id')
+        employee_name = session.get('pos_employee_name', 'Cajero')
+        
+        if not register_id or not employee_id:
+            return jsonify({'ok': False, 'error': 'No hay caja seleccionada'}), 400
+        
+        # Convertir items del formato especificado al formato interno
+        # Formato especificado: { "sku": "...", "nombre": "...", "cantidad": 2, "precio_unitario": 5000 }
+        cart = []
+        for item in items_raw:
+            sku = item.get('sku') or item.get('item_id') or item.get('id') or ''
+            nombre = item.get('nombre') or item.get('name') or 'Producto sin nombre'
+            cantidad = item.get('cantidad') or item.get('quantity') or item.get('qty') or 1
+            precio_unitario = item.get('precio_unitario') or item.get('price') or item.get('unit_price') or 0
+            subtotal = item.get('subtotal') or (precio_unitario * cantidad)
+            
+            cart.append({
+                'item_id': str(sku),
+                'name': nombre,
+                'quantity': cantidad,
+                'price': precio_unitario,
+                'subtotal': subtotal
+            })
+        
+        # Validar sesión activa
+        can_sell, error_msg = RegisterSessionService.can_sell_in_register(register_id)
+        if not can_sell:
+            return jsonify({'ok': False, 'error': error_msg}), 403
+        
+        active_session = RegisterSessionService.get_active_session(register_id)
+        if not active_session:
+            return jsonify({'ok': False, 'error': 'No hay sesión abierta para esta caja'}), 403
+        
+        jornada = Jornada.query.get(active_session.jornada_id)
+        if not jornada or jornada.estado_apertura != 'abierto':
+            return jsonify({'ok': False, 'error': 'Jornada no está abierta'}), 403
+        
+        # Determinar tipo de pago desde getnet
+        payment_type = 'Débito'  # Por defecto
+        if getnet.get('cardType') == 'CREDIT' or getnet.get('CardType') == 'CREDIT':
+            payment_type = 'Crédito'
+        
+        # Validar que Getnet devolvió OK
+        response_code = getnet.get('responseCode') or getnet.get('ResponseCode', '')
+        if str(response_code) != '0':
+            logger.warning(f"⚠️ Getnet no devolvió OK: responseCode={response_code}")
+            return jsonify({'ok': False, 'error': f'Getnet no devolvió OK. ResponseCode: {response_code}'}), 400
+        
+        # Crear la venta
+        from app.helpers.financial_utils import to_decimal, round_currency
+        
+        result = comprehensive_sale_validation(
+            register_id=str(register_id),
+            employee_id=str(employee_id),
+            employee_name=employee_name,
+            jornada_id=active_session.jornada_id,
+            shift_date=active_session.shift_date,
+            payment_type=payment_type.lower(),
+            payment_provider='GETNET',
+            cart=cart,
+            total_amount=to_decimal(total)
+        )
+        
+        if not result['valid']:
+            return jsonify({'ok': False, 'error': result.get('error', 'Validación falló')}), 400
+        
+        # Crear la venta
+        # NOTA: Los datos de Getnet (authorizationCode, responseCode, etc.) no se guardan directamente en PosSale
+        # Se pueden guardar en PaymentIntent si es necesario para trazabilidad futura
+        sale = PosSale(
+            register_id=str(register_id),
+            register_name=session.get('pos_register_name', caja_codigo),
+            employee_id=str(employee_id),
+            employee_name=employee_name,
+            jornada_id=active_session.jornada_id,
+            shift_date=active_session.shift_date,
+            total_amount=to_decimal(total),
+            payment_type=payment_type,
+            payment_provider='GETNET',
+            payment_cash=0,
+            payment_debit=to_decimal(total) if payment_type == 'Débito' else 0,
+            payment_credit=to_decimal(total) if payment_type == 'Crédito' else 0
+        )
+        
+        db.session.add(sale)
+        db.session.flush()  # Para obtener el ID antes de generar ticket_code
+        
+        # Generar ticket_code único (ej: "caja1-BMB-000123")
+        ticket_code = generate_ticket_code(caja_codigo, sale.id)
+        sale.sale_id_phppos = ticket_code  # Usar sale_id_phppos temporalmente para almacenar ticket_code
+        
+        # Agregar items de la venta
+        for item in cart:
+            sale_item = PosSaleItem(
+                sale_id=sale.id,
+                product_id=str(item.get('item_id', '')),
+                product_name=item.get('name', 'Producto'),
+                quantity=int(item.get('quantity', 1)),
+                unit_price=to_decimal(item.get('price', 0)),
+                subtotal=to_decimal(item.get('subtotal', 0))
+            )
+            db.session.add(sale_item)
+        
+        # Limpiar carrito de la sesión
+        session['pos_cart'] = []
+        
+        db.session.commit()
+        
+        logger.info(f"✅ Venta Getnet registrada: Sale ID {sale.id}, Ticket {ticket_code}, Total ${total}, Tipo {payment_type}")
+        
+        return jsonify({
+            'ok': True,
+            'venta_id': sale.id,
+            'ticket_code': ticket_code
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"❌ Error en api_venta_ok: {e}", exc_info=True)
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@caja_bp.route('/api/caja/venta-fallida-log', methods=['POST'])
+@rate_limit(max_requests=50, window_seconds=60)
+def api_venta_fallida_log():
+    """
+    Endpoint simple para registrar logs de ventas fallidas con Getnet.
+    NO crea una venta, solo registra el intento fallido.
+    
+    Body esperado:
+    {
+        "total": 15000,
+        "venta": {
+            "caja_codigo": "caja1",
+            "cajero": "usuario_x",
+            "items": [
+                { "sku": "PISCO_SOUR", "nombre": "Pisco Sour", "cantidad": 2, "precio_unitario": 5000 }
+            ]
+        },
+        "motivo": "Rechazado por Getnet (responseCode XX)"
+    }
+    """
+    if not session.get('pos_logged_in'):
+        return jsonify({'ok': False, 'error': 'No autenticado'}), 401
+    
+    try:
+        data = request.get_json() or {}
+        total = data.get('total', 0)
+        venta = data.get('venta', {})
+        motivo = data.get('motivo', 'Pago rechazado por Getnet')
+        
+        # Obtener datos del payload o de la sesión
+        caja_codigo = venta.get('caja_codigo') or session.get('pos_register_id', '')
+        cajero = venta.get('cajero') or session.get('pos_employee_name', 'Cajero')
+        items = venta.get('items', [])
+        
+        # Validaciones básicas
+        if not caja_codigo:
+            return jsonify({'ok': False, 'error': 'caja_codigo es requerido'}), 400
+        
+        if not items or len(items) == 0:
+            items = []  # Permitir items vacíos para logs
+        
+        # Registrar en tabla logs_intentos_pago
+        from app.models.pos_models import LogIntentoPago
+        from app.helpers.financial_utils import to_decimal
+        
+        log_entry = LogIntentoPago(
+            caja_codigo=str(caja_codigo),
+            cajero=str(cajero),
+            total=to_decimal(total),
+            items_json=items,  # Guardar como JSON
+            motivo=str(motivo)
+        )
+        
+        db.session.add(log_entry)
+        db.session.commit()
+        
+        logger.warning(f"⚠️ Pago Getnet rechazado: Total ${total}, Motivo: {motivo}, Cajero: {cajero}, Caja: {caja_codigo}")
+        
+        return jsonify({
+            'ok': True
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error en api_venta_fallida_log: {e}", exc_info=True)
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@caja_bp.route('/api/caja/venta/<int:venta_id>/voucher', methods=['GET'])
+def api_venta_voucher(venta_id):
+    """
+    Endpoint para obtener datos de una venta para mostrar en el voucher.
+    
+    Usado por voucher.html para renderizar el ticket térmico.
+    """
+    try:
+        from app.models.pos_models import PosSale, PosSaleItem
+        from datetime import datetime
+        
+        # Obtener la venta
+        venta = PosSale.query.get(venta_id)
+        if not venta:
+            return jsonify({'error': 'Venta no encontrada'}), 404
+        
+        # Obtener items de la venta
+        items = PosSaleItem.query.filter_by(sale_id=venta_id).all()
+        
+        # Formatear items para el voucher
+        items_formateados = []
+        for item in items:
+            items_formateados.append({
+                'sku': item.product_id,
+                'nombre': item.product_name,
+                'cantidad': item.quantity,
+                'precio_unitario': float(item.unit_price)
+            })
+        
+        # Obtener ticket_code
+        ticket_code = venta.sale_id_phppos or f"TOTEM-{venta_id}"
+        
+        # Formatear fecha (shift_date es String, usar created_at si está disponible)
+        fecha = venta.created_at.strftime('%d/%m/%Y %H:%M:%S') if venta.created_at else datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+        
+        # Determinar medio de pago
+        medio_pago = venta.payment_type or 'TARJETA_GETNET'
+        if venta.payment_provider == 'GETNET':
+            medio_pago = 'TARJETA_GETNET'
+        
+        # Preparar respuesta
+        respuesta = {
+            'fecha': fecha,
+            'ticket_code': ticket_code,
+            'items': items_formateados,
+            'subtotal': float(venta.total_amount),
+            'total': float(venta.total_amount),
+            'medio_pago': medio_pago
+        }
+        
+        # Agregar datos de Getnet si están disponibles (desde PaymentIntent u otra fuente)
+        # TODO: Si guardas datos de Getnet en PaymentIntent, agregarlos aquí
+        # respuesta['getnet'] = { ... }
+        
+        return jsonify(respuesta), 200
+        
+    except Exception as e:
+        logger.error(f"Error en api_venta_voucher: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@caja_bp.route('/voucher/<int:venta_id>', methods=['GET'])
+def voucher_page(venta_id):
+    """
+    Página HTML para mostrar e imprimir el voucher de una venta.
+    
+    Esta página se abre automáticamente después de una venta exitosa
+    y llama a window.print() para imprimir el ticket térmico.
+    """
+    import os
+    voucher_path = os.path.join(current_app.static_folder, 'html', 'voucher.html')
+    
+    if os.path.exists(voucher_path):
+        return send_from_directory(
+            os.path.join(current_app.static_folder, 'html'),
+            'voucher.html'
+        )
+    else:
+        # Fallback: renderizar template si existe
+        return render_template('voucher.html', venta_id=venta_id), 404

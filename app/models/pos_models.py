@@ -689,6 +689,54 @@ class RegisterSession(db.Model):
             'closed_by': self.closed_by,
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
+
+
+class PaymentAgent(db.Model):
+    """
+    PaymentAgent - Estado del agente de pago (Windows) que comunica con el POS físico Getnet
+    """
+    __tablename__ = 'payment_agents'
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    
+    # Identificación del agente
+    register_id = db.Column(db.String(50), nullable=False, index=True)
+    agent_name = db.Column(db.String(200), nullable=False)
+    
+    # Estado de conectividad
+    last_heartbeat = db.Column(db.DateTime, nullable=False, index=True)
+    last_ip = db.Column(db.String(100), nullable=True)
+    
+    # Estado del pinpad Getnet
+    last_getnet_status = db.Column(db.String(20), nullable=True)  # 'OK', 'ERROR', 'UNKNOWN'
+    last_getnet_message = db.Column(Text, nullable=True)
+    
+    # Healthcheck adicional
+    last_healthcheck_at = db.Column(db.DateTime, nullable=True)
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        Index('idx_payment_agents_register_heartbeat', 'register_id', 'last_heartbeat'),
+        Index('idx_payment_agents_register_agent', 'register_id', 'agent_name'),
+    )
+
+    def to_dict(self):
+        """Convierte el modelo a diccionario"""
+        return {
+            'id': str(self.id),
+            'register_id': self.register_id,
+            'agent_name': self.agent_name,
+            'last_heartbeat': self.last_heartbeat.isoformat() if self.last_heartbeat else None,
+            'last_ip': self.last_ip,
+            'last_getnet_status': self.last_getnet_status,
+            'last_getnet_message': self.last_getnet_message,
+            'last_healthcheck_at': self.last_healthcheck_at.isoformat() if self.last_healthcheck_at else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
     
     def is_open(self) -> bool:
         """Verifica si la sesión está abierta"""
@@ -697,6 +745,38 @@ class RegisterSession(db.Model):
     def can_sell(self) -> bool:
         """Verifica si se pueden hacer ventas en esta sesión"""
         return self.status == 'OPEN'
+
+
+class LogIntentoPago(db.Model):
+    """
+    Log de intentos de pago fallidos con Getnet
+    Tabla simple para registrar intentos fallidos sin crear ventas
+    """
+    __tablename__ = 'logs_intentos_pago'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    caja_codigo = db.Column(db.String(32), nullable=False, index=True)
+    cajero = db.Column(db.String(64), nullable=True)
+    total = db.Column(Numeric(10, 2), nullable=False)
+    items_json = db.Column(db.JSON, nullable=False)  # JSON con lista de items
+    motivo = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    
+    __table_args__ = (
+        Index('idx_logs_intentos_pago_caja_fecha', 'caja_codigo', 'created_at'),
+    )
+    
+    def to_dict(self):
+        """Convierte el modelo a diccionario"""
+        return {
+            'id': self.id,
+            'caja_codigo': self.caja_codigo,
+            'cajero': self.cajero,
+            'total': float(self.total) if self.total else 0.0,
+            'items_json': self.items_json if isinstance(self.items_json, (dict, list)) else json.loads(self.items_json) if self.items_json else [],
+            'motivo': self.motivo,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
 
 
 class RegisterClose(db.Model):
@@ -975,3 +1055,5 @@ class SaleAuditLog(db.Model):
             'session_id': self.session_id,
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
+
+# PaymentAgent ya está definido arriba (línea 694), no duplicar aquí
