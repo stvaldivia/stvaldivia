@@ -39,6 +39,36 @@ def register():
     if not session.get('pos_logged_in'):
         return redirect(url_for('caja.login'))
     
+    # Si hay una caja objetivo (desde /caja1, /caja2, /caja3), seleccionarla automáticamente
+    target_register_id = session.pop('target_register_id', None)
+    if target_register_id:
+        # Intentar abrir la caja directamente
+        try:
+            from app.helpers.register_lock_db import lock_register
+            register_id = str(target_register_id)
+            employee_id = session.get('pos_employee_id')
+            
+            # Verificar si la caja existe
+            from app.models.pos_models import PosRegister
+            register = PosRegister.query.filter(
+                (PosRegister.id == register_id) | (PosRegister.code == str(register_id))
+            ).first()
+            
+            if register and register.is_active:
+                # Bloquear la caja para este empleado
+                lock_result = lock_register(register_id, employee_id, session.get('pos_employee_name', 'Cajero'))
+                if lock_result.get('success'):
+                    session['pos_register_id'] = register_id
+                    session['pos_register_name'] = register.name
+                    return redirect(url_for('caja.sales'))
+                else:
+                    flash(f"No se pudo abrir la caja {register.name}: {lock_result.get('error', 'Error desconocido')}", "error")
+            else:
+                flash(f"Caja {target_register_id} no encontrada o inactiva", "error")
+        except Exception as e:
+            logger.error(f"Error al abrir caja objetivo {target_register_id}: {e}", exc_info=True)
+            flash(f"Error al abrir la caja: {str(e)}", "error")
+    
     # Verificar si es superadmin (para filtrar cajas superadmin_only)
     # En POS, el usuario puede ser admin o empleado regular
     # Verificar si hay sesión de admin activa
@@ -158,11 +188,6 @@ def register():
         if locked:
             # Si está bloqueada por otro usuario
             if str(lock_info.get('employee_id')) != str(employee_id):
-                # Si es admin, permitir desbloquear
-                if action == 'force_unlock':
-                    # Lógica de desbloqueo forzado (simplificada para este ejemplo)
-                    pass # Se implementaría si fuera necesario
-                
                 locked_by_employee_id = lock_info.get('employee_id')
                 locked_by_employee_name = lock_info.get('employee_name', 'otro cajero')
                 flash(f"🔒 Esta caja está siendo usada por {locked_by_employee_name}. No puedes acceder a una caja que está en uso por otro cajero.", "error")
@@ -207,6 +232,9 @@ def register():
         # Verificar si hay confirmación (puede venir como 'confirmed'='true' o 'confirm_open'='1')
         confirmed = request.form.get('confirmed') == 'true' or request.form.get('confirm_open') == '1'
         
+        # Verificar si es una caja de test
+        is_test_register = register_obj and register_obj.is_test if register_obj else False
+        
         if not confirmed:
             # Verificar si hay ventas previas en esta caja en el turno actual
             shift_status = get_shift_status()
@@ -217,13 +245,17 @@ def register():
             has_other_employee_sales = False
             other_employee_name = ""
             
-            if shift_date:
+            # Para cajas de test, no validar ventas de otros usuarios (acceso libre)
+            if shift_date and not is_test_register:
                 try:
                     current_employee_id_str = str(employee_id) if employee_id else None
                     
+                    # Excluir ventas de test y canceladas al verificar acceso
                     previous_sales = PosSale.query.filter(
                         PosSale.register_id == str(register_id),
-                        PosSale.shift_date == shift_date
+                        PosSale.shift_date == shift_date,
+                        PosSale.is_test == False,
+                        PosSale.is_cancelled == False
                     ).all()
                     
                     previous_sales_count = len(previous_sales)
@@ -233,9 +265,18 @@ def register():
                         sum(to_decimal(sale.total_amount or 0) for sale in previous_sales)
                     ) if previous_sales else 0.0
                     
-                    # Verificar si hay ventas de otro cajero
+                    # Verificar si hay ventas de otro cajero (excluyendo ventas de test y canceladas)
                     if previous_sales:
                         for sale in previous_sales:
+                            # Ignorar ventas de test y canceladas
+                            if sale.is_test or (hasattr(sale, 'is_cancelled') and sale.is_cancelled):
+                                continue
+                            
+                            # Ignorar ventas de TEST AGENT o empleados de prueba
+                            employee_name = (sale.employee_name or '').upper()
+                            if 'TEST' in employee_name or 'AGENT' in employee_name:
+                                continue
+                            
                             sale_employee_id = str(sale.employee_id) if sale.employee_id else None
                             if sale_employee_id and sale_employee_id != current_employee_id_str:
                                 has_other_employee_sales = True
