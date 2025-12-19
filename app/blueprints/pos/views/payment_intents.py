@@ -8,7 +8,7 @@ from datetime import datetime
 from flask import request, jsonify, session, current_app
 from app.blueprints.pos import caja_bp
 from app.models import db
-from app.models.pos_models import PaymentIntent, PosSale, PosSaleItem
+from app.models.pos_models import PaymentIntent, PosSale, PosSaleItem, PosRegister, PaymentAgent
 from app.helpers.rate_limiter import rate_limit
 from app.helpers.sale_security_validator import comprehensive_sale_validation
 from app.helpers.register_session_service import RegisterSessionService
@@ -54,113 +54,102 @@ def verify_agent_auth() -> bool:
 @rate_limit(max_requests=30, window_seconds=60)
 def create_payment_intent():
     """
-    Crear o obtener PaymentIntent para procesamiento con agente local
+    Crear PaymentIntent con status READY
     
-    Requiere: sesión POS activa
-    Idempotencia: Si existe intent READY/IN_PROGRESS con mismo cart_hash, devolver ese
+    Body esperado:
+    {
+        "register_id": "1",
+        "provider": "GETNET",
+        "amount_total": 1500.0
+    }
+    
+    Valida:
+    - register_id existe en PosRegister
+    - amount_total > 0
     """
     if not session.get('pos_logged_in'):
         return jsonify({'success': False, 'error': 'No autenticado'}), 401
     
     try:
-        # Normalizar register_id a string para consistencia (ej: REGISTER_ID=1)
-        register_id = session.get('pos_register_id')
-        register_id = str(register_id) if register_id is not None else None
-        employee_id = session.get('pos_employee_id')
-        employee_name = session.get('pos_employee_name', 'Cajero')
-        
-        if not register_id:
-            return jsonify({'success': False, 'error': 'No hay caja seleccionada'}), 400
-        
-        # Obtener carrito desde sesión o payload
         data = request.get_json() or {}
-        cart = data.get('cart') or session.get('pos_cart', [])
+        register_id = data.get('register_id')
+        provider = data.get('provider', 'GETNET')
+        amount_total = data.get('amount_total')
         
-        if not cart:
-            return jsonify({'success': False, 'error': 'Carrito vacío'}), 400
+        # Validar register_id
+        if not register_id:
+            return jsonify({'success': False, 'error': 'register_id requerido'}), 400
         
-        # Validar stock (si existe función de validación)
-        try:
-            from app.blueprints.pos.views.sales import api_validate_stock
-            # Validar stock antes de crear intent
-            stock_validation = comprehensive_sale_validation(
-                cart=cart,
-                register_id=register_id,
-                employee_id=employee_id
-            )
-            if not stock_validation.get('valid', False):
-                return jsonify({
-                    'success': False,
-                    'error': stock_validation.get('error', 'Error de validación de stock')
-                }), 400
-        except Exception as e:
-            logger.warning(f"Could not validate stock: {e}")
-            # Continuar sin validación si falla
+        register_id = str(register_id)
         
-        # Calcular total server-side
-        total = 0.0
-        for item in cart:
-            quantity = float(item.get('quantity', 1))
-            price = float(item.get('price', 0))
-            total += quantity * price
-        
-        total = round_currency(total)
-        
-        # Calcular hash del carrito para idempotencia
-        cart_hash = calculate_cart_hash(cart)
-        
-        # Buscar intent existente READY/IN_PROGRESS con mismo cart_hash
-        existing_intent = PaymentIntent.query.filter_by(
-            register_id=register_id,
-            cart_hash=cart_hash,
-            status=PaymentIntent.STATUS_READY
+        # Validar que register_id existe en PosRegister
+        register_obj = PosRegister.query.filter(
+            (PosRegister.id == register_id) | (PosRegister.code == register_id)
         ).first()
         
-        if not existing_intent:
-            existing_intent = PaymentIntent.query.filter_by(
-                register_id=register_id,
-                cart_hash=cart_hash,
-                status=PaymentIntent.STATUS_IN_PROGRESS
-            ).first()
+        if not register_obj:
+            return jsonify({'success': False, 'error': f'register_id {register_id} no existe'}), 400
         
-        if existing_intent:
-            logger.info(f"✅ Reusing existing intent {existing_intent.id} for cart_hash {cart_hash[:8]}...")
-            return jsonify({
-                'success': True,
-                'intent_id': str(existing_intent.id),
-                'status': existing_intent.status,
-                'amount_total': float(existing_intent.amount_total),
-                'message': 'Intent existente reutilizado'
-            })
+        # Validar amount_total
+        if amount_total is None:
+            return jsonify({'success': False, 'error': 'amount_total requerido'}), 400
         
-        # Obtener register_session_id si existe
+        try:
+            amount_total = float(amount_total)
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'error': 'amount_total debe ser un número'}), 400
+        
+        if amount_total <= 0:
+            return jsonify({'success': False, 'error': 'amount_total debe ser mayor a 0'}), 400
+        
+        # Obtener datos de sesión si están disponibles
+        employee_id = session.get('pos_employee_id')
+        employee_name = session.get('pos_employee_name', 'Cajero')
         register_session_id = session.get('pos_register_session_id')
         
-        # Crear nuevo intent
+        # Obtener carrito del body o de la sesión
+        cart = data.get('cart') or session.get('pos_cart', [])
+        cart_json = None
+        cart_hash = None
+        if cart:
+            try:
+                import json as json_lib
+                cart_json = json_lib.dumps(cart, ensure_ascii=False, sort_keys=True)
+                cart_hash = calculate_cart_hash(cart)
+            except Exception as e:
+                logger.warning(f"No se pudo serializar cart para PaymentIntent: {e}")
+        else:
+            # Si no hay carrito, crear uno vacío (puede ser válido para algunos casos)
+            cart_json = '[]'
+            cart_hash = calculate_cart_hash([])
+        
+        # Crear PaymentIntent
         intent = PaymentIntent(
-            register_id=str(register_id),
+            register_id=register_id,
             register_session_id=register_session_id,
             employee_id=employee_id,
             employee_name=employee_name,
-            amount_total=total,
+            amount_total=amount_total,
             currency='CLP',
-            cart_json=json.dumps(cart),
+            provider=provider,
+            status=PaymentIntent.STATUS_READY,
+            cart_json=cart_json,
             cart_hash=cart_hash,
-            provider='GETNET',
-            status=PaymentIntent.STATUS_READY
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
         )
         
         db.session.add(intent)
         db.session.commit()
         
-        logger.info(f"✅ PaymentIntent creado: {intent.id} - Amount: ${total} - Register: {register_id}")
+        # LOG con formato específico solicitado
+        current_app.logger.info(
+            f"[PAYMENT_INTENT] READY→ id={intent.id} register={intent.register_id} amount={intent.amount_total}"
+        )
         
         return jsonify({
             'success': True,
-            'intent_id': str(intent.id),
-            'status': intent.status,
-            'amount_total': float(intent.amount_total),
-            'message': 'Intent creado exitosamente'
+            'intent_id': str(intent.id)
         }), 201
         
     except Exception as e:
@@ -230,6 +219,39 @@ def get_payment_intent_status(intent_id):
         register_id = str(register_id) if register_id is not None else None
         if intent.register_id != register_id:
             return jsonify({'success': False, 'error': 'Intent no pertenece a esta caja'}), 403
+        
+        # Log para debugging
+        current_app.logger.debug(
+            f"[PAYMENT_INTENT] Status check→ id={intent.id} status={intent.status} register={intent.register_id}"
+        )
+        
+        return jsonify({
+            'success': True,
+            'intent_id': str(intent.id),
+            'status': intent.status,
+            'amount_total': float(intent.amount_total),
+            'provider_ref': intent.provider_ref,
+            'auth_code': intent.auth_code,
+            'error_code': intent.error_code,
+            'error_message': intent.error_message,
+            'created_at': intent.created_at.isoformat() if intent.created_at else None,
+            'updated_at': intent.updated_at.isoformat() if intent.updated_at else None,
+            'approved_at': intent.approved_at.isoformat() if intent.approved_at else None,
+            # Incluir también en formato 'intent' para compatibilidad
+            'intent': {
+                'id': str(intent.id),
+                'status': intent.status,
+                'amount_total': float(intent.amount_total),
+                'provider_ref': intent.provider_ref,
+                'auth_code': intent.auth_code,
+                'error_code': intent.error_code,
+                'error_message': intent.error_message,
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error al obtener estado de PaymentIntent: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': f'Error interno: {str(e)}'}), 500
 
 
 def _process_agent_result_payload(data: dict):
@@ -272,100 +294,21 @@ def _process_agent_result_payload(data: dict):
     intent.error_message = error_message
     intent.updated_at = datetime.utcnow()
 
-    sale_id = None
-
     if status == PaymentIntent.STATUS_APPROVED:
-        # CRÍTICO: En UNA transacción DB:
-        # 1) Marcar intent APPROVED
-        # 2) Crear PosSale
-        # 3) Aplicar inventario
-
+        # Agente SOLO marca APPROVED. La venta se crea desde la UI POS (sale/create)
+        # para mantener sesión/validaciones y evitar crear ventas "fantasma" si la UI cae.
         intent.approved_at = datetime.utcnow()
-
-        # Parsear cart_json
-        cart = json.loads(intent.cart_json)
-
-        # Obtener shift_date y jornada_id
-        shift_service = get_shift_service()
-        shift_status = shift_service.get_current_shift_status()
-        shift_date = None
-        jornada_id = None
-
-        if shift_status and shift_status.is_open:
-            from app.helpers.date_normalizer import normalize_shift_date
-            shift_date = normalize_shift_date(shift_status.shift_date) or shift_status.shift_date
-            jornada_id = shift_status.jornada_id
-        else:
-            from datetime import datetime as _dt
-            shift_date = _dt.now().strftime('%Y-%m-%d')
-            jornada = Jornada.query.filter_by(abierto=True).order_by(Jornada.abierto_en.desc()).first()
-            if jornada:
-                jornada_id = jornada.id
-            else:
-                return jsonify({'success': False, 'error': 'No hay jornada abierta'}), 400
-
-        # Crear PosSale
-        sale = PosSale(
-            total_amount=intent.amount_total,
-            payment_type='debit',  # GETNET es débito/crédito
-            payment_debit=intent.amount_total,
-            payment_cash=0.0,
-            payment_credit=0.0,
-            employee_id=intent.employee_id,
-            employee_name=intent.employee_name,
-            register_id=intent.register_id,
-            register_name=session.get('pos_register_name', 'Caja'),
-            shift_date=shift_date,
-            jornada_id=jornada_id,
-            register_session_id=intent.register_session_id,
-            payment_provider='GETNET',
-            synced_to_phppos=False,
-            is_cancelled=False,
-            no_revenue=False,
-            inventory_applied=False
-        )
-
-        db.session.add(sale)
-        db.session.flush()
-
-        for item in cart:
-            item_id = item.get('item_id', '')
-            quantity = float(item.get('quantity', 1))
-            price = float(item.get('price', 0))
-            name = item.get('name', 'Producto')
-
-            sale_item = PosSaleItem(
-                sale_id=sale.id,
-                product_id=str(item_id),
-                product_name=name,
-                quantity=int(quantity),
-                unit_price=price,
-                subtotal=quantity * price
-            )
-            db.session.add(sale_item)
-
-        try:
-            from app.services.sale_delivery_service import get_sale_delivery_service
-            delivery_service = get_sale_delivery_service()
-            delivery_status = delivery_service.create_delivery_status(sale)
-            if delivery_status:
-                logger.info(f"✅ Estado de entrega creado para venta {sale.id}")
-        except Exception as inv_error:
-            logger.error(f"Error al crear estado de entrega: {inv_error}", exc_info=True)
-
-        sale.inventory_applied = False
-        sale.inventory_applied_at = None
-
-        sale_id = sale.id
         db.session.commit()
-
-        logger.info(f"✅ PaymentIntent APPROVED: {intent_id} - Sale creada: {sale_id} - Inventario aplicado")
+        current_app.logger.info(
+            f"[PAYMENT_INTENT] APPROVED→ id={intent.id} register={intent.register_id} amount={intent.amount_total} auth_code={auth_code} provider_ref={provider_ref}"
+        )
+        logger.info(f"✅ PaymentIntent APPROVED por agente: {intent_id} - Frontend debe detectar y crear venta")
         return jsonify({
             'success': True,
             'intent_id': str(intent.id),
             'intent_status': 'APPROVED',
-            'sale_id': sale_id,
-            'message': 'Pago aprobado y venta creada'
+            'status': 'APPROVED',  # Duplicado para compatibilidad con frontend
+            'message': 'Pago aprobado (agent). Esperando confirmación POS.'
         })
 
     # DECLINED / ERROR
@@ -379,24 +322,17 @@ def _process_agent_result_payload(data: dict):
         'error_message': error_message,
         'message': f'Pago {status.lower()}'
     })
-        
-        return jsonify({
-            'success': True,
-            'intent_id': str(intent.id),
-            'status': intent.status,
-            'amount_total': float(intent.amount_total),
-            'provider_ref': intent.provider_ref,
-            'auth_code': intent.auth_code,
-            'error_code': intent.error_code,
-            'error_message': intent.error_message,
-            'created_at': intent.created_at.isoformat() if intent.created_at else None,
-            'updated_at': intent.updated_at.isoformat() if intent.updated_at else None,
-            'approved_at': intent.approved_at.isoformat() if intent.approved_at else None,
-        })
-        
-    except Exception as e:
-        logger.error(f"Error al obtener estado de PaymentIntent: {e}", exc_info=True)
-        return jsonify({'success': False, 'error': f'Error interno: {str(e)}'}), 500
+
+
+@caja_bp.route('/api/payment/intents/<uuid:intent_id>', methods=['GET'])
+@rate_limit(max_requests=60, window_seconds=60)
+def get_payment_intent(intent_id):
+    """
+    Alias simple para polling desde UI:
+      GET /caja/api/payment/intents/<intent_id>
+    (mismo payload que /status)
+    """
+    return get_payment_intent_status(intent_id)
 
 
 @caja_bp.route('/api/payment/agent/pending', methods=['GET'])
@@ -597,5 +533,172 @@ def getnet_result_compat():
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error en /api/getnet/result: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': f'Error interno: {str(e)}'}), 500
+
+
+@caja_bp.route('/api/payment/agent/heartbeat', methods=['POST'])
+@rate_limit(max_requests=60, window_seconds=60)
+def agent_heartbeat():
+    """
+    Endpoint para que el agente Windows envíe heartbeat periódico
+    
+    Body esperado:
+    {
+        "register_id": "TEST001",
+        "agent_name": "POS-CAJA-TEST",
+        "ip": "192.168.1.50",
+        "getnet_status": "OK",  # 'OK' | 'ERROR' | 'UNKNOWN'
+        "getnet_message": "Pinpad conectado y listo"
+    }
+    """
+    if not verify_agent_auth():
+        return jsonify({'ok': False, 'error': 'Autenticación inválida'}), 401
+    
+    try:
+        data = request.get_json(silent=True) or {}
+        
+        register_id = data.get('register_id')
+        agent_name = data.get('agent_name')
+        
+        if not register_id or not agent_name:
+            return jsonify({
+                'ok': False,
+                'error': 'register_id y agent_name son requeridos'
+            }), 400
+        
+        register_id = str(register_id).strip()
+        agent_name = str(agent_name).strip()
+        
+        ip = data.get('ip', '').strip() or None
+        getnet_status = data.get('getnet_status', '').strip() or None
+        getnet_message = data.get('getnet_message', '').strip() or None
+        
+        # Validar getnet_status si viene
+        if getnet_status and getnet_status not in ['OK', 'ERROR', 'UNKNOWN']:
+            getnet_status = 'UNKNOWN'
+        
+        now = datetime.utcnow()
+        
+        # Buscar PaymentAgent existente por register_id y agent_name
+        agent = PaymentAgent.query.filter_by(
+            register_id=register_id,
+            agent_name=agent_name
+        ).first()
+        
+        if agent:
+            # Actualizar existente
+            agent.last_heartbeat = now
+            agent.last_ip = ip
+            agent.last_getnet_status = getnet_status
+            agent.last_getnet_message = getnet_message
+            agent.updated_at = now
+            
+            logger.info(
+                f"💓 Heartbeat actualizado: register={register_id} agent={agent_name} "
+                f"status={getnet_status} ip={ip}"
+            )
+        else:
+            # Crear nuevo
+            agent = PaymentAgent(
+                register_id=register_id,
+                agent_name=agent_name,
+                last_heartbeat=now,
+                last_ip=ip,
+                last_getnet_status=getnet_status,
+                last_getnet_message=getnet_message,
+                created_at=now,
+                updated_at=now
+            )
+            db.session.add(agent)
+            
+            logger.info(
+                f"✅ Nuevo agente registrado: register={register_id} agent={agent_name} "
+                f"status={getnet_status}"
+            )
+        
+        db.session.commit()
+        
+        return jsonify({
+            'ok': True,
+            'agent_id': str(agent.id),
+            'message': 'heartbeat registrado'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error al registrar heartbeat: {e}", exc_info=True)
+        return jsonify({
+            'ok': False,
+            'error': f'Error interno: {str(e)}'
+        }), 500
+
+
+@caja_bp.route('/api/payment/agent/config', methods=['GET'])
+@rate_limit(max_requests=30, window_seconds=60)
+def agent_get_config():
+    """
+    Endpoint para que el agente obtenga su configuración desde el backend
+    
+    Query params:
+    - register_id: ID de la caja (requerido)
+    
+    Autenticación: X-AGENT-KEY header
+    
+    Retorna la configuración de Getnet desde provider_config de la caja
+    """
+    if not verify_agent_auth():
+        return jsonify({'success': False, 'error': 'Autenticación inválida'}), 401
+    
+    try:
+        register_id = request.args.get('register_id')
+        if not register_id:
+            return jsonify({'success': False, 'error': 'register_id requerido'}), 400
+        
+        register_id = str(register_id).strip()
+        
+        # Buscar caja
+        register_obj = PosRegister.query.filter(
+            (PosRegister.id == register_id) | (PosRegister.code == register_id)
+        ).first()
+        
+        if not register_obj:
+            return jsonify({'success': False, 'error': f'register_id {register_id} no existe'}), 404
+        
+        # Obtener provider_config
+        provider_config = {}
+        if register_obj.provider_config:
+            try:
+                provider_config = json.loads(register_obj.provider_config)
+            except:
+                provider_config = {}
+        
+        # Extraer configuración de Getnet
+        getnet_config = provider_config.get('GETNET', {})
+        
+        # Preparar respuesta con configuración Getnet
+        config_response = {
+            'success': True,
+            'register_id': register_id,
+            'register_name': register_obj.name,
+            'register_code': register_obj.code,
+            'getnet': {
+                'enabled': bool(getnet_config),
+                'mode': getnet_config.get('mode', 'manual'),
+            }
+        }
+        
+        # Si es modo serial, incluir configuración serial
+        if getnet_config.get('mode') == 'serial':
+            config_response['getnet'].update({
+                'port': getnet_config.get('port', 'COM3'),
+                'baudrate': getnet_config.get('baudrate', 115200),
+                'timeout_ms': getnet_config.get('timeout_ms', 30000)
+            })
+        
+        logger.info(f"✅ Configuración Getnet enviada a agente para register {register_id}")
+        return jsonify(config_response)
+    
+    except Exception as e:
+        logger.error(f"Error al obtener configuración para agente: {e}", exc_info=True)
         return jsonify({'success': False, 'error': f'Error interno: {str(e)}'}), 500
 
