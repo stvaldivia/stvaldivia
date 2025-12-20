@@ -230,13 +230,13 @@ def bot_responder():
         
         try:
             import openai
-            # Timeout de 25 segundos (menor que el timeout de Gunicorn de 30s)
+            # Timeout de 8 segundos - si OpenAI no responde rápido, usar fallback (más rápido para el usuario)
             response = openai_client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=formatted_messages,
                 temperature=0.7,
                 max_tokens=500,
-                timeout=25.0
+                timeout=8.0
             )
             
             if not response.choices or len(response.choices) == 0:
