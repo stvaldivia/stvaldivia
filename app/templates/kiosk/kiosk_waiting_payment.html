@@ -29,13 +29,14 @@
 
 <script>
 const pagoId = '{{ pago_id }}';
+const PAGO_STATUS_URL = "{{ url_for('kiosk.api_pago_status') }}";
 let pollInterval;
 let timeoutTimer;
 
 // Polling para verificar estado del pago
 async function verificarEstadoPago() {
     try {
-        const response = await fetch(`/kiosk/api/pagos/status?pago_id=${pagoId}`);
+        const response = await fetch(PAGO_STATUS_URL + "?pago_id=" + encodeURIComponent(pagoId));
         const data = await response.json();
         
         if (data.ok) {

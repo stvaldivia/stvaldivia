@@ -25,7 +25,7 @@
         <div class="barcode-section">
             <p class="barcode-label">Código de barras:</p>
             <div class="barcode-container">
-                <img src="/kiosk/api/ticket/barcode/{{ pago.ticket_code }}" 
+                <img src="{{ url_for('kiosk.get_ticket_barcode', ticket_code=pago.ticket_code) }}" 
                      alt="Código de barras {{ pago.ticket_code }}" 
                      class="barcode-image"
                      id="barcode-img">

@@ -413,10 +413,10 @@
                 
                 <div class="form-group">
                     <label for="provider_config">Configuración de Providers (JSON)</label>
-                    <textarea id="provider_config" name="provider_config" rows="8" placeholder='{"GETNET": {"mode": "serial", "port": "COM4", "baudrate": 9600, "timeout_ms": 30000}, "KLAP": {"merchant_id": "KLAP-789", "api_key": "..."}}' style="width: 100%; padding: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #e8e8e8; font-size: 0.9rem; font-family: monospace; box-sizing: border-box; resize: vertical;">{% if register and register.provider_config %}{{ register.provider_config }}{% endif %}</textarea>
+                    <textarea id="provider_config" name="provider_config" rows="8" placeholder='{"GETNET": {"mode": "serial", "port": "COM3", "baudrate": 115200, "timeout_ms": 30000}, "KLAP": {"merchant_id": "KLAP-789", "api_key": "..."}}' style="width: 100%; padding: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #e8e8e8; font-size: 0.9rem; font-family: monospace; box-sizing: border-box; resize: vertical;">{% if register and register.provider_config %}{{ register.provider_config }}{% endif %}</textarea>
                     <div class="help-text">
                         JSON con configuración por proveedor.<br>
-                        <strong>GETNET Serial (Windows):</strong> {"GETNET": {"mode": "serial", "port": "COM4", "baudrate": 9600, "timeout_ms": 30000}}<br>
+                        <strong>GETNET Serial (Windows):</strong> {"GETNET": {"mode": "serial", "port": "COM3", "baudrate": 115200, "timeout_ms": 30000}}<br>
                         <strong>GETNET API:</strong> {"GETNET": {"terminal_id": "GETNET-123", "merchant_id": "MERCHANT-456"}}<br>
                         <strong>KLAP:</strong> {"KLAP": {"merchant_id": "KLAP-789", "api_key": "..."}}<br>
                         <strong>Nota:</strong> Si mode=serial y provider=GETNET, el campo "port" es obligatorio.

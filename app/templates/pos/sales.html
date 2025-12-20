@@ -3,6 +3,87 @@
 
 {% block head_extra %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/bimba_ui.css') }}">
+<!-- Módulos Getnet Linux para integración con POS -->
+<!-- NOTA: Los módulos se cargan como ES modules y exponen funciones globales -->
+<script type="module">
+    // Cargar módulos Getnet solo si estamos en un entorno que soporta Web Serial (Chromium/Linux)
+    window.GETNET_MODULES_LOADED = false;
+    window.getnetAPI = null;
+    
+    // Intentar cargar módulos Getnet (solo en navegadores compatibles)
+    if ('serial' in navigator) {
+        import('{{ url_for("static", filename="js/getnet_linux.js") }}').then(module => {
+            console.log('✅ Módulo Getnet Linux cargado');
+            
+            // Inicializar Getnet con metadatos de la caja
+            const metaCaja = {
+                caja_codigo: window.CURRENT_REGISTER_ID || 'caja1',
+                cajero: window.CURRENT_EMPLOYEE_NAME || 'TOTEM_AUTO_1'
+            };
+            
+            // Configurar callbacks
+            module.initGetnetLinux(
+                metaCaja,
+                // onVentaAprobada
+                async (resp, ventaBackend) => {
+                    console.log('✅ Venta aprobada por Getnet:', ventaBackend);
+                    // Limpiar carrito
+                    if (typeof localCart !== 'undefined') {
+                        localCart = [];
+                        localCartTotal = 0;
+                        if (typeof updateCartDisplay === 'function') {
+                            updateCartDisplay();
+                        }
+                    }
+                    
+                    // Abrir voucher si hay venta_id
+                    if (ventaBackend.venta_id) {
+                        window.open(`/caja/voucher/${ventaBackend.venta_id}`, '_blank');
+                    }
+                    
+                    alert('✅ Pago procesado correctamente');
+                },
+                // onVentaRechazada
+                (resp) => {
+                    console.log('❌ Venta rechazada por Getnet:', resp);
+                    const mensaje = 'No se pudo completar la operación. ¿Quieres volver a intentarlo?';
+                    if (confirm(mensaje + '\n\nAceptar = Volver a intentar\nCancelar = Cancelar compra')) {
+                        // Reintentar (se llamará desde pagarConTarjeta)
+                        if (typeof pagarConTarjeta === 'function') {
+                            const total = typeof obtenerTotalActual === 'function' ? obtenerTotalActual() : 0;
+                            pagarConTarjeta();
+                        }
+                    } else {
+                        // Cancelar compra
+                        if (typeof clearCart === 'function') {
+                            clearCart();
+                        }
+                    }
+                },
+                // onError
+                (error) => {
+                    console.error('Error en Getnet:', error);
+                    alert('Error: ' + (error.mensaje || 'Error desconocido'));
+                }
+            );
+            
+            // Exponer API globalmente
+            window.getnetAPI = {
+                pagarGetnet: module.pagarGetnet,
+                conectarPos: module.conectarPos,
+                initGetnetLinux: module.initGetnetLinux
+            };
+            
+            window.GETNET_MODULES_LOADED = true;
+        }).catch(err => {
+            console.warn('⚠️ No se pudo cargar módulo Getnet Linux:', err);
+            window.GETNET_MODULES_LOADED = false;
+        });
+    } else {
+        console.log('ℹ️ Web Serial API no disponible, usando modo simulación');
+        window.GETNET_MODULES_LOADED = false;
+    }
+</script>
 <style>
     /* Ocultar menú superior en esta página */
     .admin-top-nav {
@@ -1366,7 +1447,43 @@
         type: null,
         provider: 'GETNET'
     };
+    // Contexto de caja actual (para habilitar flujo GETNET agent-only en TEST001)
+    window.CURRENT_REGISTER_ID = "{{ register_id or '' }}";
+    window.CURRENT_EMPLOYEE_ID = "{{ session.pos_employee_id or '' }}";
+    window.CURRENT_EMPLOYEE_NAME = "{{ employee_name or '' }}";
+    window.CURRENT_REGISTER_NAME = "{{ register_name or '' }}";
     let paymentConfirmCallback = null;
+
+    // Overlay simple para “Esperando terminal GETNET…”
+    function showGetnetWaiting(message) {
+        try {
+            let el = document.getElementById('getnet-wait-overlay');
+            if (!el) {
+                el = document.createElement('div');
+                el.id = 'getnet-wait-overlay';
+                el.style.position = 'fixed';
+                el.style.inset = '0';
+                el.style.background = 'rgba(0,0,0,0.65)';
+                el.style.zIndex = '99999';
+                el.style.display = 'flex';
+                el.style.alignItems = 'center';
+                el.style.justifyContent = 'center';
+                el.style.padding = '24px';
+                el.innerHTML = '<div style=\"max-width:520px;width:100%;background:#111;border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:18px;color:#fff;font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif;\">' +
+                    '<div style=\"font-size:1.1rem;font-weight:700;margin-bottom:8px;\">Esperando terminal GETNET…</div>' +
+                    '<div id=\"getnet-wait-msg\" style=\"opacity:0.9;line-height:1.4;\"></div>' +
+                    '</div>';
+                document.body.appendChild(el);
+            }
+            const msgEl = document.getElementById('getnet-wait-msg');
+            if (msgEl) msgEl.textContent = message || 'Procesa el pago en el terminal físico y espera confirmación.';
+            el.style.display = 'flex';
+        } catch (e) {}
+    }
+    function hideGetnetWaiting() {
+        const el = document.getElementById('getnet-wait-overlay');
+        if (el) el.style.display = 'none';
+    }
 
     function setPaymentProvider(provider) {
         // NO setear payment_type aquí, solo provider
@@ -1556,9 +1673,19 @@
         
         // Habilitar/deshabilitar botones de pago
         const paymentButtons = document.querySelectorAll('.payment-btn');
-        const hasItems = cart.length > 0 && total > 0;
+        const hasItems = cart.length > 0 && total > 0 && Number.isFinite(total);
         paymentButtons.forEach(btn => {
             btn.disabled = !hasItems;
+            // Agregar título si está deshabilitado para explicar por qué
+            if (!hasItems && btn.disabled) {
+                if (cart.length === 0) {
+                    btn.title = 'Agregue productos al carrito para poder pagar';
+                } else if (total <= 0 || !Number.isFinite(total)) {
+                    btn.title = 'El total del carrito no es válido';
+                }
+            } else {
+                btn.title = '';
+            }
         });
     }
     window.updateCartDisplay = updateCartDisplay;
@@ -1566,15 +1693,33 @@
     // Función para sincronizar carrito desde el servidor
     async function syncCartFromServer() {
         try {
+            console.log('🔄 syncCartFromServer: Sincronizando desde servidor...');
             const response = await fetch('/caja/api/cart');
             const data = await response.json();
             if (data.success) {
-                localCart = data.cart || [];
-                localCartTotal = data.total || 0;
-                updateCartDisplay(localCart, localCartTotal);
+                const serverCart = data.cart || [];
+                const serverTotal = data.total || 0;
+                console.log('✅ syncCartFromServer: Carrito del servidor:', { 
+                    cartLength: serverCart.length, 
+                    total: serverTotal,
+                    cart: serverCart 
+                });
+                
+                // Solo actualizar si el carrito del servidor tiene items O si el local está vacío
+                if (serverCart.length > 0 || localCart.length === 0) {
+                    localCart = serverCart;
+                    localCartTotal = serverTotal || calculateCartTotal(serverCart);
+                    updateCartDisplay(localCart, localCartTotal);
+                    console.log('✅ syncCartFromServer: Carrito actualizado desde servidor');
+                } else {
+                    console.log('⚠️ syncCartFromServer: Servidor tiene carrito vacío, manteniendo carrito local');
+                }
+            } else {
+                console.error('❌ syncCartFromServer: Error del servidor:', data.error);
             }
         } catch (error) {
-            console.error('Error al sincronizar carrito:', error);
+            console.error('❌ syncCartFromServer: Error al sincronizar carrito:', error);
+            // No cambiar el carrito local si hay error al sincronizar
         }
     }
     window.syncCartFromServer = syncCartFromServer;
@@ -1638,7 +1783,7 @@
     
     // Función addToCart - DEFINIR INMEDIATAMENTE
     async function addToCart(itemId, name, price) {
-        console.log('🛒 addToCart llamado:', { itemId, name, price });
+        console.log('🛒 addToCart llamado:', { itemId, name, price, priceType: typeof price });
         try {
             if (!itemId) {
                 console.error('❌ Error: itemId no proporcionado');
@@ -1646,11 +1791,19 @@
                 return;
             }
             
-            // Validar que price sea un número válido usando toNumberCLP (formato CLP)
-            const numericPrice = toNumberCLP(price);
-            if (numericPrice <= 0) {
-                console.error('❌ Error: Precio inválido:', price);
-                alert('Error: El precio del producto no es válido.');
+            // Si price ya es un número, usarlo directamente; sino convertirlo
+            let numericPrice;
+            if (typeof price === 'number') {
+                numericPrice = Number.isFinite(price) ? price : 0;
+            } else {
+                numericPrice = toNumberCLP(price);
+            }
+            
+            console.log('🔍 DEBUG addToCart - precio procesado:', { priceOriginal: price, numericPrice, priceType: typeof price, numericPriceType: typeof numericPrice });
+            
+            if (numericPrice <= 0 || !Number.isFinite(numericPrice)) {
+                console.error('❌ Error: Precio inválido:', { price, numericPrice, priceType: typeof price });
+                alert('Error: El precio del producto no es válido: ' + price + ' → ' + numericPrice);
                 return;
             }
             
@@ -1661,6 +1814,11 @@
                 const currentQty = toNumberCLP(existingItem.quantity || existingItem.qty || 1);
                 existingItem.quantity = currentQty + 1;
                 existingItem.qty = existingItem.quantity; // Mantener sincronizado
+                // Asegurar que el precio unitario esté disponible para cálculo
+                if (!existingItem.price && !existingItem.unit_price) {
+                    existingItem.price = numericPrice;
+                    existingItem.unit_price = numericPrice;
+                }
                 // Recalcular subtotal usando la función segura
                 existingItem.subtotal = calculateItemSubtotal(existingItem);
             } else {
@@ -1669,8 +1827,10 @@
                     item_id: String(itemId),
                     name: name || 'Producto',
                     quantity: 1,
-                    subtotal: numericPrice,
-                    unit_price: numericPrice // Guardar precio unitario para cálculos futuros
+                    qty: 1, // Mantener sincronizado
+                    price: numericPrice, // Precio unitario (para compatibilidad con backend)
+                    unit_price: numericPrice, // Guardar precio unitario para cálculos futuros
+                    subtotal: numericPrice // Subtotal inicial = precio * cantidad (1)
                 });
             }
             
@@ -1899,6 +2059,194 @@
     }
     window.closeStockAlertModal = closeStockAlertModal;
     
+    // ============================================================================
+    // FUNCIÓN SIMPLE PARA PAGO CON GETNET (INTEGRACIÓN LOCAL)
+    // ============================================================================
+    
+    /**
+     * Función simple para pagar con tarjeta usando Getnet local
+     * La negociación real con Getnet se hace LOCAL en el tótem
+     */
+    async function pagarConTarjeta() {
+        try {
+            // 1) Obtener total actual
+            const total = obtenerTotalActual();
+            if (!total || total <= 0) {
+                alert('El carrito está vacío o el total no es válido.');
+                return;
+            }
+            
+            // 2) Construir payload de venta
+            const payloadVenta = construirPayloadVenta();
+            
+            // 3) Llamar a la integración local de Getnet
+            // IMPORTANTE: La negociación real con el POS Getnet se hace LOCAL en el tótem
+            const resultadoGetnet = await simularPagoGetnet(total);
+            
+            if (resultadoGetnet.ok) {
+                // 4) Si el pago es OK → mandamos la venta completa al backend
+                const respBackend = await fetch('/caja/api/caja/venta-ok', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        total: total,
+                        venta: payloadVenta,
+                        getnet: resultadoGetnet
+                    })
+                });
+                
+                const data = await respBackend.json();
+                if (data.ok) {
+                    // Mostrar confirmación y limpiar carrito
+                    mostrarConfirmacionVenta(data);
+                    localCart = [];
+                    localCartTotal = 0;
+                    updateCartDisplay();
+                    if (data.sale_id) {
+                        alert('✅ Venta registrada exitosamente. ID: ' + data.sale_id);
+                    }
+                } else {
+                    alert('Error registrando venta en el servidor: ' + (data.error || 'Error desconocido'));
+                }
+            } else {
+                // 5) Si el pago es rechazado → solo log en el backend
+                await fetch('/caja/api/caja/venta-fallida-log', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        total: total,
+                        venta: payloadVenta,
+                        motivo: resultadoGetnet.error || resultadoGetnet.responseMessage || 'Pago rechazado por Getnet'
+                    })
+                });
+                
+                alert('❌ Pago rechazado por Getnet. No se registró la venta.\nMotivo: ' + (resultadoGetnet.error || resultadoGetnet.responseMessage || 'Rechazado'));
+            }
+        } catch (error) {
+            console.error('Error en pagarConTarjeta:', error);
+            alert('Error al procesar el pago: ' + error.message);
+        }
+    }
+    window.pagarConTarjeta = pagarConTarjeta;
+    
+    /**
+     * Obtener el total actual del carrito
+     */
+    function obtenerTotalActual() {
+        if (localCart.length === 0) {
+            syncCartFromServer();
+        }
+        return calculateCartTotal(localCart);
+    }
+    
+    /**
+     * Construir payload de venta con detalles del carrito
+     * Formato según especificación: caja_codigo, cajero, items con sku/nombre/cantidad/precio_unitario
+     */
+    function construirPayloadVenta() {
+        // Calcular items en el formato especificado
+        const items = localCart.map(item => {
+            const sku = item.item_id || item.id || '';
+            const nombre = item.name || 'Producto sin nombre';
+            const cantidad = item.quantity || item.qty || 1;
+            const precio_unitario = item.price || item.unit_price || 0;
+            
+            return {
+                sku: sku,
+                nombre: nombre,
+                cantidad: cantidad,
+                precio_unitario: precio_unitario
+            };
+        });
+        
+        return {
+            caja_codigo: window.CURRENT_REGISTER_ID || '',
+            cajero: window.CURRENT_EMPLOYEE_NAME || '',
+            items: items // Lista de productos con sku, nombre, cantidad, precio_unitario
+        };
+    }
+    
+    /**
+     * Mostrar confirmación de venta exitosa
+     */
+    function mostrarConfirmacionVenta(data) {
+        console.log('✅ Venta registrada:', data);
+    }
+    
+    /**
+     * Función para pagar con Getnet usando los módulos de integración Linux
+     * Usa getnet_linux.js para comunicación real con el POS Getnet vía Web Serial
+     * 
+     * NOTA: Los módulos Getnet se cargan como ES modules en el <head>
+     * y deben estar disponibles globalmente a través de window.getnetAPI
+     */
+    async function simularPagoGetnet(total) {
+        // Verificar si los módulos Getnet están disponibles
+        if (window.GETNET_MODULES_LOADED && window.getnetAPI) {
+            try {
+                // Obtener carrito actual
+                const carritoActual = localCart.map(item => ({
+                    sku: item.item_id || item.id || '',
+                    nombre: item.name || 'Producto sin nombre',
+                    cantidad: item.quantity || item.qty || 1,
+                    precio_unitario: item.price || item.unit_price || 0
+                }));
+                
+                // Ejecutar pago real con Getnet
+                // NOTA: Esta función es asíncrona y los callbacks manejarán la respuesta
+                await window.getnetAPI.pagarGetnet(total, carritoActual);
+                
+                // Retornar objeto pendiente (los callbacks manejarán el resultado)
+                return {
+                    ok: true,
+                    pending: true, // Indica que el resultado vendrá por callback
+                    message: 'Procesando pago con Getnet...'
+                };
+                
+            } catch (error) {
+                console.error('Error al ejecutar pago Getnet:', error);
+                return {
+                    ok: false,
+                    responseCode: '99',
+                    responseMessage: error.message || 'Error al procesar pago',
+                    error: error.message
+                };
+            }
+        } else {
+            // Fallback a simulación si los módulos no están disponibles
+            console.log('Módulos Getnet no disponibles, usando simulación');
+            return simularPagoGetnetFallback(total);
+        }
+    }
+    
+    /**
+     * Función de fallback para simular pago Getnet (solo para desarrollo/pruebas)
+     * Se usa cuando el módulo Getnet real no está disponible
+     */
+    async function simularPagoGetnetFallback(total) {
+        const aprobado = confirm('💳 Simular pago Getnet por $' + total.toLocaleString('es-CL') + ' ?\n\nAceptar = APROBADO\nCancelar = RECHAZADO');
+        
+        if (aprobado) {
+            return {
+                ok: true,
+                responseCode: '0',
+                responseMessage: 'Aprobado (SIMULADO)',
+                authorizationCode: 'SIM-' + Date.now(),
+                operationId: 'OP-' + Date.now(),
+                terminalId: 'TERM-001',
+                cardType: 'DEBIT'
+            };
+        } else {
+            return {
+                ok: false,
+                responseCode: 'XX',
+                responseMessage: 'Rechazado (SIMULADO)',
+                error: 'Simulación de rechazo',
+                cardType: 'DEBIT'
+            };
+        }
+    }
+    
     // Función para procesar pago (MEJORADA con validación de stock)
     async function processPayment(paymentType) {
         if (!paymentType || (typeof paymentType === 'string' && paymentType.trim() === '')) {
@@ -1907,9 +2255,35 @@
             return;
         }
         
-        if (localCart.length === 0 || localCartTotal === 0) {
-            alert('El carrito está vacío. Agrega productos antes de procesar el pago.');
-            return;
+        // Validar carrito local ANTES de sincronizar
+        console.log('🔍 DEBUG processPayment - ANTES de sincronizar:', { 
+            localCartLength: localCart.length, 
+            localCartTotal,
+            localCart 
+        });
+        
+        if (!localCart || localCart.length === 0) {
+            // Si el carrito local está vacío, intentar sincronizar desde el servidor
+            console.log('⚠️ Carrito local vacío, sincronizando desde servidor...');
+            await syncCartFromServer();
+            localCartTotal = calculateCartTotal(localCart);
+            
+            if (!localCart || localCart.length === 0) {
+                alert('El carrito está vacío. Agrega productos antes de procesar el pago.');
+                console.error('❌ Carrito vacío después de sincronizar');
+                return;
+            }
+        } else {
+            // Si el carrito local tiene items, validar que el total sea válido
+            if (localCartTotal <= 0 || !Number.isFinite(localCartTotal)) {
+                // Recalcular total por si hay un problema
+                localCartTotal = calculateCartTotal(localCart);
+                if (localCartTotal <= 0 || !Number.isFinite(localCartTotal)) {
+                    alert('Error: El total del carrito no es válido (' + localCartTotal + '). Por favor, intenta nuevamente.');
+                    console.error('❌ Total inválido:', { localCartTotal, localCart });
+                    return;
+                }
+            }
         }
         
         console.log('processPayment llamado con:', paymentType);
@@ -2063,20 +2437,51 @@
             return;
         }
         
-        if (localCart.length === 0 || localCartTotal === 0) {
-            alert('El carrito está vacío. Agrega productos antes de procesar el pago.');
-            return;
+        // Validar carrito local ANTES de sincronizar
+        console.log('🔍 DEBUG processPayment - INICIO:', { 
+            localCartLength: localCart.length, 
+            localCartTotal,
+            localCart 
+        });
+        
+        // Primera validación: carrito local
+        if (!localCart || localCart.length === 0) {
+            // Si el carrito local está vacío, intentar sincronizar desde el servidor UNA VEZ
+            console.log('⚠️ Carrito local vacío, sincronizando desde servidor...');
+            await syncCartFromServer();
+            // Recalcular después de sincronizar
+            localCartTotal = calculateCartTotal(localCart);
+            
+            // Validar de nuevo después de sincronizar
+            if (!localCart || localCart.length === 0) {
+                alert('El carrito está vacío. Agrega productos antes de procesar el pago.');
+                console.error('❌ Carrito vacío después de sincronizar');
+                return;
+            }
+        } else if (localCartTotal <= 0 || !Number.isFinite(localCartTotal)) {
+            // Si el carrito tiene items pero el total es inválido, recalcular
+            localCartTotal = calculateCartTotal(localCart);
+            if (localCartTotal <= 0 || !Number.isFinite(localCartTotal)) {
+                alert('Error: El total del carrito no es válido. Por favor, intenta nuevamente.');
+                console.error('❌ Total inválido después de recalcular:', { localCartTotal, localCart });
+                return;
+            }
         }
         
-        await syncCartFromServer();
-        
-        // Calcular totales de forma segura antes de enviar (OBJETIVO 2)
         let totals;
         try {
             totals = calculateCartTotals(localCart);
+            console.log('🔍 DEBUG calculateCartTotals:', { localCart, totals, localCartTotal });
         } catch (e) {
             alert("Error: Error de cálculo en totales. Por favor, intenta nuevamente.");
             console.error("Error al calcular totales:", e);
+            return;
+        }
+        
+        // Validar que el total sea válido
+        if (!totals || !totals.total || totals.total <= 0 || !Number.isFinite(totals.total)) {
+            alert('Error: El total del carrito no es válido. Por favor, intenta nuevamente.');
+            console.error('❌ Total inválido:', { totals, localCart, localCartTotal });
             return;
         }
         
@@ -2164,6 +2569,209 @@
             }
             {% endif %}
             
+            // =========================================================
+            // FLUJO GETNET AGENT: Si register_id=1 y payment != cash
+            // =========================================================
+            const registerId = window.CURRENT_REGISTER_ID || '';
+            const isTestRegister = (registerId === '1' || registerId === 'TEST001' || registerId === '1');
+            const isGetnetPayment = (paymentTypeNormalized !== 'cash' && provider === 'GETNET');
+            
+            if (isTestRegister && isGetnetPayment) {
+                console.log('🔄 Flujo GETNET Agent: Creando PaymentIntent...');
+                console.log('🔍 DEBUG antes de crear PaymentIntent:', { 
+                    registerId, 
+                    totals, 
+                    amount_total: totals?.total, 
+                    cartLength: localCart.length,
+                    localCart,
+                    localCartTotal
+                });
+                
+                // Validación exhaustiva antes de crear PaymentIntent
+                if (!totals) {
+                    console.error('❌ totals es null/undefined');
+                    alert('Error: No se pudieron calcular los totales del carrito. Por favor, intenta nuevamente.');
+                    return;
+                }
+                
+                if (totals.total === undefined || totals.total === null) {
+                    console.error('❌ totals.total es undefined/null');
+                    alert('Error: El total del carrito no pudo ser calculado. Por favor, intenta nuevamente.');
+                    return;
+                }
+                
+                const finalTotal = Number(totals.total);
+                if (!Number.isFinite(finalTotal) || finalTotal <= 0) {
+                    console.error('❌ Total inválido antes de crear PaymentIntent:', { 
+                        totals, 
+                        finalTotal, 
+                        localCart, 
+                        localCartTotal 
+                    });
+                    alert('Error: El total del carrito no es válido (' + finalTotal + '). Por favor, agrega productos al carrito e intenta nuevamente.');
+                    return;
+                }
+                
+                try {
+                    // 1. Crear PaymentIntent en estado READY
+                    const intentResponse = await fetch('/caja/api/payment/intents', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            register_id: registerId || '1',
+                            provider: 'GETNET',
+                            amount_total: finalTotal,  // Usar la variable validada
+                            status: 'READY',
+                            cart: localCart  // Guardar carrito en PaymentIntent
+                        })
+                    });
+                    
+                    if (!intentResponse.ok) {
+                        const errorText = await intentResponse.text();
+                        console.error('Error al crear PaymentIntent:', errorText);
+                        alert('Error al iniciar pago: ' + (errorText || 'Error desconocido'));
+                        return;
+                    }
+                    
+                    const intentData = await intentResponse.json();
+                    if (!intentData.success || !intentData.intent_id) {
+                        console.error('Error: PaymentIntent no creado correctamente', intentData);
+                        alert('Error: No se pudo crear el intent de pago');
+                        return;
+                    }
+                    
+                    const intentId = intentData.intent_id;
+                    console.log('✅ PaymentIntent creado:', intentId);
+                    
+                    // 2. Mostrar overlay "Esperando terminal GETNET…"
+                    showGetnetWaiting('Esperando que el agente procese el pago en el terminal...');
+                    
+                    // 3. Polling cada 1.5 segundos hasta que el agente procese
+                    let pollAttempts = 0;
+                    const maxPollAttempts = 120; // 3 minutos máximo (120 * 1.5s)
+                    const pollInterval = 1500; // 1.5 segundos
+                    
+                    const pollIntentStatus = async () => {
+                        pollAttempts++;
+                        
+                        try {
+                            const statusResponse = await fetch(`/caja/api/payment/intents/${intentId}`, {
+                                method: 'GET',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                }
+                            });
+                            
+                            if (!statusResponse.ok) {
+                                console.error('Error al consultar estado del PaymentIntent:', statusResponse.status);
+                                if (pollAttempts >= maxPollAttempts) {
+                                    hideGetnetWaiting();
+                                    alert('Error: No se pudo verificar el estado del pago. Por favor, intenta nuevamente.');
+                                    return;
+                                }
+                                setTimeout(pollIntentStatus, pollInterval);
+                                return;
+                            }
+                            
+                            const statusData = await statusResponse.json();
+                            const currentStatus = statusData.status || statusData.intent?.status;
+                            
+                            console.log(`📊 PaymentIntent ${intentId} status:`, currentStatus, `(intento ${pollAttempts})`);
+                            
+                            if (currentStatus === 'CONFIRMED' || currentStatus === 'APPROVED') {
+                                // 4. Cuando está confirmado, crear la venta con payment_intent_id
+                                hideGetnetWaiting();
+                                console.log('✅ PaymentIntent confirmado, creando venta...');
+                                
+                                saleData.payment_intent_id = intentId;
+                                
+                                const saleResponse = await fetch('/caja/api/sale/create', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify(saleData)
+                                });
+                                
+                                const contentType = saleResponse.headers.get('content-type') || '';
+                                if (!contentType.includes('application/json')) {
+                                    const text = await saleResponse.text();
+                                    console.error('Error: El servidor devolvió HTML en lugar de JSON');
+                                    alert('Error: El servidor devolvió una respuesta no válida.');
+                                    return;
+                                }
+                                
+                                const saleResult = await saleResponse.json();
+                                
+                                if (saleResult.success) {
+                                    // Si hay ticket con QR, abrirlo en nueva ventana para imprimir
+                                    if (saleResult.ticket && saleResult.ticket.ticket_url) {
+                                        window.open(saleResult.ticket.ticket_url, '_blank', 'width=800,height=600');
+                                        // Pequeño delay para que el usuario vea el ticket antes de recargar
+                                        setTimeout(() => {
+                                            localCart = [];
+                                            localCartTotal = 0;
+                                            pendingOperations.clear();
+                                            updateCartDisplay([], 0);
+                                            location.reload();
+                                        }, 1000);
+                                    } else {
+                                        localCart = [];
+                                        localCartTotal = 0;
+                                        pendingOperations.clear();
+                                        updateCartDisplay([], 0);
+                                        setTimeout(() => location.reload(), 500);
+                                    }
+                                } else {
+                                    console.error('Error del servidor al crear venta:', saleResult);
+                                    alert('Error: ' + (saleResult.error || 'Error desconocido al crear la venta'));
+                                }
+                                return;
+                            }
+                            
+                            if (currentStatus === 'DECLINED' || currentStatus === 'ERROR' || currentStatus === 'CANCELLED') {
+                                // Pago rechazado o cancelado
+                                hideGetnetWaiting();
+                                const errorMsg = statusData.error_message || statusData.intent?.error_message || 'Pago rechazado';
+                                alert('Pago rechazado: ' + errorMsg);
+                                return;
+                            }
+                            
+                            // Continuar polling si aún está en proceso
+                            if (pollAttempts >= maxPollAttempts) {
+                                hideGetnetWaiting();
+                                alert('Tiempo de espera agotado. El pago no se completó. Por favor, intenta nuevamente.');
+                                return;
+                            }
+                            
+                            setTimeout(pollIntentStatus, pollInterval);
+                            
+                        } catch (pollError) {
+                            console.error('Error en polling:', pollError);
+                            if (pollAttempts >= maxPollAttempts) {
+                                hideGetnetWaiting();
+                                alert('Error al verificar el estado del pago: ' + pollError.message);
+                                return;
+                            }
+                            setTimeout(pollIntentStatus, pollInterval);
+                        }
+                    };
+                    
+                    // Iniciar polling después de un breve delay
+                    setTimeout(pollIntentStatus, pollInterval);
+                    return; // Salir aquí, el polling continuará
+                    
+                } catch (intentError) {
+                    console.error('Error en flujo GETNET Agent:', intentError);
+                    hideGetnetWaiting();
+                    alert('Error al iniciar pago con GETNET: ' + intentError.message);
+                    return;
+                }
+            }
+            
+            // Flujo normal (efectivo o register_id != 1)
             const response = await fetch('/caja/api/sale/create', {
                 method: 'POST',
                 headers: {
@@ -2187,11 +2795,24 @@
             const data = await response.json();
             
             if (data.success) {
-                localCart = [];
-                localCartTotal = 0;
-                pendingOperations.clear();
-                updateCartDisplay([], 0);
-                setTimeout(() => location.reload(), 500);
+                // Si hay ticket con QR, abrirlo en nueva ventana para imprimir
+                if (data.ticket && data.ticket.ticket_url) {
+                    window.open(data.ticket.ticket_url, '_blank', 'width=800,height=600');
+                    // Pequeño delay para que el usuario vea el ticket antes de recargar
+                    setTimeout(() => {
+                        localCart = [];
+                        localCartTotal = 0;
+                        pendingOperations.clear();
+                        updateCartDisplay([], 0);
+                        location.reload();
+                    }, 1000);
+                } else {
+                    localCart = [];
+                    localCartTotal = 0;
+                    pendingOperations.clear();
+                    updateCartDisplay([], 0);
+                    setTimeout(() => location.reload(), 500);
+                }
             } else {
                 console.error('Error del servidor:', data);
                 alert('Error: ' + (data.error || 'Error desconocido'));
@@ -2364,10 +2985,10 @@
             </button>
             <button 
                 class="payment-btn getnet" 
-                onclick="window.setPaymentProvider('GETNET'); alert('Selecciona Débito o Crédito para pagar con tarjeta');"
+                onclick="pagarConTarjeta()"
                 style="background: linear-gradient(135deg, #00c853 0%, #00e676 100%); border: 2px solid #00c853;"
                 {% if not cart or total == 0 %}disabled{% endif %}>
-                🏦 GETNET
+                💳 PAGAR CON TARJETA (GETNET)
             </button>
             {% if is_superadmin_register %}
             <button 
@@ -2459,7 +3080,7 @@
                                 <div class="product-card" 
                                      data-id="{{ item_id }}" 
                                      data-name="{{ name }}" 
-                                     data-price="{{ price }}">
+                                     data-price="{{ price|int }}">
                                     <div class="product-name">{{ name }}</div>
                                     <div class="product-price">${{ "{:,.0f}".format(price) }}</div>
                                 </div>
@@ -2614,10 +3235,18 @@ function setupProductCardListeners() {
             return;
         }
         
+        // DEBUG: Log el precio crudo antes de procesarlo
+        console.log('🔍 DEBUG precio:', { priceStr, priceStrType: typeof priceStr, priceStrLength: priceStr.length });
+        
         // Convertir price a número
         const price = toNumberCLP(priceStr);
-        if (isNaN(price)) {
-            console.error('❌ Precio inválido:', priceStr);
+        
+        // DEBUG: Log el precio convertido
+        console.log('🔍 DEBUG precio convertido:', { price, priceType: typeof price, isNaN: isNaN(price) });
+        
+        if (isNaN(price) || price <= 0) {
+            console.error('❌ Precio inválido:', { priceStr, price, original: priceStr });
+            alert('Error: Precio inválido para ' + name + ': ' + priceStr);
             return;
         }
         
@@ -2911,8 +3540,9 @@ function updateProductsDisplay(categorizedProducts) {
         for (const product of productsInCategory) {
             const itemId = product.item_id || product.item_kit_id || product.id;
             const name = product.name || product.kit_name || 'Producto';
-            const price = product.price || product.unit_price || product.kit_price || 0;
-            const priceFormatted = toNumberCLP(price).toLocaleString('es-CL', {maximumFractionDigits: 0});
+            const priceRaw = product.price || product.unit_price || product.kit_price || 0;
+            const price = Math.round(toNumberCLP(priceRaw)); // Asegurar que sea entero
+            const priceFormatted = price.toLocaleString('es-CL', {maximumFractionDigits: 0});
             
             if (itemId && price) {
                 // Escapar el nombre para HTML (evitar problemas con comillas y caracteres especiales)

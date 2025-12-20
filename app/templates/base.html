@@ -142,6 +142,11 @@
                     aria-label="Panel de Control">
                     🎛️ Panel de Control
                 </a>
+                <a href="{{ url_for('admin.payment_machines_list') }}"
+                    class="admin-nav-btn {% if request.endpoint and 'payment_machines' in request.endpoint %}active{% endif %}"
+                    aria-label="Máquinas de Pago">
+                    💳 Máquinas de Pago
+                </a>
                 <a href="{{ url_for('auth.logout_admin') }}" class="admin-nav-btn logout-btn"
                     aria-label="Cerrar Sesión de Administrador">🔓 Salir</a>
             </div>
@@ -194,6 +199,11 @@
             class="admin-nav-btn {% if request.endpoint == 'routes.admin_panel_control' %}active{% endif %}"
             aria-label="Panel de Control">
             🎛️ Panel de Control
+        </a>
+        <a href="{{ url_for('admin.payment_machines_list') }}"
+            class="admin-nav-btn {% if request.endpoint and 'payment_machines' in request.endpoint %}active{% endif %}"
+            aria-label="Máquinas de Pago">
+            💳 Máquinas de Pago
         </a>
         <a href="{{ url_for('auth.logout_admin') }}" class="admin-nav-btn logout-btn"
             aria-label="Cerrar Sesión de Administrador">🔓 Salir</a>

@@ -1,0 +1,30 @@
+[Unit]
+Description=Agente Getnet Linux para Tótems Bimba
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/bimba/getnet_agent_linux
+Environment="PATH=/opt/bimba/getnet_agent_linux/venv/bin:/usr/local/bin:/usr/bin:/bin"
+EnvironmentFile=/opt/bimba/getnet_agent_linux/.env
+
+# Ejecutar el script de inicio
+ExecStart=/opt/bimba/getnet_agent_linux/run_agent.sh
+
+# Reiniciar si falla
+Restart=always
+RestartSec=10
+
+# Límites de recursos
+LimitNOFILE=65536
+
+# Logs
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=bimba-getnet-agent
+
+[Install]
+WantedBy=multi-user.target
+
+

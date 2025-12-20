@@ -92,8 +92,8 @@ def check_service_alternative(service_name):
         # Mapeo de nombres de servicios a patrones de proceso
         process_patterns = {
             'postfix': ['postfix', 'qmgr', 'pickup', 'master'],
-            'gunicorn-flask-app': ['gunicorn.*wsgi', 'gunicorn.*application'],
-            'gunicorn': ['gunicorn.*wsgi', 'gunicorn.*application'],
+            'gunicorn-flask-app': ['gunicorn.*wsgi', 'gunicorn.*application', 'gunicorn.*stvaldivia'],
+            'gunicorn': ['gunicorn.*wsgi', 'gunicorn.*application', 'gunicorn.*stvaldivia', 'gunicorn.*127.0.0.1:5001'],
             'nginx': ['nginx']
         }
         
@@ -181,66 +181,119 @@ def check_service_alternative(service_name):
 
 
 def check_postfix_status():
-    """Verifica el estado del servicio de correo Postfix"""
-    # Usar método alternativo directamente (más confiable)
-    alt_status = check_service_alternative('postfix')
-    
-    # Si el método alternativo encontró el servicio, usarlo
-    if alt_status['running']:
-        return alt_status
-    
-    # Si no, intentar con systemctl
+    """Verifica el estado del servicio de correo Postfix (opcional)"""
+    # Postfix es opcional - no es crítico si no está corriendo
     try:
-        status = check_systemd_service('postfix')
+        status = check_systemd_service('postfix.service')
         if status['status'] == 'active':
-            return status
+            return {
+                **status,
+                'critical': False,
+                'optional': True
+            }
     except:
         pass
     
-    # Retornar el resultado del método alternativo
-    return alt_status
+    # Método alternativo
+    alt_status = check_service_alternative('postfix')
+    
+    if alt_status.get('running'):
+        return {
+            **alt_status,
+            'critical': False,
+            'optional': True
+        }
+    
+    # Si no está corriendo, marcar como no configurado (opcional)
+    return {
+        'status': 'not_configured',
+        'running': False,
+        'enabled': None,
+        'message': 'Postfix no configurado (opcional - solo necesario para envío de correos)',
+        'critical': False,
+        'optional': True
+    }
 
 
 def check_gunicorn_status():
-    """Verifica el estado del servicio Gunicorn"""
-    # Usar método alternativo directamente (más confiable)
-    alt_status = check_service_alternative('gunicorn-flask-app')
-    
-    # Si el método alternativo encontró el servicio, usarlo
-    if alt_status['running']:
-        return alt_status
-    
-    # Si no, intentar con systemctl
+    """Verifica el estado del servicio Gunicorn/Flask"""
+    # Verificar primero el servicio real (stvaldivia)
     try:
-        status = check_systemd_service('gunicorn-flask-app')
+        status = check_systemd_service('stvaldivia.service')
         if status['status'] == 'active':
-            return status
+            return {
+                'status': 'active',
+                'running': True,
+                'enabled': status.get('enabled', None),
+                'message': 'Servicio Flask (stvaldivia) activo',
+                'critical': True
+            }
     except:
         pass
     
-    # Retornar el resultado del método alternativo
-    return alt_status
+    # Método alternativo: buscar proceso gunicorn
+    alt_status = check_service_alternative('gunicorn')
+    
+    # Si el método alternativo encontró el servicio, usarlo
+    if alt_status.get('running'):
+        return {
+            **alt_status,
+            'critical': True
+        }
+    
+    # Intentar verificar otros nombres comunes
+    service_names = ['gunicorn-flask-app', 'flask-app', 'gunicorn']
+    for service_name in service_names:
+        try:
+            status = check_systemd_service(service_name)
+            if status['status'] == 'active':
+                return {
+                    **status,
+                    'critical': True
+                }
+        except:
+            continue
+    
+    # Si no se encontró, retornar inactivo pero crítico
+    return {
+        'status': 'inactive',
+        'running': False,
+        'enabled': None,
+        'message': 'Servicio Flask/Gunicorn no encontrado',
+        'critical': True
+    }
 
 
 def check_nginx_status():
     """Verifica el estado del servicio Nginx"""
-    # Usar método alternativo directamente (más confiable)
-    alt_status = check_service_alternative('nginx')
-    
-    # Si el método alternativo encontró el servicio, usarlo
-    if alt_status['running']:
-        return alt_status
-    
-    # Si no, intentar con systemctl
+    # Nginx es crítico
     try:
-        status = check_systemd_service('nginx')
+        status = check_systemd_service('nginx.service')
         if status['status'] == 'active':
-            return status
+            return {
+                **status,
+                'critical': True
+            }
     except:
         pass
     
-    # Retornar el resultado del método alternativo
-    return alt_status
+    # Método alternativo
+    alt_status = check_service_alternative('nginx')
+    
+    if alt_status.get('running'):
+        return {
+            **alt_status,
+            'critical': True
+        }
+    
+    # Si no está corriendo, retornar inactivo pero crítico
+    return {
+        'status': 'inactive',
+        'running': False,
+        'enabled': None,
+        'message': 'Servicio Nginx no encontrado',
+        'critical': True
+    }
 
 
 # Cache simple para estado de API

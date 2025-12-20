@@ -725,14 +725,27 @@ class TicketPrinterService:
     def _print_linux(self, file_path: str) -> bool:
         """Imprime en Linux usando lp"""
         try:
+            # Verificar si lp está disponible
+            try:
+                subprocess.run(['which', 'lp'], capture_output=True, check=True, timeout=2)
+            except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+                logger.warning("CUPS no está instalado en este sistema Linux. La impresión se deshabilitará automáticamente.")
+                logger.info(f"Imagen del ticket guardada en: {file_path} (se puede imprimir manualmente o desde el cliente)")
+                return False
+            
             cmd = ['lp']
             if self.printer_name:
                 cmd.extend(['-d', self.printer_name])
             cmd.append(file_path)
             subprocess.run(cmd, timeout=10, check=True)
             return True
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Error al imprimir en Linux (lp falló): {e}")
+            logger.info(f"Imagen del ticket guardada en: {file_path} (se puede imprimir manualmente)")
+            return False
         except Exception as e:
             logger.error(f"Error al imprimir en Linux: {e}")
+            logger.info(f"Imagen del ticket guardada en: {file_path} (se puede imprimir manualmente)")
             return False
     
     def _send_cut_command(self) -> bool:

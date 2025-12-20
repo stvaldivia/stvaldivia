@@ -8,7 +8,7 @@ import sys
 import time
 from typing import Optional, Tuple
 
-def test_getnet_serial(port: str = 'COM4', baudrate: int = 9600, timeout_ms: int = 30000) -> Tuple[bool, str]:
+def test_getnet_serial(port: str = 'COM4', baudrate: int = 115200, timeout_ms: int = 30000) -> Tuple[bool, str]:
     """
     Test de conectividad GETNET Serial
     
@@ -138,10 +138,10 @@ Ejemplos:
   python tools/smoke_getnet_serial.py
   
   # Test con puerto específico
-  python tools/smoke_getnet_serial.py --port COM3
+  python tools/smoke_getnet_serial.py --port COM4
   
   # Test con configuración completa
-  python tools/smoke_getnet_serial.py --port COM4 --baudrate 9600 --timeout 30000
+  python tools/smoke_getnet_serial.py --port COM4 --baudrate 115200 --timeout 30000
         """
     )
     
@@ -149,14 +149,14 @@ Ejemplos:
         '--port',
         type=str,
         default='COM4',
-        help='Puerto COM a probar (default: COM4)'
+        help='Puerto COM USB a probar (default: COM4)'
     )
     
     parser.add_argument(
         '--baudrate',
         type=int,
-        default=9600,
-        help='Velocidad de transmisión en baudios (default: 9600)'
+        default=115200,
+        help='Velocidad de transmisión en baudios (default: 115200, valores comunes: 9600, 115200)'
     )
     
     parser.add_argument(

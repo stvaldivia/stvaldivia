@@ -124,6 +124,127 @@
         border-color: rgba(102, 126, 234, 0.3);
     }
     
+    /* Tarjeta de Estado Getnet */
+    .getnet-status-card {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+        padding: var(--spacing-md, 1rem);
+        transition: all 0.3s ease;
+    }
+    
+    @media (min-width: 768px) {
+        .getnet-status-card {
+            padding: var(--spacing-lg, 1.5rem);
+        }
+    }
+    
+    .getnet-status-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+    
+    .getnet-status-title {
+        color: #94a3b8;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin: 0;
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .getnet-refresh-btn {
+        background: rgba(102, 126, 234, 0.1);
+        border: 1px solid rgba(102, 126, 234, 0.3);
+        color: #667eea;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+    }
+    
+    .getnet-refresh-btn:hover {
+        background: rgba(102, 126, 234, 0.2);
+        border-color: rgba(102, 126, 234, 0.5);
+    }
+    
+    .getnet-refresh-btn:active {
+        transform: scale(0.95);
+    }
+    
+    .getnet-refresh-btn.loading {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    
+    .getnet-refresh-btn.loading .refresh-icon {
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    
+    .getnet-status-badge {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 8px;
+        animation: pulse 2s infinite;
+    }
+    
+    .getnet-status-badge.ok {
+        background: #4caf50;
+        box-shadow: 0 0 8px rgba(76, 175, 80, 0.5);
+    }
+    
+    .getnet-status-badge.warn {
+        background: #ff9800;
+        box-shadow: 0 0 8px rgba(255, 152, 0, 0.5);
+    }
+    
+    .getnet-status-badge.error {
+        background: #f44336;
+        box-shadow: 0 0 8px rgba(244, 67, 54, 0.5);
+    }
+    
+    .getnet-status-content {
+        color: #e8e8e8;
+        font-size: 0.9rem;
+        line-height: 1.6;
+    }
+    
+    .getnet-status-line {
+        margin-bottom: 8px;
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .getnet-status-label {
+        color: #94a3b8;
+        min-width: 120px;
+        font-weight: 500;
+    }
+    
+    .getnet-status-value {
+        flex: 1;
+        color: #fff;
+    }
+    
     .metric-header {
         display: flex;
         justify-content: space-between;
@@ -399,6 +520,38 @@
         <div class="loading-state">
             <div class="spinner"></div>
             <p>Cargando métricas...</p>
+        </div>
+    </div>
+    
+    <!-- Estado Getnet -->
+    <div class="getnet-status-card" id="getnet-status-card">
+        <div class="getnet-status-header">
+            <h4 class="getnet-status-title">
+                <span class="getnet-status-badge error" id="getnet-status-badge"></span>
+                Estado Getnet (CAJA TEST)
+            </h4>
+            <button class="getnet-refresh-btn" id="getnet-refresh-btn" onclick="updateGetnetStatus(true); return false;" title="Actualizar estado">
+                <span class="refresh-icon">🔄</span>
+                <span>Actualizar</span>
+            </button>
+        </div>
+        <div class="getnet-status-content" id="getnet-status-content">
+            <div class="getnet-status-line">
+                <span class="getnet-status-label">Estado:</span>
+                <span class="getnet-status-value" id="getnet-overall-status">Cargando...</span>
+            </div>
+            <div class="getnet-status-line">
+                <span class="getnet-status-label">Agente:</span>
+                <span class="getnet-status-value" id="getnet-agent-status">-</span>
+            </div>
+            <div class="getnet-status-line">
+                <span class="getnet-status-label">Getnet:</span>
+                <span class="getnet-status-value" id="getnet-device-status">-</span>
+            </div>
+            <div class="getnet-status-line">
+                <span class="getnet-status-label">Último pago:</span>
+                <span class="getnet-status-value" id="getnet-last-payment">-</span>
+            </div>
         </div>
     </div>
     
@@ -857,18 +1010,141 @@
     }
     
     // Inicializar
+    // Función para actualizar estado Getnet
+    function updateGetnetStatus(manualRefresh = false) {
+        const refreshBtn = document.getElementById('getnet-refresh-btn');
+        if (manualRefresh && refreshBtn) {
+            refreshBtn.classList.add('loading');
+            refreshBtn.disabled = true;
+        }
+        
+        fetch('/admin/api/getnet/status?register_id=1')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Quitar estado de carga del botón
+                const refreshBtn = document.getElementById('getnet-refresh-btn');
+                if (refreshBtn) {
+                    refreshBtn.classList.remove('loading');
+                    refreshBtn.disabled = false;
+                }
+                
+                const badge = document.getElementById('getnet-status-badge');
+                const overallStatus = document.getElementById('getnet-overall-status');
+                const agentStatus = document.getElementById('getnet-agent-status');
+                const deviceStatus = document.getElementById('getnet-device-status');
+                const lastPayment = document.getElementById('getnet-last-payment');
+                
+                if (!badge || !overallStatus || !agentStatus || !deviceStatus || !lastPayment) {
+                    return;
+                }
+                
+                // Actualizar badge según overall_status
+                badge.className = 'getnet-status-badge ' + (data.overall_status || 'error').toLowerCase();
+                
+                // Mapear status a texto
+                const statusText = {
+                    'OK': '✅ Operativo',
+                    'WARN': '⚠️ Advertencia',
+                    'ERROR': '❌ Error'
+                };
+                overallStatus.textContent = statusText[data.overall_status] || '❓ Desconocido';
+                
+                // Agente
+                if (data.agent && data.agent.online) {
+                    const seconds = data.agent.seconds_since_heartbeat || 0;
+                    let timeText = '';
+                    if (seconds < 60) {
+                        timeText = `hace ${seconds}s`;
+                    } else if (seconds < 3600) {
+                        timeText = `hace ${Math.floor(seconds / 60)}m`;
+                    } else {
+                        timeText = `hace ${Math.floor(seconds / 3600)}h`;
+                    }
+                    agentStatus.textContent = `✅ ${data.agent.agent_name || 'Desconocido'} (${timeText})`;
+                } else {
+                    agentStatus.textContent = '❌ Offline';
+                }
+                
+                // Getnet
+                if (data.agent && data.agent.last_getnet_status) {
+                    const status = data.agent.last_getnet_status;
+                    const message = data.agent.last_getnet_message || '';
+                    const statusEmoji = status === 'OK' ? '✅' : status === 'ERROR' ? '❌' : '⚠️';
+                    deviceStatus.textContent = `${statusEmoji} ${status}${message ? ': ' + message : ''}`;
+                } else {
+                    deviceStatus.textContent = '⚠️ Sin datos';
+                }
+                
+                // Último pago
+                if (data.backend && data.backend.last_payment_intent_at) {
+                    const date = new Date(data.backend.last_payment_intent_at);
+                    const now = new Date();
+                    const diffMs = now - date;
+                    const diffMins = Math.floor(diffMs / 60000);
+                    
+                    let timeAgo = '';
+                    if (diffMins < 1) {
+                        timeAgo = 'hace < 1m';
+                    } else if (diffMins < 60) {
+                        timeAgo = `hace ${diffMins}m`;
+                    } else {
+                        const hours = Math.floor(diffMins / 60);
+                        timeAgo = `hace ${hours}h`;
+                    }
+                    
+                    const status = data.backend.last_payment_intent_status || 'UNKNOWN';
+                    lastPayment.textContent = `${status} (${timeAgo})`;
+                } else {
+                    lastPayment.textContent = 'Sin intentos recientes';
+                }
+            })
+            .catch(error => {
+                console.error('Error al obtener estado Getnet:', error);
+                
+                // Quitar estado de carga del botón
+                const refreshBtn = document.getElementById('getnet-refresh-btn');
+                if (refreshBtn) {
+                    refreshBtn.classList.remove('loading');
+                    refreshBtn.disabled = false;
+                }
+                
+                const badge = document.getElementById('getnet-status-badge');
+                const overallStatus = document.getElementById('getnet-overall-status');
+                if (badge) badge.className = 'getnet-status-badge error';
+                if (overallStatus) overallStatus.textContent = '❌ Sin datos de estado';
+            });
+    }
+    
+    // Polling cada 10 segundos
+    let getnetStatusInterval = null;
+    
     document.addEventListener('DOMContentLoaded', function() {
         loadMetrics();
         connectSocketIO();
         
         // Actualizar cada 30 segundos
         updateInterval = setInterval(loadMetrics, 30000);
+        
+        // Inicializar estado Getnet
+        updateGetnetStatus(); // Primera carga inmediata
+        getnetStatusInterval = setInterval(updateGetnetStatus, 10000); // Polling cada 10 segundos
     });
     
     // Limpiar al salir
     window.addEventListener('beforeunload', function() {
         if (updateInterval) {
             clearInterval(updateInterval);
+        }
+        if (getnetStatusInterval) {
+            clearInterval(getnetStatusInterval);
+        }
+        if (getnetStatusInterval) {
+            clearInterval(getnetStatusInterval);
         }
         if (socket) {
             socket.disconnect();

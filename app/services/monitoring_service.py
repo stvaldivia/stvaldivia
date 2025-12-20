@@ -223,27 +223,57 @@ class MonitoringService:
         
         # Servicios del sistema
         for service_name, service_info in system_services.items():
-            if 'gunicorn' in service_name.lower() or 'flask' in service_name.lower():
+            # Omitir servicios opcionales que no están configurados
+            if service_info.get('optional') and service_info.get('status') == 'not_configured':
+                continue  # No mostrar servicios opcionales no configurados
+            
+            service_status = service_info.get('status', 'unknown')
+            # Normalizar estado: 'active' -> 'active', 'inactive' -> 'inactive', 'not_configured' -> 'not_configured'
+            
+            if 'gunicorn' in service_name.lower() or 'flask' in service_name.lower() or service_name == 'gunicorn':
                 categories['application'].append({
-                    'name': service_name,
+                    'name': 'Flask/Gunicorn' if service_name == 'gunicorn' else service_name,
                     'type': 'application',
-                    'status': 'active' if service_info.get('running') else 'inactive',
+                    'status': service_status,
                     'message': service_info.get('message', ''),
                     'icon': '🚀'
                 })
             elif 'nginx' in service_name.lower():
                 categories['system'].append({
-                    'name': service_name,
+                    'name': 'Nginx',
                     'type': 'system',
-                    'status': 'active' if service_info.get('running') else 'inactive',
+                    'status': service_status,
                     'message': service_info.get('message', ''),
                     'icon': '🌐'
                 })
+            elif service_name == 'api':
+                # API externa - solo mostrar si está configurada
+                api_status = service_info.get('status', 'error')
+                if api_status != 'error' or service_info.get('online') is not False:
+                    categories['external'].append({
+                        'name': 'API Externa (PHP POS)',
+                        'type': 'external_api',
+                        'status': 'online' if service_info.get('online') else 'offline',
+                        'message': service_info.get('message', ''),
+                        'response_time_ms': service_info.get('response_time_ms'),
+                        'icon': '🌐'
+                    })
+            elif service_name == 'postfix':
+                # Postfix solo mostrar si está activo (es opcional)
+                if service_status == 'active':
+                    categories['system'].append({
+                        'name': 'Postfix (Email)',
+                        'type': 'system',
+                        'status': service_status,
+                        'message': service_info.get('message', ''),
+                        'icon': '📧'
+                    })
+                # Si está not_configured, no mostrarlo (ya se omite arriba)
             else:
                 categories['system'].append({
                     'name': service_name,
                     'type': 'system',
-                    'status': 'active' if service_info.get('running') else 'inactive',
+                    'status': service_status,
                     'message': service_info.get('message', ''),
                     'icon': '⚙️'
                 })

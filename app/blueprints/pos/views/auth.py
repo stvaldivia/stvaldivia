@@ -20,6 +20,24 @@ def home():
     """Home del POS - Redirige a login"""
     return redirect(url_for('caja.login'))
 
+@caja_bp.route('/caja1', methods=['GET'])
+def caja1():
+    """Ruta directa para Caja 1 - Redirige a login y luego a caja 1"""
+    session['target_register_id'] = '1'
+    return redirect(url_for('caja.login'))
+
+@caja_bp.route('/caja2', methods=['GET'])
+def caja2():
+    """Ruta directa para Caja 2 - Redirige a login y luego a caja 2"""
+    session['target_register_id'] = '2'
+    return redirect(url_for('caja.login'))
+
+@caja_bp.route('/caja3', methods=['GET'])
+def caja3():
+    """Ruta directa para Caja 3 - Redirige a login y luego a caja 3"""
+    session['target_register_id'] = '3'
+    return redirect(url_for('caja.login'))
+
 @caja_bp.route('/login', methods=['GET', 'POST'])
 def login():
     """Login del POS - Autenticación por empleado + PIN (flujo nuevo)"""

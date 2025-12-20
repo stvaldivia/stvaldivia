@@ -2,7 +2,7 @@
 Rutas de administración - Visor de Cajas en Tiempo Real (FASE 8)
 """
 from flask import render_template, session, redirect, url_for, jsonify, current_app
-from app.models.pos_models import PosRegister, RegisterSession, PosSale
+from app.models.pos_models import PosRegister, RegisterSession, PosSale, PaymentAgent, PaymentIntent
 from app.models.jornada_models import Jornada
 from app.helpers.register_session_service import RegisterSessionService
 from datetime import datetime
@@ -128,5 +128,98 @@ def api_live_cash_registers_status():
         
     except Exception as e:
         current_app.logger.error(f"Error al obtener estado de cajas: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/api/getnet/status')
+def api_getnet_status():
+    """
+    API: Obtener estado de Getnet para un register_id específico
+    Parámetro opcional: ?register_id=TEST001 (default: "1")
+    """
+    if not session.get('admin_logged_in'):
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    try:
+        from datetime import timedelta
+        
+        register_id = request.args.get('register_id', '1')
+        register_id = str(register_id).strip()
+        
+        now = datetime.utcnow()
+        
+        # Buscar PaymentAgent más reciente para este register_id
+        agent = PaymentAgent.query.filter_by(
+            register_id=register_id
+        ).order_by(PaymentAgent.last_heartbeat.desc()).first()
+        
+        # Calcular seconds_since_heartbeat
+        seconds_since_heartbeat = None
+        agent_data = None
+        
+        if agent:
+            delta = now - agent.last_heartbeat
+            seconds_since_heartbeat = int(delta.total_seconds())
+            
+            agent_data = {
+                'online': seconds_since_heartbeat <= 300,  # Online si heartbeat < 5 min
+                'agent_name': agent.agent_name,
+                'last_heartbeat': agent.last_heartbeat.isoformat() if agent.last_heartbeat else None,
+                'last_ip': agent.last_ip,
+                'last_getnet_status': agent.last_getnet_status,
+                'last_getnet_message': agent.last_getnet_message,
+                'seconds_since_heartbeat': seconds_since_heartbeat
+            }
+        else:
+            agent_data = {
+                'online': False,
+                'agent_name': None,
+                'last_heartbeat': None,
+                'last_ip': None,
+                'last_getnet_status': None,
+                'last_getnet_message': None,
+                'seconds_since_heartbeat': None
+            }
+        
+        # Buscar último PaymentIntent para este register_id
+        last_intent = PaymentIntent.query.filter_by(
+            register_id=register_id
+        ).order_by(PaymentIntent.created_at.desc()).first()
+        
+        backend_data = {
+            'ok': True,
+            'last_payment_intent_at': last_intent.created_at.isoformat() if last_intent and last_intent.created_at else None,
+            'last_payment_intent_status': last_intent.status if last_intent else None
+        }
+        
+        # Determinar overall_status
+        overall_status = "ERROR"
+        
+        if not agent:
+            overall_status = "ERROR"
+        elif seconds_since_heartbeat is None:
+            overall_status = "ERROR"
+        elif seconds_since_heartbeat > 300:
+            overall_status = "ERROR"
+        elif 60 < seconds_since_heartbeat <= 300:
+            overall_status = "WARN"
+        elif agent.last_getnet_status == 'ERROR':
+            overall_status = "ERROR"
+        elif agent.last_getnet_status == 'UNKNOWN':
+            overall_status = "WARN"
+        elif seconds_since_heartbeat <= 60 and agent.last_getnet_status == 'OK':
+            overall_status = "OK"
+        else:
+            overall_status = "WARN"
+        
+        return jsonify({
+            'register_id': register_id,
+            'agent': agent_data,
+            'backend': backend_data,
+            'overall_status': overall_status
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Error al obtener estado Getnet: {e}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 

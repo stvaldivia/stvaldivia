@@ -605,14 +605,45 @@ def create_app():
     try:
         from .blueprints.pos import caja_bp
         # El blueprint ya tiene url_prefix='/caja' definido
-        # Si APPLICATION_ROOT está configurado, combinarlo con el prefijo del blueprint
-        if url_prefix:
+        # Si APPLICATION_ROOT está configurado y no está vacío, combinarlo con el prefijo del blueprint
+        if url_prefix and url_prefix.strip() and url_prefix != '/':
             # Combinar APPLICATION_ROOT con el prefijo del blueprint
-            combined_prefix = f"{url_prefix}/caja" if not url_prefix.endswith('/') else f"{url_prefix}caja"
+            # El blueprint tiene url_prefix='/caja', así que combinamos
+            if url_prefix.endswith('/'):
+                combined_prefix = f"{url_prefix.rstrip('/')}/caja"
+            else:
+                combined_prefix = f"{url_prefix}/caja"
+            # IMPORTANTE: pasar url_prefix=None para que use el del blueprint, luego combinamos
+            # En realidad, Flask combina automáticamente, así que solo pasamos el combined_prefix
             app.register_blueprint(caja_bp, url_prefix=combined_prefix)
+            app.logger.info(f"✅ Blueprint de Caja registrado con prefijo: {combined_prefix}")
         else:
             # Usar solo el url_prefix del blueprint (/caja)
+            # No pasar url_prefix para que use el del blueprint
             app.register_blueprint(caja_bp)
+            app.logger.info("✅ Blueprint de Caja registrado con prefijo: /caja (del blueprint)")
+        
+        # Verificar que las rutas están registradas (después de que la app esté completamente inicializada)
+        # Esto se hace en un contexto de aplicación para asegurar que las rutas estén disponibles
+        def verify_routes():
+            try:
+                login_routes = []
+                for rule in app.url_map.iter_rules():
+                    if 'login' in rule.rule.lower() and 'caja' in rule.rule.lower():
+                        login_routes.append(rule.rule)
+                if login_routes:
+                    app.logger.info(f"   ✅ Rutas de login encontradas: {', '.join(login_routes)}")
+                else:
+                    app.logger.warning("   ⚠️ Rutas de login NO encontradas en el mapa de URLs")
+                    # Listar todas las rutas de caja para debugging
+                    caja_routes = [rule.rule for rule in app.url_map.iter_rules() if 'caja' in rule.rule.lower()]
+                    if caja_routes:
+                        app.logger.info(f"   Rutas de caja disponibles: {', '.join(caja_routes[:10])}")
+            except Exception as e:
+                app.logger.debug(f"No se pudo verificar rutas (normal durante inicialización): {e}")
+        
+        # Verificar después de que todos los blueprints estén registrados
+        app.after_request_funcs.setdefault(None, []).append(lambda response: verify_routes() or response)
         
         # Eximir APIs de POS de CSRF si está habilitado
         if csrf:
@@ -620,12 +651,10 @@ def create_app():
                 csrf.exempt(caja_bp)
             except:
                 pass
-        
-        app.logger.info("✅ Blueprint de Caja registrado")
     except ImportError as e:
-        app.logger.warning(f"⚠️  No se pudo registrar el blueprint de caja: {e}")
+        app.logger.error(f"❌ No se pudo importar el blueprint de caja: {e}", exc_info=True)
     except Exception as e:
-        app.logger.error(f"❌ Error al registrar blueprint de caja: {e}")
+        app.logger.error(f"❌ Error al registrar blueprint de caja: {e}", exc_info=True)
     
     # Error handler global para capturar errores 500 (solo loguea, no maneja)
     # El manejo real se hace en error_handlers.py si está registrado

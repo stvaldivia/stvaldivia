@@ -12,7 +12,7 @@ from .kiosk_models import Pago, PagoItem
 # Importar modelos del POS
 from .pos_models import (
     PosSession, PosSale, PosSaleItem, PosRegister, RegisterLock, RegisterSession, RegisterClose, 
-    SaleAuditLog, Employee
+    SaleAuditLog, Employee, PaymentIntent, PaymentAgent, LogIntentoPago
 )
 
 # Importar modelos de jornadas
@@ -87,8 +87,9 @@ from .guardarropia_ticket_models import GuardarropiaTicket, GuardarropiaTicketLo
 __all__ = [
     'db', 
     'Pago', 'PagoItem',
-    'PosSession', 'PosSale', 'PosSaleItem', 'PosRegister', 'RegisterLock', 'RegisterSession', 
-    'RegisterClose', 'SaleAuditLog', 'Employee',
+    'PosSession', 'PosSale', 'PosSaleItem', 'PosRegister', 'RegisterLock', 'RegisterSession',
+    'PaymentIntent', 'PaymentAgent', 
+    'RegisterClose', 'SaleAuditLog', 'Employee', 'LogIntentoPago',
     'Jornada', 'PlanillaTrabajador', 'AperturaCaja', 'SnapshotEmpleados', 'SnapshotCajas',
     'Shift',
     'ApiConnectionLog',

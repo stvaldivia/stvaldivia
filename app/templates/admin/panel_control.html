@@ -1060,11 +1060,18 @@
 
 
                             // Funciones para control de servicios externos
-                            // loadServicesStatus function - DISABLED (UI removed)
-                            // function loadServicesStatus() {
-                            //     fetch('/admin/api/services/status')
-                            //     ...
-                            // }
+                            function loadServicesStatus() {
+                                fetch('/admin/api/services/status')
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        if (data && data.services) {
+                                            updateServicesUI(data.services);
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('Error al cargar estado de servicios:', error);
+                                    });
+                            }
 
                             function updateServicesUI(services) {
                                 // Actualizar estado de API
@@ -1106,17 +1113,51 @@
 
                             }
 
-                            // toggleService function - DISABLED (UI removed)
-                            // function toggleService(serviceName) {
-                            //     // Obtener estado actual
-                            //     fetch('/admin/api/services/status')
-                            //     ...
-                            // }
+                            function toggleService(serviceName) {
+                                // Obtener estado actual
+                                fetch('/admin/api/services/status')
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        if (data && data.services && data.services[serviceName]) {
+                                            const currentState = data.services[serviceName].enabled;
+                                            const newState = !currentState;
+                                            
+                                            // Llamar a la API para toggle
+                                            fetch('/admin/api/services/toggle', {
+                                                method: 'POST',
+                                                headers: {
+                                                    'Content-Type': 'application/json'
+                                                },
+                                                body: JSON.stringify({
+                                                    service: serviceName,
+                                                    enabled: newState
+                                                })
+                                            })
+                                            .then(response => response.json())
+                                            .then(result => {
+                                                if (result.success) {
+                                                    // Recargar estado
+                                                    loadServicesStatus();
+                                                } else {
+                                                    console.error('Error al toggle servicio:', result.error);
+                                                }
+                                            })
+                                            .catch(error => {
+                                                console.error('Error al toggle servicio:', error);
+                                            });
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('Error al obtener estado de servicios:', error);
+                                    });
+                            }
 
-                            // DOMContentLoaded listener for services status - DISABLED (UI removed)
-                            // document.addEventListener('DOMContentLoaded', function () {
-                            //     loadServicesStatus();
-                            // });
+                            document.addEventListener('DOMContentLoaded', function () {
+                                // Solo inicializar si existe la UI de servicios externos
+                                const el = document.querySelector('[data-services-control]') || document.getElementById('openai-service-status');
+                                if (!el) return;
+                                loadServicesStatus();
+                            });
 
                             // Funciones para mostrar/ocultar logs de servicios (colapso)
                             function toggleServiceLog(serviceName) {
