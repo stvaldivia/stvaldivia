@@ -26,7 +26,9 @@ fi
 if [ -d venv ]; then source venv/bin/activate; fi
 if [ -f requirements.txt ]; then pip install -q -r requirements.txt || true; fi
 echo '🔄 Reiniciando servicio...'
-if pgrep -f "gunicorn.*app:create_app" > /dev/null; then
+if sudo systemctl is-active --quiet gunicorn.service; then
+    sudo systemctl restart gunicorn.service && echo '✅ Gunicorn reiniciado (restart completo)' || echo '⚠️  No se pudo reiniciar gunicorn'
+elif pgrep -f "gunicorn.*app:create_app" > /dev/null; then
     GUNICORN_PID=$(pgrep -f "gunicorn.*app:create_app" | head -1)
     if [ -n "$GUNICORN_PID" ]; then
         sudo kill -HUP "$GUNICORN_PID" 2>/dev/null && echo '✅ Gunicorn reiniciado (HUP signal)' || echo '⚠️  No se pudo reiniciar gunicorn'
