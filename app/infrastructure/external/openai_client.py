@@ -102,6 +102,9 @@ class OpenAIAPIClient(OpenAIClient):
             if project:
                 client_kwargs["project"] = project
             
+            # Agregar timeout para evitar conexiones colgadas (30 segundos)
+            client_kwargs["timeout"] = 30.0
+            
             self._client = openai.OpenAI(**client_kwargs)
             return self._client
         except Exception as e:
@@ -149,11 +152,13 @@ class OpenAIAPIClient(OpenAIClient):
         formatted_messages.extend(messages)
         
         try:
+            # Timeout de 25 segundos para la llamada (menor que el timeout del cliente)
             response = client.chat.completions.create(
                 model=model,
                 messages=formatted_messages,
                 temperature=temperature,
-                max_tokens=max_tokens
+                max_tokens=max_tokens,
+                timeout=25.0
             )
             
             if response.choices and len(response.choices) > 0:

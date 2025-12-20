@@ -178,19 +178,39 @@ def bot_responder():
         openai_client = client._get_client()
         
         if not openai_client:
-            # OpenAI no disponible - responder con mensaje genérico seguro
-            current_app.logger.warning("OpenAI no disponible, usando respuesta genérica segura")
+            # OpenAI no disponible - intentar generar respuesta más útil basada en el conocimiento
+            current_app.logger.warning("OpenAI no disponible, generando respuesta basada en reglas y conocimiento")
+            
+            # Intentar generar respuesta más útil según la intención detectada
+            if intent and intent != "unknown":
+                # Si detectamos una intención conocida, usar las reglas para generar respuesta más útil
+                respuesta_util = BotRuleEngine.generar_respuesta(intent, evento_info, operational)
+                if respuesta_util:
+                    return jsonify({
+                        "status": "ok",
+                        "respuesta": respuesta_util,
+                        "source": "rule_based_fallback",
+                        "intent": intent,
+                        "modelo": None,
+                        "tokens": None
+                    }), 200
+            
+            # Si no hay intención o no se generó respuesta, usar fallback contextual
             respuesta_segura = "Hola! 💜 Soy BIMBA, el agente de IA de BIMBA. "
             if evento_info:
                 nombre_evento = evento_info.get('nombre_evento', '')
                 if nombre_evento:
-                    respuesta_segura += f"Hoy tenemos {nombre_evento}. "
-            respuesta_segura += "Para más información, revisa nuestras redes sociales o contáctanos directamente. ¡Nos vemos en la noche! 💜✨"
+                    respuesta_segura += f"Hoy tenemos **{nombre_evento}**. "
+                horario = evento_info.get('horario', '')
+                if horario:
+                    respuesta_segura += f"Horario: {horario}. "
+            respuesta_segura += "\n\nPuedo ayudarte con información sobre eventos, horarios, precios, DJs y más. ¿Qué te gustaría saber? 💜"
+            respuesta_segura += "\n\nTambién puedes revisar nuestras redes sociales o contactarnos directamente para más información. ¡Nos vemos! ✨"
             
             return jsonify({
                 "status": "ok",
                 "respuesta": respuesta_segura,
-                "source": "fallback",
+                "source": "fallback_contextual",
                 "intent": intent,
                 "modelo": None,
                 "tokens": None
@@ -210,11 +230,13 @@ def bot_responder():
         
         try:
             import openai
+            # Timeout de 25 segundos (menor que el timeout de Gunicorn de 30s)
             response = openai_client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=formatted_messages,
                 temperature=0.7,
-                max_tokens=500
+                max_tokens=500,
+                timeout=25.0
             )
             
             if not response.choices or len(response.choices) == 0:
@@ -240,13 +262,26 @@ def bot_responder():
             
         except openai.AuthenticationError as e:
             current_app.logger.error(f"Error de autenticación en OpenAI: {e}")
-            # Fallback seguro en lugar de error
+            # Fallback usando reglas si tenemos intención detectada
+            if intent and intent != "unknown":
+                respuesta_util = BotRuleEngine.generar_respuesta(intent, evento_info, operational)
+                if respuesta_util:
+                    return jsonify({
+                        "status": "ok",
+                        "respuesta": respuesta_util,
+                        "source": "rule_based_fallback",
+                        "intent": intent,
+                        "modelo": None,
+                        "tokens": None
+                    }), 200
+            
+            # Fallback contextual
             respuesta_segura = "Hola! 💜 Soy BIMBA. "
             if evento_info:
                 nombre_evento = evento_info.get('nombre_evento', '')
                 if nombre_evento:
                     respuesta_segura += f"Hoy tenemos {nombre_evento}. "
-            respuesta_segura += "Para más información, revisa nuestras redes sociales. ¡Nos vemos! 💜✨"
+            respuesta_segura += "Puedo ayudarte con información sobre eventos, horarios, precios y más. ¿Qué te gustaría saber? 💜✨"
             return jsonify({
                 "status": "ok",
                 "respuesta": respuesta_segura,
@@ -272,15 +307,58 @@ def bot_responder():
                 "modelo": None,
                 "tokens": None
             }), 200
-        except openai.APIError as e:
-            current_app.logger.error(f"Error en API de OpenAI: {e}")
-            # Fallback seguro
+        except (openai.APIConnectionError, openai.APITimeoutError) as e:
+            current_app.logger.error(f"Error de conexión/timeout en OpenAI: {e}")
+            # Fallback usando reglas si tenemos intención detectada
+            if intent and intent != "unknown":
+                respuesta_util = BotRuleEngine.generar_respuesta(intent, evento_info, operational)
+                if respuesta_util:
+                    return jsonify({
+                        "status": "ok",
+                        "respuesta": respuesta_util,
+                        "source": "rule_based_fallback",
+                        "intent": intent,
+                        "modelo": None,
+                        "tokens": None
+                    }), 200
+            
+            # Fallback contextual
             respuesta_segura = "Hola! 💜 Soy BIMBA. "
             if evento_info:
                 nombre_evento = evento_info.get('nombre_evento', '')
                 if nombre_evento:
                     respuesta_segura += f"Hoy tenemos {nombre_evento}. "
-            respuesta_segura += "Para más información, revisa nuestras redes sociales. 💜✨"
+            respuesta_segura += "Puedo ayudarte con información sobre eventos, horarios, precios y más. ¿Qué te gustaría saber? 💜✨"
+            return jsonify({
+                "status": "ok",
+                "respuesta": respuesta_segura,
+                "source": "fallback",
+                "intent": intent,
+                "modelo": None,
+                "tokens": None
+            }), 200
+        except openai.APIError as e:
+            current_app.logger.error(f"Error en API de OpenAI: {e}")
+            # Fallback usando reglas si tenemos intención detectada
+            if intent and intent != "unknown":
+                respuesta_util = BotRuleEngine.generar_respuesta(intent, evento_info, operational)
+                if respuesta_util:
+                    return jsonify({
+                        "status": "ok",
+                        "respuesta": respuesta_util,
+                        "source": "rule_based_fallback",
+                        "intent": intent,
+                        "modelo": None,
+                        "tokens": None
+                    }), 200
+            
+            # Fallback contextual
+            respuesta_segura = "Hola! 💜 Soy BIMBA. "
+            if evento_info:
+                nombre_evento = evento_info.get('nombre_evento', '')
+                if nombre_evento:
+                    respuesta_segura += f"Hoy tenemos {nombre_evento}. "
+            respuesta_segura += "Puedo ayudarte con información sobre eventos, horarios, precios y más. ¿Qué te gustaría saber? 💜✨"
             return jsonify({
                 "status": "ok",
                 "respuesta": respuesta_segura,
@@ -291,13 +369,26 @@ def bot_responder():
             }), 200
         except Exception as e:
             current_app.logger.error(f"Error inesperado al generar respuesta: {e}", exc_info=True)
+            # Fallback usando reglas si tenemos intención detectada
+            if intent and intent != "unknown":
+                respuesta_util = BotRuleEngine.generar_respuesta(intent, evento_info, operational)
+                if respuesta_util:
+                    return jsonify({
+                        "status": "ok",
+                        "respuesta": respuesta_util,
+                        "source": "rule_based_fallback",
+                        "intent": intent,
+                        "modelo": None,
+                        "tokens": None
+                    }), 200
+            
             # Fallback seguro - NUNCA exponer stacktrace
             respuesta_segura = "Hola! 💜 Soy BIMBA, el agente de IA. "
             if evento_info:
                 nombre_evento = evento_info.get('nombre_evento', '')
                 if nombre_evento:
                     respuesta_segura += f"Hoy tenemos {nombre_evento}. "
-            respuesta_segura += "Para más información, revisa nuestras redes sociales o contáctanos directamente. ¡Nos vemos en la noche! 💜✨"
+            respuesta_segura += "Puedo ayudarte con información sobre eventos, horarios, precios y más. ¿Qué te gustaría saber? 💜✨"
             return jsonify({
                 "status": "ok",
                 "respuesta": respuesta_segura,
