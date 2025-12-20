@@ -56,7 +56,9 @@ def dashboard():
         # Productos con stock bajo
         productos_stock_bajo = Product.query.filter(
             Product.is_active == True,
+            Product.stock_minimum.isnot(None),
             Product.stock_minimum > 0,
+            Product.stock_quantity.isnot(None),
             Product.stock_quantity <= Product.stock_minimum
         ).all()
         
@@ -157,16 +159,29 @@ def products_view():
         
         if stock_filter == 'low':
             query = query.filter(
+                Product.stock_minimum.isnot(None),
                 Product.stock_minimum > 0,
+                Product.stock_quantity.isnot(None),
                 Product.stock_quantity <= Product.stock_minimum
             )
         elif stock_filter == 'out':
-            query = query.filter(Product.stock_quantity <= 0)
-        elif stock_filter == 'ok':
             query = query.filter(
                 db.or_(
+                    Product.stock_quantity.is_(None),
+                    Product.stock_quantity <= 0
+                )
+            )
+        elif stock_filter == 'ok':
+            query = query.filter(
+                Product.stock_quantity.isnot(None),
+                Product.stock_quantity > 0,
+                db.or_(
+                    Product.stock_minimum.is_(None),
                     Product.stock_minimum == 0,
-                    Product.stock_quantity > Product.stock_minimum
+                    db.and_(
+                        Product.stock_minimum.isnot(None),
+                        Product.stock_quantity > Product.stock_minimum
+                    )
                 )
             )
         
@@ -363,7 +378,10 @@ def api_auto_disable_low_stock():
         # Productos sin stock
         productos_sin_stock = Product.query.filter(
             Product.is_active == True,
-            Product.stock_quantity <= 0
+            db.or_(
+                Product.stock_quantity.is_(None),
+                Product.stock_quantity <= 0
+            )
         ).all()
         
         # Productos con stock bajo (opcional)

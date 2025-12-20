@@ -194,7 +194,14 @@ class DashboardMetricsService:
                 if opened_dt.tzinfo:
                     opened_dt = opened_dt.replace(tzinfo=None)
                 
-                ventas_query = PosSale.query.filter(PosSale.created_at >= opened_dt)
+                # Filtrar ventas válidas: excluir canceladas, pruebas, no revenue y cortesías
+                ventas_query = PosSale.query.filter(
+                    PosSale.created_at >= opened_dt,
+                    PosSale.is_cancelled == False,  # Excluir canceladas
+                    PosSale.is_test == False,  # Excluir pruebas
+                    PosSale.no_revenue == False,  # Excluir no revenue
+                    PosSale.is_courtesy == False  # Excluir cortesías
+                )
                 
                 ventas_turno['total'] = ventas_query.count()
                 
@@ -203,7 +210,13 @@ class DashboardMetricsService:
                     func.sum(PosSale.payment_cash).label('cash'),
                     func.sum(PosSale.payment_debit).label('debit'),
                     func.sum(PosSale.payment_credit).label('credit')
-                ).filter(PosSale.created_at >= opened_dt).first()
+                ).filter(
+                    PosSale.created_at >= opened_dt,
+                    PosSale.is_cancelled == False,
+                    PosSale.is_test == False,
+                    PosSale.no_revenue == False,
+                    PosSale.is_courtesy == False
+                ).first()
                 
                 if totals:
                     ventas_turno['monto'] = float(totals.total or 0)

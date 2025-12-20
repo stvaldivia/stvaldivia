@@ -54,14 +54,58 @@ def payment_machines_list():
             agent_data = None
             if agent:
                 agent_dict = agent.to_dict()
-                # Convertir last_heartbeat ISO string a datetime para formateo en template
-                # O mejor, crear un helper para formatear fechas
                 agent_data = agent_dict
+            
+            # Obtener estadísticas de movimientos recientes (últimas 24 horas)
+            from datetime import datetime, timedelta
+            from sqlalchemy import func, case
+            last_24h = datetime.utcnow() - timedelta(hours=24)
+            
+            payments_stats = db.session.query(
+                func.count(PaymentIntent.id).label('total'),
+                func.sum(PaymentIntent.amount_total).label('total_amount'),
+                func.sum(case(
+                    (PaymentIntent.status == PaymentIntent.STATUS_APPROVED, PaymentIntent.amount_total),
+                    else_=0
+                )).label('approved_amount'),
+                func.sum(case(
+                    (PaymentIntent.status == PaymentIntent.STATUS_DECLINED, 1),
+                    else_=0
+                )).label('declined_count')
+            ).filter(
+                PaymentIntent.register_id == str(register.id),
+                PaymentIntent.created_at >= last_24h
+            ).first()
+            
+            payments_info = {
+                'total': payments_stats.total or 0,
+                'total_amount': float(payments_stats.total_amount or 0),
+                'approved_amount': float(payments_stats.approved_amount or 0),
+                'declined_count': payments_stats.declined_count or 0
+            }
+            
+            # Obtener último movimiento
+            last_payment = PaymentIntent.query.filter_by(
+                register_id=str(register.id)
+            ).order_by(PaymentIntent.created_at.desc()).first()
+            
+            last_payment_info = None
+            if last_payment:
+                last_payment_info = {
+                    'id': str(last_payment.id),
+                    'amount': float(last_payment.amount_total),
+                    'status': last_payment.status,
+                    'created_at': last_payment.created_at.isoformat() if last_payment.created_at else None,
+                    'provider': last_payment.provider,
+                    'auth_code': last_payment.auth_code
+                }
             
             machines.append({
                 'register': register,
                 'getnet_config': getnet_info,
-                'agent': agent_data
+                'agent': agent_data,
+                'payments_stats': payments_info,
+                'last_payment': last_payment_info
             })
         
         return render_template('admin/payment_machines/list.html', machines=machines)

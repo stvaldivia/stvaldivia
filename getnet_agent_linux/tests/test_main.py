@@ -130,3 +130,4 @@ def test_estado_despues_de_pagos():
         config.DEMO_MODE = original_demo
 
 
+

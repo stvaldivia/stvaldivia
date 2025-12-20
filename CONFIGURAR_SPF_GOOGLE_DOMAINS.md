@@ -183,3 +183,4 @@ Ambos registros trabajan juntos para asegurar la correcta entrega de emails.
 
 **✅ Listo!** Una vez configurado el SPF, los emails enviados desde stvaldivia.cl serán reconocidos como legítimos por los servidores de recepción.
 
+

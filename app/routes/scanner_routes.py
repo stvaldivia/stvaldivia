@@ -19,14 +19,32 @@ logger = get_logger(__name__)
 @scanner_bp.route('/scanner', methods=['GET', 'POST'])
 @rate_limit(max_requests=30, per_seconds=60)
 def scanner():
-    """P?gina del esc?ner - sistema de entregas independiente de turnos"""
-    # Verificar sesi?n antes de mostrar el esc?ner
-    if 'barra' not in session:
-        flash("Por favor, selecciona una barra primero.", "info")
-        return redirect(url_for('scanner.seleccionar_barra'))
-    if 'bartender' not in session:
-        flash("Por favor, selecciona un bartender.", "info")
-        return redirect(url_for('scanner.seleccionar_bartender'))
+    """Página del escáner - sistema de entregas independiente de turnos"""
+    # Verificar sesión antes de mostrar el escáner
+    # Permitir acceso tanto de bartenders autenticados como de admins
+    is_admin = session.get('admin_logged_in', False)
+    
+    if is_admin:
+        # Si es admin, crear sesión automática de bartender si no existe
+        if 'bartender' not in session:
+            admin_username = session.get('admin_username', 'Admin')
+            session['bartender'] = f"Admin: {admin_username}"
+            session['bartender_id'] = f"admin-{admin_username.lower()}"
+            session['bartender_first_name'] = admin_username
+            session['bartender_last_name'] = 'Admin'
+            session['is_admin_session'] = True  # Marcar como sesión de admin
+        # Si no hay barra seleccionada, usar una por defecto o permitir seleccionar
+        if 'barra' not in session:
+            session['barra'] = 'Barra Principal'  # Barra por defecto para admin
+    else:
+        # Para bartenders regulares, requiere autenticación normal
+        # IMPORTANTE: Primero verificar bartender (login), luego barra (ubicación)
+        if 'bartender' not in session:
+            flash("Por favor, selecciona un bartender primero.", "info")
+            return redirect(url_for('scanner.seleccionar_bartender'))
+        if 'barra' not in session:
+            flash("Por favor, selecciona una barra.", "info")
+            return redirect(url_for('scanner.seleccionar_barra'))
 
     delivery_service = get_delivery_service()
     fraud_service = delivery_service.fraud_service
@@ -111,8 +129,20 @@ def scanner():
                 from app.services.sale_delivery_service import get_sale_delivery_service
                 sale_delivery_service = get_sale_delivery_service()
                 
-                bartender_id = session.get('bartender_id') or session.get('bartender', 'unknown')
+                # Obtener información del bartender de forma consistente
+                is_admin = session.get('admin_logged_in', False)
+                bartender_id = session.get('bartender_id')
                 bartender_name = session.get('bartender', 'Desconocido')
+                
+                # Si es admin y no tiene bartender_id, crearlo
+                if is_admin and not bartender_id:
+                    admin_username = session.get('admin_username', 'Admin')
+                    bartender_id = f"admin-{admin_username.lower()}"
+                    bartender_name = f"Admin: {admin_username}"
+                
+                # Si no hay bartender_id pero sí bartender, usar el nombre como ID temporal
+                if not bartender_id and bartender_name:
+                    bartender_id = bartender_name
                 
                 scan_result = sale_delivery_service.scan_ticket(
                     sale_id=sale_id_canonical,
@@ -412,11 +442,24 @@ def entregar():
         from app.services.sale_delivery_service import get_sale_delivery_service
         sale_delivery_service = get_sale_delivery_service()
         
-        # Obtener información del bartender y ubicación
-        bartender_id = session.get('bartender_id') or session.get('bartender', 'unknown')
+        # Obtener información del bartender y ubicación de forma consistente
+        bartender_id = session.get('bartender_id')
         bartender_name = session.get('bartender', 'Desconocido')
+        # Si no hay bartender_id pero sí bartender, usar el nombre como ID temporal
+        if not bartender_id and bartender_name:
+            bartender_id = bartender_name
+        
         barra = session.get('barra', '')
-        ubicacion = 'Barra Pista' if 'pista' in barra.lower() else 'Terraza'
+        # Mapear barra a ubicación de forma más precisa
+        barra_lower = barra.lower()
+        if 'pista' in barra_lower or 'principal' in barra_lower:
+            ubicacion = 'Barra Pista'
+        elif 'terraza' in barra_lower or 'exterior' in barra_lower:
+            ubicacion = 'Terraza'
+        elif 'vip' in barra_lower:
+            ubicacion = 'Barra VIP'
+        else:
+            ubicacion = barra if barra else 'Barra Principal'
         
         # Entregar producto usando el nuevo servicio (descuenta inventario según receta)
         success, message, delivery_item, ingredients_consumed = sale_delivery_service.deliver_product(
@@ -470,11 +513,15 @@ def entregar():
 
 @scanner_bp.route('/barra', methods=['GET', 'POST'])
 def seleccionar_barra():
-    """Seleccionar barra para la sesi?n"""
-    # Verificar que el bartender est? logueado
-    if 'bartender' not in session:
-        flash("Por favor, inicia sesi?n primero.", "info")
-        return redirect(url_for('scanner.seleccionar_bartender'))
+    """Seleccionar barra para la sesión"""
+    # Permitir acceso tanto de bartenders autenticados como de admins
+    is_admin = session.get('admin_logged_in', False)
+    
+    if not is_admin:
+        # Para bartenders regulares, requiere autenticación normal
+        if 'bartender' not in session:
+            flash("Por favor, inicia sesión primero.", "info")
+            return redirect(url_for('scanner.seleccionar_bartender'))
     
     if request.method == 'POST':
         b = request.form.get('barra')
@@ -485,7 +532,12 @@ def seleccionar_barra():
         flash("Debes seleccionar una barra.", "error")
 
     barras = ['Barra Principal', 'Barra Terraza', 'Barra VIP', 'Barra Exterior']
-    return render_template('seleccionar_barra.html', barras=barras, current_barra=session.get('barra'))
+    return render_template(
+        'seleccionar_barra.html', 
+        barras=barras, 
+        current_barra=session.get('barra'),
+        bartender_name=session.get('bartender', '')
+    )
 
 
 @scanner_bp.route('/bartender', methods=['GET', 'POST'])
@@ -535,18 +587,24 @@ def seleccionar_bartender():
                 employee = authenticate_employee(None, pin=pin, employee_id=selected_employee_id)
                 
                 if employee:
-                    # Guardar informaci?n del empleado en la sesi?n
-                    session['bartender'] = employee['name']
-                    session['bartender_id'] = employee['id']
-                    session['bartender_first_name'] = employee.get('first_name', '')
-                    session['bartender_last_name'] = employee.get('last_name', '')
-                    session['last_activity'] = time.time()
-                    # Limpiar selecci?n temporal
-                    session.pop('selected_employee_id', None)
-                    session.pop('selected_employee_info', None)
-                    flash(f"Bienvenido, {employee['name']}!", "success")
-                    # Ahora redirigir a seleccionar barra (despu?s del login)
-                    return redirect(url_for('scanner.seleccionar_barra'))
+                    # Guardar información completa del empleado en la sesión
+                    emp_id = employee.get('id') or employee.get('person_id') or employee.get('employee_id')
+                    emp_name = employee.get('name') or f"{employee.get('first_name', '')} {employee.get('last_name', '')}".strip()
+                    
+                    if not emp_id:
+                        flash("Error: No se pudo obtener el ID del empleado.", "error")
+                    else:
+                        session['bartender'] = emp_name
+                        session['bartender_id'] = str(emp_id)  # Asegurar que sea string para consistencia
+                        session['bartender_first_name'] = employee.get('first_name', '')
+                        session['bartender_last_name'] = employee.get('last_name', '')
+                        session['last_activity'] = time.time()
+                        # Limpiar selección temporal
+                        session.pop('selected_employee_id', None)
+                        session.pop('selected_employee_info', None)
+                        flash(f"Bienvenido, {emp_name}!", "success")
+                        # Ahora redirigir a seleccionar barra (después del login)
+                        return redirect(url_for('scanner.seleccionar_barra'))
                 else:
                     flash("PIN incorrecto. Intenta nuevamente.", "error")
 
@@ -581,9 +639,21 @@ def api_scan_ticket():
         if not qr_token:
             return jsonify({'success': False, 'error': 'QR token requerido'}), 400
         
-        # Obtener información del bartender
-        bartender_id = session.get('bartender_id') or session.get('bartender', 'unknown')
+        # Obtener información del bartender de forma consistente
+        is_admin = session.get('admin_logged_in', False)
+        bartender_id = session.get('bartender_id')
         bartender_name = session.get('bartender', 'Desconocido')
+        
+        # Si es admin y no tiene bartender_id, crearlo
+        if is_admin and not bartender_id:
+            admin_username = session.get('admin_username', 'Admin')
+            bartender_id = f"admin-{admin_username.lower()}"
+            bartender_name = f"Admin: {admin_username}"
+        
+        # Si no hay bartender_id pero sí bartender, usar el nombre como ID temporal
+        if not bartender_id and bartender_name:
+            bartender_id = bartender_name
+        
         scanner_id = request.headers.get('X-Scanner-Id') or bartender_id
         
         # Escanear ticket
@@ -625,9 +695,20 @@ def api_deliver_item(ticket_id):
         if qty_to_deliver <= 0:
             return jsonify({'success': False, 'error': 'Cantidad debe ser mayor a 0'}), 400
         
-        # Obtener información del bartender
-        bartender_id = session.get('bartender_id') or session.get('bartender', 'unknown')
+        # Obtener información del bartender de forma consistente
+        is_admin = session.get('admin_logged_in', False)
+        bartender_id = session.get('bartender_id')
         bartender_name = session.get('bartender', 'Desconocido')
+        
+        # Si es admin y no tiene bartender_id, crearlo
+        if is_admin and not bartender_id:
+            admin_username = session.get('admin_username', 'Admin')
+            bartender_id = f"admin-{admin_username.lower()}"
+            bartender_name = f"Admin: {admin_username}"
+        
+        # Si no hay bartender_id pero sí bartender, usar el nombre como ID temporal
+        if not bartender_id and bartender_name:
+            bartender_id = bartender_name
         
         # Entregar item
         success, message = TicketEntregaService.deliver_item(
@@ -665,17 +746,23 @@ def api_deliver_item(ticket_id):
 
 
 @scanner_bp.route('/reset')
-def reset():
-    """Resetear sesi?n (barra y bartender)"""
-    session.pop('barra', None)
+@scanner_bp.route('/logout')
+def logout_bartender():
+    """Cerrar sesión de bartender (alias: reset)"""
+    bartender_name = session.get('bartender', 'Usuario')
+    
+    # Limpiar todas las variables de sesión relacionadas con bartender
     session.pop('bartender', None)
     session.pop('bartender_id', None)
     session.pop('bartender_first_name', None)
     session.pop('bartender_last_name', None)
+    session.pop('barra', None)
+    session.pop('last_activity', None)
     session.pop('selected_employee_id', None)
     session.pop('selected_employee_info', None)
-    flash("Sesi?n reiniciada.", "info")
-    return redirect(url_for('scanner.seleccionar_barra'))
+    
+    flash(f"Hasta luego, {bartender_name}!", "info")
+    return redirect(url_for('scanner.seleccionar_bartender'))
 
 
 

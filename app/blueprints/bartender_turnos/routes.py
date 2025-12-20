@@ -21,8 +21,12 @@ def abrir_turno():
         flash("Por favor, inicia sesión como bartender.", "info")
         return redirect(url_for('scanner.seleccionar_bartender'))
     
-    bartender_id = session.get('bartender_id') or session.get('bartender', 'unknown')
+    # Obtener información del bartender de forma consistente
+    bartender_id = session.get('bartender_id')
     bartender_name = session.get('bartender', 'Desconocido')
+    # Si no hay bartender_id pero sí bartender, usar el nombre como ID temporal
+    if not bartender_id and bartender_name:
+        bartender_id = bartender_name
     
     helper = get_turnos_bartender_helper()
     

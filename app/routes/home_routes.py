@@ -25,15 +25,7 @@ def index():
     return render_template('home.html', jornada_abierta=jornada_abierta)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
+@home_bp.route('/bimba', methods=['GET'])
+def chat_bimba():
+    """Página pública para chatear con BIMBA, el agente de IA"""
+    return render_template('chat_bimba.html')

@@ -60,9 +60,13 @@ class Product(db.Model):
     @property
     def stock_status(self):
         """Retorna el estado del stock: 'ok', 'low', 'out'"""
-        if self.stock_quantity <= 0:
+        # Manejar valores None
+        stock_qty = self.stock_quantity if self.stock_quantity is not None else 0
+        stock_min = self.stock_minimum if self.stock_minimum is not None else 0
+        
+        if stock_qty <= 0:
             return 'out'
-        elif self.stock_minimum > 0 and self.stock_quantity <= self.stock_minimum:
+        elif stock_min > 0 and stock_qty <= stock_min:
             return 'low'
         return 'ok'
     

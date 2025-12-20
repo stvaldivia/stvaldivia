@@ -15,3 +15,4 @@ Este directorio debe contener la librería oficial de Getnet:
 La librería debe ser compatible con Web Serial API para funcionar en Linux/Chromium.
 
 
+

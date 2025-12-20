@@ -108,3 +108,4 @@ Cuando vayas a instalar/configurar el agente Getnet en una máquina Windows (caj
 
 
 
+

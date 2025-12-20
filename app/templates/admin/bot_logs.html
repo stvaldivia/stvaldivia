@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Logs del Bot de IA - BimbaBot{% endblock %}
-{% block meta_description %}Logs y pruebas del bot de IA BimbaBot. Visualiza conversaciones y prueba respuestas del bot.{% endblock %}
+{% block title %}Logs del Agente BIMBA{% endblock %}
+{% block meta_description %}Logs y pruebas del agente de IA BIMBA para redes sociales. Visualiza conversaciones y prueba respuestas del agente.{% endblock %}
 
 {% block head_extra %}
 <style>
@@ -309,13 +309,13 @@
 
 {% block content %}
 <div class="bot-logs-container">
-    <h1 class="section-title">🤖 Logs del Bot de IA (BimbaBot)</h1>
+    <h1 class="section-title">🤖 Logs del Agente de IA BIMBA</h1>
     
     <!-- Consola de Prueba -->
     <div class="test-console">
         <h3>🧪 Consola de Prueba</h3>
         <p style="color: #94a3b8; margin-bottom: 20px; font-size: 0.9rem;">
-            Prueba el bot enviando un mensaje. El mensaje y la respuesta se registrarán en los logs.
+            Prueba el agente BIMBA enviando un mensaje. El mensaje y la respuesta se registrarán en los logs.
         </p>
         <form id="test-form" class="test-form" method="POST" action="{{ url_for('admin.bot_test') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
@@ -323,7 +323,7 @@
                 type="text" 
                 name="mensaje_usuario" 
                 id="test-mensaje" 
-                placeholder="Escribe un mensaje para probar el bot..." 
+                placeholder="Escribe un mensaje para probar el agente BIMBA..." 
                 required
                 autocomplete="off"
                 spellcheck="true"
@@ -337,7 +337,7 @@
             <button type="submit" class="btn-test" id="test-btn">Probar Respuesta</button>
         </form>
         <div id="test-response" class="test-response">
-            <h4>Respuesta del Bot:</h4>
+            <h4>Respuesta del Agente BIMBA:</h4>
             <p id="test-response-text"></p>
             <div style="margin-top: 10px; font-size: 0.85rem; color: #94a3b8;">
                 <span>Conversation ID: <span id="test-conversation-id" class="conversation-id-short"></span></span>
@@ -364,7 +364,7 @@
                 <select name="direccion" id="direccion">
                     <option value="todas" {% if filtro_direction == 'todas' or not filtro_direction %}selected{% endif %}>Todas</option>
                     <option value="user" {% if filtro_direction == 'user' %}selected{% endif %}>Usuario</option>
-                    <option value="bot" {% if filtro_direction == 'bot' %}selected{% endif %}>Bot</option>
+                    <option value="bot" {% if filtro_direction == 'bot' %}selected{% endif %}>Agente BIMBA</option>
                 </select>
             </div>
             <div class="filter-group">
@@ -410,7 +410,7 @@
                     <td>{{ log.canal|title }}</td>
                     <td>
                         <span class="badge-direction {% if log.direction == 'user' %}badge-user{% else %}badge-bot{% endif %}">
-                            {% if log.direction == 'user' %}👤 Usuario{% else %}🤖 Bot{% endif %}
+                            {% if log.direction == 'user' %}👤 Usuario{% else %}🤖 BIMBA{% endif %}
                         </span>
                     </td>
                     <td>
@@ -436,7 +436,7 @@
         <div style="text-align: center; padding: 60px 20px; color: #94a3b8;">
             <div style="font-size: 4rem; margin-bottom: 15px;">📋</div>
             <h3 style="color: #e8e8e8; margin-bottom: 10px;">No hay logs disponibles</h3>
-            <p>Los logs aparecerán aquí cuando se registren conversaciones con el bot.</p>
+            <p>Los logs aparecerán aquí cuando se registren conversaciones con el agente BIMBA en redes sociales.</p>
         </div>
         {% endif %}
     </div>

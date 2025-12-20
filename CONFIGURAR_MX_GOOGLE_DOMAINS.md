@@ -127,3 +127,4 @@ Una vez que el registro MX esté activo, necesitas configurar el forwarder en cP
 
 **¿Listo?** Una vez configurado el MX, procede a configurar el forwarder en cPanel.
 
+

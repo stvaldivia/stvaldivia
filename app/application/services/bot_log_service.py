@@ -42,6 +42,12 @@ class BotLogService:
             BotLog creado
         """
         try:
+            # Asegurar que message nunca sea None (requerido por la base de datos)
+            if message is None:
+                message = ''
+            elif not isinstance(message, str):
+                message = str(message)
+            
             bot_log = BotLog(
                 timestamp=datetime.now(CHILE_TZ),
                 canal=canal,
@@ -92,6 +98,12 @@ class BotLogService:
             BotLog creado
         """
         try:
+            # Asegurar que message nunca sea None (requerido por la base de datos)
+            if message is None:
+                message = ''
+            elif not isinstance(message, str):
+                message = str(message)
+            
             bot_log = BotLog(
                 timestamp=datetime.now(CHILE_TZ),
                 canal=canal,

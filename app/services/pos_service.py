@@ -103,7 +103,10 @@ class PosService:
             
             # Obtener employee_id y register_id de la sesión si no se proporcionan
             if not employee_id:
-                employee_id = session.get('bartender_id') or session.get('employee_id')
+                # Obtener bartender_id de forma consistente
+                employee_id = session.get('bartender_id')
+                if not employee_id:
+                    employee_id = session.get('employee_id')
                 # Si es un ID numérico de empleado, intentar obtener el nombre
                 if employee_id and employee_id.isdigit():
                     from app.models import Employee

@@ -122,6 +122,11 @@
                     aria-label="Gestionar Equipo">
                     👥 Equipo
                 </a>
+                <a href="{{ url_for('routes.admin_scanner') }}"
+                    class="admin-nav-btn {% if request.endpoint == 'scanner.scanner' or request.endpoint == 'routes.admin_scanner' %}active{% endif %}"
+                    aria-label="Escaneo de Tickets">
+                    📱 Scanner
+                </a>
                 <a href="{{ url_for('guardarropia_admin.admin_index') }}"
                     class="admin-nav-btn {% if request.endpoint and (request.endpoint.startswith('guardarropia.') or request.endpoint.startswith('guardarropia_admin.')) %}active{% endif %}"
                     aria-label="Gestionar Guardarropía">
@@ -179,6 +184,11 @@
             class="admin-nav-btn {% if request.endpoint and request.endpoint.startswith('equipo.') %}active{% endif %}"
             aria-label="Gestionar Equipo">
             👥 Equipo
+        </a>
+        <a href="{{ url_for('routes.admin_scanner') }}"
+            class="admin-nav-btn {% if request.endpoint == 'scanner.scanner' or request.endpoint == 'routes.admin_scanner' %}active{% endif %}"
+            aria-label="Escaneo de Tickets">
+            📱 Scanner
         </a>
         <a href="{{ url_for('guardarropia_admin.admin_index') }}"
             class="admin-nav-btn {% if request.endpoint and (request.endpoint.startswith('guardarropia.') or request.endpoint.startswith('guardarropia_admin.')) %}active{% endif %}"

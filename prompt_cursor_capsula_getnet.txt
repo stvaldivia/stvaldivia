@@ -158,3 +158,4 @@ Entrega:
   - pos_adapter.js (con TODOs mínimos SOLO donde falte algo imposible sin ver el código del ejemplo, pero lo más completo posible)
   - README.md
 
+

@@ -112,6 +112,10 @@ def bot_test():
             canal=canal
         )
         
+        # Asegurar que respuesta no sea None (fallback a mensaje por defecto)
+        if respuesta is None:
+            respuesta = "Lo siento, no pude generar una respuesta."
+        
         # Registrar la respuesta del bot
         service.log_bot_response(
             canal=canal,
@@ -123,7 +127,7 @@ def bot_test():
         )
         
         # Redirigir nuevamente a /admin/bot/logs para que los logs aparezcan en pantalla
-        flash('Mensaje de prueba registrado correctamente.', 'success')
+        flash('Mensaje de prueba registrado correctamente. El agente BIMBA ha respondido.', 'success')
         return redirect(url_for('admin.bot_logs'))
         
     except Exception as e:

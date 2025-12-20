@@ -172,3 +172,4 @@ OTROS DETALLES / NOTAS
   - dónde se maneja el flujo de UI (mensajes, botones, etc.).
 
 
+

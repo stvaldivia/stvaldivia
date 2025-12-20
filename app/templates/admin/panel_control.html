@@ -288,12 +288,30 @@
             </span>
         </div>
 
-        <!-- Logs del Bot de IA -->
+        <!-- Logs del Sistema -->
+        <div class="info-card" style="border-color: rgba(76, 175, 80, 0.5);">
+            <span class="icon">📋</span>
+            <h3>Logs del Sistema</h3>
+            <p style="font-size: 0.9rem; color: #aaa; margin: 10px 0;">
+                Visualiza y exporta todos los logs de entregas de productos. Filtra por bartender, barra, venta o fecha.
+            </p>
+            <div style="margin-top: 15px;">
+                <a href="{{ url_for('routes.admin_panel_control_logs') }}" class="btn-config"
+                    style="text-decoration: none; display: block; text-align: center; background: rgba(76, 175, 80, 0.3); border-color: rgba(76, 175, 80, 0.5); color: #4caf50;">
+                    📋 Ver Logs
+                </a>
+            </div>
+            <span class="badge" style="background: rgba(76, 175, 80, 0.3); color: #4caf50;">
+                Auditoría
+            </span>
+        </div>
+
+        <!-- Logs del Agente BIMBA -->
         <div class="info-card" style="border-color: rgba(102, 126, 234, 0.5);">
             <span class="icon">🤖</span>
-            <h3>Logs del Bot (BimbaBot)</h3>
+            <h3>Logs del Agente BIMBA</h3>
             <p style="font-size: 0.9rem; color: #aaa; margin: 10px 0;">
-                Visualiza logs de conversaciones del bot de IA, prueba respuestas y monitorea el rendimiento del agente virtual.
+                Visualiza logs de conversaciones del agente de IA BIMBA, prueba respuestas y monitorea el rendimiento del agente.
             </p>
             <div style="margin-top: 15px;">
                 <a href="{{ url_for('admin.bot_logs') }}" class="btn-config"
@@ -302,25 +320,25 @@
                 </a>
             </div>
             <span class="badge" style="background: rgba(102, 126, 234, 0.3); color: #667eea;">
-                Bot de IA
+                Agente BIMBA
             </span>
         </div>
 
-        <!-- Administrador de Base de Datos -->
+        <!-- Monitor de Base de Datos -->
         <div class="info-card" style="border-color: rgba(255, 152, 0, 0.5);">
             <span class="icon">🗄️</span>
-            <h3>Administrador de Base de Datos</h3>
+            <h3>Monitor de Base de Datos</h3>
             <p style="font-size: 0.9rem; color: #aaa; margin: 10px 0;">
-                Accede a Adminer para gestionar la base de datos PostgreSQL. Visualiza tablas, ejecuta consultas SQL y administra datos.
+                Monitorea estadísticas detalladas de PostgreSQL: tamaño, conexiones activas, tablas más grandes, índices y pool de conexiones.
             </p>
             <div style="margin-top: 15px;">
-                <button disabled class="btn-config"
-                    style="text-decoration: none; display: block; text-align: center; background: rgba(255, 152, 0, 0.3); border-color: rgba(255, 152, 0, 0.5); color: #ff9800; opacity: 0.6; cursor: not-allowed; width: 100%; padding: 10px; border: 1px solid;">
-                    🗄️ DB Tools (pendiente)
-                </button>
+                <a href="{{ url_for('routes.admin_db_monitor') }}" class="btn-config"
+                    style="text-decoration: none; display: block; text-align: center; background: rgba(255, 152, 0, 0.3); border-color: rgba(255, 152, 0, 0.5); color: #ff9800;">
+                    🗄️ Ver Monitor DB
+                </a>
             </div>
             <span class="badge" style="background: rgba(255, 152, 0, 0.3); color: #ff9800;">
-                Base de Datos
+                PostgreSQL
             </span>
         </div>
 
@@ -1836,7 +1854,7 @@
                         <div class="category-section" style="margin-top: 10px; margin-bottom: 10px;">
                             <h2 class="category-title"
                                 style="color: #e8e8e8; font-size: 1.1rem; margin-bottom: 8px; text-align: center; padding: 8px 12px; background: linear-gradient(135deg, rgba(102, 126, 234, 0.2) 0%, rgba(118, 75, 162, 0.2) 100%); border-radius: 8px; border: 2px solid rgba(102, 126, 234, 0.3);">
-                                🤖 Agente de Redes Sociales (BimbaBot)</h2>
+                                🤖 Agente de Redes Sociales (BIMBA)</h2>
                             <div class="tools-grid"
                                 style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 8px;">
                                 <a href="{{ url_for('routes.admin_social_media') }}" class="tool-card"
@@ -1858,7 +1876,7 @@
                                     <span class="icon"
                                         style="font-size: 1.8rem; display: block; margin-bottom: 5px;">📋</span>
                                     <h3 style="color: #fff; margin: 5px 0; font-size: 1rem;">Logs y Pruebas</h3>
-                                    <p style="color: #aaa; margin: 5px 0; font-size: 0.8rem;">Ver logs de conversaciones y probar el bot de IA</p>
+                                    <p style="color: #aaa; margin: 5px 0; font-size: 0.8rem;">Ver logs de conversaciones y probar el agente BIMBA</p>
                                     <span class="badge"
                                         style="background: rgba(102, 126, 234, 0.2); color: #667eea; padding: 3px 8px; border-radius: 12px; font-size: 0.7rem; display: inline-block; margin-top: 5px;">Logs</span>
                                 </a>

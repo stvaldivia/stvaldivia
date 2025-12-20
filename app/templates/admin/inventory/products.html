@@ -393,8 +393,10 @@
                             {% if producto.stock_minimum is not none and producto.stock_minimum > 0 %}
                             <div class="detail-row">
                                 <span class="label">Stock:</span>
-                                <span class="value {% if producto.stock_quantity <= 0 %}stock-out{% elif producto.stock_quantity <= producto.stock_minimum %}stock-low{% else %}stock-ok{% endif %}">
-                                    {{ producto.stock_quantity or 0 }} / {{ producto.stock_minimum }}
+                                {% set stock_qty = producto.stock_quantity if producto.stock_quantity is not none else 0 %}
+                                {% set stock_min = producto.stock_minimum if producto.stock_minimum is not none else 0 %}
+                                <span class="value {% if stock_qty <= 0 %}stock-out{% elif stock_qty <= stock_min %}stock-low{% else %}stock-ok{% endif %}">
+                                    {{ stock_qty }} / {{ stock_min }}
                                 </span>
                             </div>
                             {% endif %}

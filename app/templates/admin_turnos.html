@@ -156,6 +156,15 @@
         <div class="alert alert-warning" style="margin-bottom: 20px;">
             <strong>⚠️ Turno Abierto:</strong> Puedes modificar la información. Los cambios se reflejarán en el cierre del turno.
         </div>
+        <div style="margin-bottom: 20px; text-align: right;">
+            <form method="POST" action="{{ url_for('routes.cerrar_jornada') }}" style="display: inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="jornada_id" value="{{ jornada_actual.id }}">
+                <button type="submit" class="btn btn-danger" onclick="return confirm('¿Estás seguro de cerrar este turno? Esta acción no se puede deshacer.');" style="padding: 12px 24px; font-size: 1rem;">
+                    🔒 Cerrar Turno
+                </button>
+            </form>
+        </div>
         {% endif %}
         
         <form method="POST" action="{{ url_for('routes.actualizar_jornada') }}">
@@ -1074,6 +1083,23 @@
                 }
             });
             
+            // Verificar si la respuesta es OK antes de parsear JSON
+            if (!response.ok) {
+                const errorText = await response.text();
+                let errorMsg = `Error HTTP ${response.status}`;
+                try {
+                    const errorData = JSON.parse(errorText);
+                    errorMsg = errorData.error || errorMsg;
+                } catch (e) {
+                    // Si no es JSON, usar el texto de error
+                    if (errorText) {
+                        errorMsg = errorText.substring(0, 200); // Limitar longitud
+                    }
+                }
+                alert(`❌ Error: ${errorMsg}`);
+                return;
+            }
+            
             const data = await response.json();
             
             if (data.success) {
@@ -1085,7 +1111,7 @@
             }
         } catch (error) {
             console.error('Error al eliminar trabajador:', error);
-            alert(`❌ Error al eliminar trabajador: ${error.message}`);
+            alert(`❌ Error al eliminar trabajador: ${error.message || 'Error de conexión'}`);
         } finally {
             button.disabled = false;
             button.textContent = originalText;
@@ -1101,11 +1127,19 @@
         
         try {
             const response = await fetch(`/admin/jornada/planilla/${jornadaId}/listar`);
+            
+            if (!response.ok) {
+                console.error(`Error al refrescar planilla: HTTP ${response.status}`);
+                return;
+            }
+            
             const data = await response.json();
             
             if (data.success) {
                 renderizarPlanilla(data.planilla);
                 actualizarEstadoPlanilla();
+            } else {
+                console.error('Error al refrescar planilla:', data.error || 'Error desconocido');
             }
         } catch (error) {
             console.error('Error al refrescar planilla:', error);

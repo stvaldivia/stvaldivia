@@ -105,6 +105,21 @@
         border-top: 1px solid rgba(255, 255, 255, 0.1);
     }
     
+    .machine-config:first-of-type {
+        margin-top: 0;
+        padding-top: 0;
+        border-top: none;
+    }
+    
+    .machine-config-title {
+        color: #667eea;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-bottom: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
     .config-row {
         display: flex;
         justify-content: space-between;
@@ -229,6 +244,7 @@
             
             {% if machine.getnet_config %}
             <div class="machine-config">
+                <div class="machine-config-title">⚙️ Configuración Getnet</div>
                 <div class="config-row">
                     <span class="config-label">Modo:</span>
                     <span class="config-value">{{ machine.getnet_config.mode|upper }}</span>
@@ -250,12 +266,33 @@
             </div>
             {% endif %}
             
+            <div class="machine-config">
+                <div class="machine-config-title">🏪 Caja Vinculada</div>
+                <div class="config-row">
+                    <span class="config-label">Nombre:</span>
+                    <span class="config-value">{{ machine.register.name }} ({{ machine.register.code }})</span>
+                </div>
+                {% if machine.register.location %}
+                <div class="config-row">
+                    <span class="config-label">Ubicación:</span>
+                    <span class="config-value">{{ machine.register.location }}</span>
+                </div>
+                {% endif %}
+            </div>
+            
             {% if machine.agent %}
             <div class="machine-config">
+                <div class="machine-config-title">🖥️ Agente</div>
                 <div class="config-row">
-                    <span class="config-label">Agente:</span>
+                    <span class="config-label">Nombre:</span>
                     <span class="config-value">{{ machine.agent.agent_name }}</span>
                 </div>
+                {% if machine.agent.last_ip %}
+                <div class="config-row">
+                    <span class="config-label">IP:</span>
+                    <span class="config-value" style="font-family: monospace;">{{ machine.agent.last_ip }}</span>
+                </div>
+                {% endif %}
                 <div class="config-row">
                     <span class="config-label">Último heartbeat:</span>
                     <span class="config-value" id="heartbeat-{{ machine.register.id }}">
@@ -273,10 +310,66 @@
                 </div>
                 {% if machine.agent.last_getnet_message %}
                 <div class="config-row">
-                    <span class="config-label">Estado:</span>
+                    <span class="config-label">Estado Getnet:</span>
                     <span class="config-value" style="font-size: 0.85rem;">{{ machine.agent.last_getnet_message }}</span>
                 </div>
                 {% endif %}
+            </div>
+            {% endif %}
+            
+            {% if machine.payments_stats and machine.payments_stats.total > 0 %}
+            <div class="machine-config">
+                <div class="machine-config-title">📊 Movimientos (Últimas 24h)</div>
+                <div class="config-row" style="margin-bottom: 0.5rem;">
+                    <span class="config-label">Total:</span>
+                    <span class="config-value">{{ machine.payments_stats.total }}</span>
+                </div>
+                <div class="config-row" style="margin-bottom: 0.5rem;">
+                    <span class="config-label">Total procesado:</span>
+                    <span class="config-value">${{ "{:,.0f}".format(machine.payments_stats.total_amount) }}</span>
+                </div>
+                <div class="config-row" style="margin-bottom: 0.5rem;">
+                    <span class="config-label">Aprobado:</span>
+                    <span class="config-value" style="color: #4caf50;">${{ "{:,.0f}".format(machine.payments_stats.approved_amount) }}</span>
+                </div>
+                {% if machine.payments_stats.declined_count > 0 %}
+                <div class="config-row">
+                    <span class="config-label">Rechazados:</span>
+                    <span class="config-value" style="color: #f44336;">{{ machine.payments_stats.declined_count }}</span>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+            
+            {% if machine.last_payment %}
+            <div class="machine-config">
+                <div class="machine-config-title">🕐 Último Movimiento</div>
+                <div class="config-row" style="margin-bottom: 0.5rem;">
+                    <span class="config-label">Monto:</span>
+                    <span class="config-value">${{ "{:,.0f}".format(machine.last_payment.amount) }}</span>
+                </div>
+                <div class="config-row" style="margin-bottom: 0.5rem;">
+                    <span class="config-label">Estado:</span>
+                    <span class="config-value">
+                        {% if machine.last_payment.status == 'APPROVED' %}
+                            <span style="color: #4caf50;">✅ Aprobado</span>
+                        {% elif machine.last_payment.status == 'DECLINED' %}
+                            <span style="color: #f44336;">❌ Rechazado</span>
+                        {% else %}
+                            {{ machine.last_payment.status }}
+                        {% endif %}
+                    </span>
+                </div>
+                {% if machine.last_payment.auth_code %}
+                <div class="config-row" style="margin-bottom: 0.5rem;">
+                    <span class="config-label">Código Auth:</span>
+                    <span class="config-value" style="font-family: monospace; font-size: 0.85rem;">{{ machine.last_payment.auth_code }}</span>
+                </div>
+                {% endif %}
+                <div class="config-row">
+                    <span class="config-label">Proveedor:</span>
+                    <span class="config-value">{{ machine.last_payment.provider }}</span>
+                </div>
             </div>
             {% endif %}
             

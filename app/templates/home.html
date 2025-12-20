@@ -260,6 +260,19 @@
         box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
     }
     
+    .menu-option.bimba {
+        border-color: rgba(236, 72, 153, 0.4);
+    }
+    
+    .menu-option.bimba::before {
+        background: linear-gradient(135deg, #ec4899 0%, #be185d 100%);
+    }
+    
+    .menu-option.bimba:hover {
+        border-color: rgba(236, 72, 153, 0.8);
+        box-shadow: 0 8px 25px rgba(236, 72, 153, 0.4);
+    }
+    
     .menu-option .icon {
         font-size: 3.2rem;
         margin-bottom: 12px;
@@ -590,6 +603,12 @@
             <span class="icon" aria-hidden="true">⚙️</span>
             <h2>Panel Administrativo</h2>
             <p>Gestión completa del sistema, reportes y configuración avanzada</p>
+        </a>
+        
+        <a href="/bimba" class="menu-option bimba" aria-label="Hablar con BIMBA, el agente de IA">
+            <span class="icon" aria-hidden="true">🤖</span>
+            <h2>¡Habla con BIMBA!</h2>
+            <p>Conoce más sobre eventos, precios y el local con nuestra agente de IA</p>
         </a>
     </div>
     </div>

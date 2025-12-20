@@ -24,8 +24,19 @@ def register_before_request(bp):
         if session.get('bartender') or session.get('admin_logged_in'):
             if check_session_timeout():
                 flash("Tu sesión ha expirado. Por favor, inicia sesión nuevamente.", "info")
-                session.clear()
-                return redirect(url_for('routes.scanner'))
+                # Si es bartender, limpiar solo variables de bartender
+                if session.get('bartender'):
+                    session.pop('bartender', None)
+                    session.pop('bartender_id', None)
+                    session.pop('bartender_first_name', None)
+                    session.pop('bartender_last_name', None)
+                    session.pop('barra', None)
+                    session.pop('last_activity', None)
+                    return redirect(url_for('scanner.seleccionar_bartender'))
+                else:
+                    # Si es admin, limpiar todo
+                    session.clear()
+                    return redirect(url_for('auth.login_admin'))
             else:
                 update_session_activity()
 

@@ -208,6 +208,113 @@ def admin_panel_control():
                          audit_alerts_count=audit_alerts_count)
 
 
+@bp.route('/admin/panel_control/logs')
+def admin_panel_control_logs():
+    """Vista de logs del sistema dentro del panel de control"""
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('auth.login_admin'))
+    
+    try:
+        from flask import request
+        from app.models import db
+        from app.models.delivery_models import Delivery
+        from sqlalchemy import or_
+        
+        # Parámetros de filtrado
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 50, type=int)
+        search = request.args.get('search', '').strip()
+        bartender_filter = request.args.get('bartender', '').strip()
+        barra_filter = request.args.get('barra', '').strip()
+        sale_id_filter = request.args.get('sale_id', '').strip()
+        
+        # Optimizar: filtrar directamente en la base de datos
+        
+        # Query base
+        query = Delivery.query
+        
+        # Aplicar filtros en la base de datos
+        if search:
+            search_pattern = f"%{search}%"
+            query = query.filter(
+                or_(
+                    Delivery.sale_id.ilike(search_pattern),
+                    Delivery.item_name.ilike(search_pattern),
+                    Delivery.bartender.ilike(search_pattern),
+                    Delivery.barra.ilike(search_pattern)
+                )
+            )
+        
+        if bartender_filter:
+            query = query.filter(Delivery.bartender.ilike(f"%{bartender_filter}%"))
+        
+        if barra_filter:
+            query = query.filter(Delivery.barra.ilike(f"%{barra_filter}%"))
+        
+        if sale_id_filter:
+            query = query.filter(Delivery.sale_id.ilike(f"%{sale_id_filter}%"))
+        
+        # Contar total (antes de paginar)
+        total_logs = query.count()
+        total_pages = (total_logs + per_page - 1) // per_page
+        
+        # Aplicar ordenamiento y paginación
+        deliveries = query.order_by(Delivery.timestamp.desc()).offset((page - 1) * per_page).limit(per_page).all()
+        
+        # Convertir a formato de lista para el template
+        paginated_logs = [delivery.to_csv_row() for delivery in deliveries]
+        
+        # Obtener valores únicos para los selectores de filtro (solo una vez, sin filtros)
+        all_bartenders = sorted(set(
+            result[0] for result in 
+            db.session.query(Delivery.bartender).distinct().filter(Delivery.bartender.isnot(None)).all()
+            if result[0]
+        ))
+        all_barras = sorted(set(
+            result[0] for result in 
+            db.session.query(Delivery.barra).distinct().filter(Delivery.barra.isnot(None)).all()
+            if result[0]
+        ))
+        
+        return render_template(
+            'admin/panel_control_logs.html',
+            logs=paginated_logs,
+            page=page,
+            per_page=per_page,
+            total_logs=total_logs,
+            total_pages=total_pages,
+            search=search,
+            bartender_filter=bartender_filter,
+            barra_filter=barra_filter,
+            sale_id_filter=sale_id_filter,
+            all_bartenders=all_bartenders,
+            all_barras=all_barras,
+            has_prev=page > 1,
+            has_next=page < total_pages
+        )
+    except Exception as e:
+        current_app.logger.error(f"Error al cargar logs: {e}", exc_info=True)
+        flash(f'Error al cargar logs: {str(e)}', 'error')
+        return redirect(url_for('routes.admin_panel_control'))
+
+
+@bp.route('/admin/panel_control/db_monitor')
+def admin_db_monitor():
+    """Monitor de base de datos con estadísticas detalladas"""
+    if not session.get('admin_logged_in'):
+        return redirect(url_for('auth.login_admin'))
+    
+    try:
+        from app.helpers.db_monitor import get_database_stats
+        db_stats = get_database_stats()
+        
+        return render_template('admin/db_monitor.html', db_stats=db_stats)
+    except Exception as e:
+        current_app.logger.error(f"Error al cargar monitor de DB: {e}", exc_info=True)
+        flash(f'Error al cargar monitor de DB: {str(e)}', 'error')
+        return redirect(url_for('routes.admin_panel_control'))
+
+
 @bp.route('/admin/panel_control/monitoreo')
 def admin_monitoreo_servicios():
     """Módulo de monitoreo de servicios del sistema"""
@@ -1028,10 +1135,15 @@ def api_eliminar_trabajador_planilla(planilla_id):
         if not planilla_trabajador:
             return jsonify({'success': False, 'error': 'Registro de planilla no encontrado'}), 404
         
-        # Verificar que la jornada no esté cerrada (opcional)
+        # Verificar estado de la jornada
         jornada = Jornada.query.get(planilla_trabajador.jornada_id)
-        if jornada and jornada.estado_apertura == 'cerrado':
+        if not jornada:
+            return jsonify({'success': False, 'error': 'Jornada no encontrada'}), 404
+        
+        if jornada.estado_apertura == 'cerrado':
             return jsonify({'success': False, 'error': 'No se puede modificar la planilla de un turno cerrado'}), 400
+        
+        # Permitar eliminar incluso si está abierto (para correcciones durante el turno)
         
         nombre_trabajador = planilla_trabajador.nombre_empleado
         jornada_id = planilla_trabajador.jornada_id
@@ -1357,7 +1469,25 @@ def ver_detalle_jornada(jornada_id):
 
 @bp.route('/admin/scanner')
 def admin_scanner():
-    """Redirigir al scanner"""
+    """Acceso directo al scanner para admin/superadmin"""
+    if not session.get('admin_logged_in'):
+        flash("Debes estar logueado como administrador.", "error")
+        return redirect(url_for('auth.login_admin'))
+    
+    # Crear sesión automática de bartender para admin
+    admin_username = session.get('admin_username', 'Admin')
+    session['bartender'] = f"Admin: {admin_username}"
+    session['bartender_id'] = f"admin-{admin_username.lower()}"
+    session['bartender_first_name'] = admin_username
+    session['bartender_last_name'] = 'Admin'
+    session['is_admin_session'] = True  # Marcar como sesión de admin
+    
+    # Si no hay barra seleccionada, usar una por defecto
+    if 'barra' not in session:
+        session['barra'] = 'Barra Principal'
+    
+    # Redirigir al scanner
+    return redirect(url_for('scanner.scanner'))
     if not session.get('admin_logged_in'):
         return redirect(url_for('auth.login_admin'))
     

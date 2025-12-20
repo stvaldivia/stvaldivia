@@ -142,7 +142,7 @@ def bot_responder():
         
         # CAPA 2 y 3: Si no hay match en reglas, usar OpenAI con contexto operativo
         try:
-            from app.prompts.prompts_bimba import PROMPT_MAESTRO_BIMBA
+            from app.prompts.prompts_bimba import get_prompt_maestro_bimba
             
             if evento_info:
                 import json
@@ -157,21 +157,21 @@ def bot_responder():
             else:
                 operational_str = "None"
             
-            system_prompt = PROMPT_MAESTRO_BIMBA.format(
-                evento=evento_str,
-                operacional=operational_str
-            )
+            # Obtener prompt completo con conocimiento del sistema
+            system_prompt = get_prompt_maestro_bimba(evento_str, operational_str)
         except ImportError:
             current_app.logger.warning("PROMPT_MAESTRO_BIMBA no encontrado, usando prompt por defecto")
             if evento_info:
                 evento_str = f"Evento de hoy: {evento_info.get('nombre_evento', 'N/A')}"
             else:
                 evento_str = "No hay evento programado para hoy"
-            system_prompt = f"""Eres BimbaBot, asistente virtual de BIMBA discoteca.
+            system_prompt = f"""Eres BIMBA, el agente de inteligencia artificial oficial del Club BIMBA. Tu primera y principal labor es atender las redes sociales del club.
+            
+            BIMBA es un espacio seguro, inclusivo y vibrante que celebra la diversidad, la música y la libertad de expresión.
             
             Información del evento: {evento_str}
             
-            Responde de forma amigable y profesional."""
+            Responde de forma cercana, cálida, queer-friendly y entusiasta, reflejando los valores de inclusividad y acogida de BIMBA. Tu función es atender mensajes en redes sociales de forma rápida y acogedora."""
         
         # Intentar usar OpenAI, pero con fallback seguro
         client = OpenAIAPIClient()
@@ -180,7 +180,7 @@ def bot_responder():
         if not openai_client:
             # OpenAI no disponible - responder con mensaje genérico seguro
             current_app.logger.warning("OpenAI no disponible, usando respuesta genérica segura")
-            respuesta_segura = "Hola! 💜 Soy BimbaBot, el asistente de BIMBA. "
+            respuesta_segura = "Hola! 💜 Soy BIMBA, el agente de IA de BIMBA. "
             if evento_info:
                 nombre_evento = evento_info.get('nombre_evento', '')
                 if nombre_evento:
@@ -241,7 +241,7 @@ def bot_responder():
         except openai.AuthenticationError as e:
             current_app.logger.error(f"Error de autenticación en OpenAI: {e}")
             # Fallback seguro en lugar de error
-            respuesta_segura = "Hola! 💜 Soy BimbaBot. "
+            respuesta_segura = "Hola! 💜 Soy BIMBA. "
             if evento_info:
                 nombre_evento = evento_info.get('nombre_evento', '')
                 if nombre_evento:
@@ -275,7 +275,7 @@ def bot_responder():
         except openai.APIError as e:
             current_app.logger.error(f"Error en API de OpenAI: {e}")
             # Fallback seguro
-            respuesta_segura = "Hola! 💜 Soy BimbaBot. "
+            respuesta_segura = "Hola! 💜 Soy BIMBA. "
             if evento_info:
                 nombre_evento = evento_info.get('nombre_evento', '')
                 if nombre_evento:
@@ -292,7 +292,7 @@ def bot_responder():
         except Exception as e:
             current_app.logger.error(f"Error inesperado al generar respuesta: {e}", exc_info=True)
             # Fallback seguro - NUNCA exponer stacktrace
-            respuesta_segura = "Hola! 💜 Soy BimbaBot, el asistente de BIMBA. "
+            respuesta_segura = "Hola! 💜 Soy BIMBA, el agente de IA. "
             if evento_info:
                 nombre_evento = evento_info.get('nombre_evento', '')
                 if nombre_evento:

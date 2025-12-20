@@ -198,3 +198,4 @@ La integración Getnet está completa y operativa. El sistema:
 
 
 
+
