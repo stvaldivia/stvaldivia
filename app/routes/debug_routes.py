@@ -2,9 +2,18 @@
 Rutas de debugging - Solo disponibles en desarrollo o con DEBUG_ERRORS=1
 """
 import os
-from flask import Blueprint, jsonify, request, session, current_app
+from flask import Blueprint, jsonify, request, session, current_app, render_template
 
 debug_bp = Blueprint('debug', __name__, url_prefix='/admin/debug')
+
+def is_debug_errors_enabled():
+    """
+    Verificar si los endpoints de debug están habilitados.
+    Controlado por variable de entorno ENABLE_DEBUG_ERRORS.
+    Por defecto: false (deshabilitado en producción).
+    """
+    enable_flag = os.environ.get('ENABLE_DEBUG_ERRORS', 'false').lower()
+    return enable_flag in ('1', 'true', 'yes')
 
 def is_debug_enabled():
     """Verificar si el modo debug está habilitado"""
@@ -18,10 +27,38 @@ def is_debug_enabled():
     # 3. Usuario admin está logueado (para producción con flag)
     return (not is_production and is_localhost) or debug_errors or session.get('admin_logged_in')
 
+def _return_deprecated_response(route_path):
+    """
+    Retorna una respuesta HTTP 410 Gone indicando que el endpoint está deprecated.
+    Incluye headers apropiados y logging.
+    """
+    # Extract client IP from X-Forwarded-For (first IP), fallback to remote_addr
+    forwarded_for = request.headers.get('X-Forwarded-For')
+    if forwarded_for:
+        client_ip = forwarded_for.split(',')[0].strip()
+    else:
+        client_ip = request.remote_addr or 'unknown'
+    
+    current_app.logger.info(f"DEPRECATED endpoint accessed: {route_path} from IP: {client_ip}")
+    
+    response = jsonify({
+        'error': 'This endpoint has been deprecated',
+        'deprecated': True,
+        'endpoint': route_path,
+        'method': request.method
+    })
+    response.status_code = 410
+    response.headers['X-Deprecated'] = 'true'
+    return response
+
 
 @debug_bp.route('/errors/export')
 def export_errors():
     """Exportar reporte de errores capturados en el cliente"""
+    # Feature flag: Si ENABLE_DEBUG_ERRORS=false, retornar 410 Gone
+    if not is_debug_errors_enabled():
+        return _return_deprecated_response(request.path)
+    
     if not is_debug_enabled():
         return jsonify({'error': 'Debug mode not enabled'}), 403
     
@@ -40,6 +77,10 @@ def export_errors():
 @debug_bp.route('/errors', methods=['POST'])
 def receive_errors():
     """Recibir reporte de errores del cliente"""
+    # Feature flag: Si ENABLE_DEBUG_ERRORS=false, retornar 410 Gone
+    if not is_debug_errors_enabled():
+        return _return_deprecated_response(request.path)
+    
     if not is_debug_enabled():
         return jsonify({'error': 'Debug mode not enabled'}), 403
     
@@ -81,11 +122,16 @@ def receive_errors():
 @debug_bp.route('/errors')
 def errors_panel():
     """Panel simple para ver resumen de errores"""
-    if not is_debug_enabled():
-        return jsonify({'error': 'Debug mode not enabled'}), 403
+    # Feature flag: Si ENABLE_DEBUG_ERRORS=false, retornar 410 Gone
+    if not is_debug_errors_enabled():
+        return _return_deprecated_response(request.path)
     
+    # Mantener verificación de admin auth (no debilitar seguridad)
     if not session.get('admin_logged_in'):
         return jsonify({'error': 'Admin login required'}), 403
+    
+    if not is_debug_enabled():
+        return jsonify({'error': 'Debug mode not enabled'}), 403
     
     return render_template('admin/debug_errors.html')
 
