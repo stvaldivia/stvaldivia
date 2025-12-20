@@ -74,59 +74,54 @@ def export_errors():
     })
 
 
-@debug_bp.route('/errors', methods=['POST'], strict_slashes=False)
-def receive_errors():
-    """Recibir reporte de errores del cliente - POST"""
+@debug_bp.route('/errors', methods=['GET', 'POST'], strict_slashes=False)
+def errors_handler():
+    """Manejar ambos GET y POST para /errors - evita redirects de Flask"""
     # Feature flag: Si ENABLE_DEBUG_ERRORS=false, retornar 410 Gone inmediatamente
     # Esta verificación debe ser la PRIMERA cosa que se ejecute para evitar redirects
     if not is_debug_errors_enabled():
         return _return_deprecated_response(request.path)
     
-    if not is_debug_enabled():
-        return jsonify({'error': 'Debug mode not enabled'}), 403
-    
-    try:
-        data = request.get_json()
+    # POST: Recibir reporte de errores del cliente
+    if request.method == 'POST':
+        if not is_debug_enabled():
+            return jsonify({'error': 'Debug mode not enabled'}), 403
         
-        if not data:
-            return jsonify({'error': 'No data provided'}), 400
-        
-        # Loggear errores críticos
-        if data.get('network_errors'):
-            for error in data['network_errors']:
-                if error.get('status', 0) >= 500:
+        try:
+            data = request.get_json()
+            
+            if not data:
+                return jsonify({'error': 'No data provided'}), 400
+            
+            # Loggear errores críticos
+            if data.get('network_errors'):
+                for error in data['network_errors']:
+                    if error.get('status', 0) >= 500:
+                        current_app.logger.error(
+                            f"🔴 Network Error 5xx: {error.get('method')} {error.get('url')} → {error.get('status')}"
+                        )
+            
+            if data.get('js_errors'):
+                for error in data['js_errors']:
                     current_app.logger.error(
-                        f"🔴 Network Error 5xx: {error.get('method')} {error.get('url')} → {error.get('status')}"
+                        f"🔴 JS Error: {error.get('message')} at {error.get('filename')}:{error.get('lineno')}"
                     )
-        
-        if data.get('js_errors'):
-            for error in data['js_errors']:
-                current_app.logger.error(
-                    f"🔴 JS Error: {error.get('message')} at {error.get('filename')}:{error.get('lineno')}"
-                )
-        
-        # Retornar resumen
-        return jsonify({
-            'received': True,
-            'summary': {
-                'js_errors': len(data.get('js_errors', [])),
-                'network_errors': len(data.get('network_errors', [])),
-                'csp_violations': len(data.get('csp_violations', [])),
-                'unhandled_rejections': len(data.get('unhandled_rejections', []))
-            }
-        })
-    except Exception as e:
-        current_app.logger.error(f"Error receiving error report: {e}", exc_info=True)
-        return jsonify({'error': str(e)}), 500
-
-
-@debug_bp.route('/errors', methods=['GET'], strict_slashes=False)
-def errors_panel():
-    """Panel simple para ver resumen de errores"""
-    # Feature flag: Si ENABLE_DEBUG_ERRORS=false, retornar 410 Gone
-    if not is_debug_errors_enabled():
-        return _return_deprecated_response(request.path)
+            
+            # Retornar resumen
+            return jsonify({
+                'received': True,
+                'summary': {
+                    'js_errors': len(data.get('js_errors', [])),
+                    'network_errors': len(data.get('network_errors', [])),
+                    'csp_violations': len(data.get('csp_violations', [])),
+                    'unhandled_rejections': len(data.get('unhandled_rejections', []))
+                }
+            })
+        except Exception as e:
+            current_app.logger.error(f"Error receiving error report: {e}", exc_info=True)
+            return jsonify({'error': str(e)}), 500
     
+    # GET: Panel simple para ver resumen de errores
     # Mantener verificación de admin auth (no debilitar seguridad)
     if not session.get('admin_logged_in'):
         return jsonify({'error': 'Admin login required'}), 403
