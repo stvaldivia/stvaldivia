@@ -76,10 +76,9 @@ def export_errors():
 
 @debug_bp.route('/errors', methods=['POST'], strict_slashes=False)
 def receive_errors():
-    """Recibir reporte de errores del cliente"""
+    """Recibir reporte de errores del cliente - POST"""
     # Feature flag: Si ENABLE_DEBUG_ERRORS=false, retornar 410 Gone inmediatamente
     # Esta verificación debe ser la PRIMERA cosa que se ejecute para evitar redirects
-    # No debe haber ninguna lógica antes de esta verificación
     if not is_debug_errors_enabled():
         return _return_deprecated_response(request.path)
     
@@ -121,7 +120,7 @@ def receive_errors():
         return jsonify({'error': str(e)}), 500
 
 
-@debug_bp.route('/errors', strict_slashes=False)
+@debug_bp.route('/errors', methods=['GET'], strict_slashes=False)
 def errors_panel():
     """Panel simple para ver resumen de errores"""
     # Feature flag: Si ENABLE_DEBUG_ERRORS=false, retornar 410 Gone
