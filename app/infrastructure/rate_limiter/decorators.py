@@ -75,20 +75,28 @@ def rate_limit(
                 return response
                 
             except RateLimitExceeded as e:
-                # Para métodos que no sean GET/HEAD, nunca hacer redirect
-                # Retornar JSON error para APIs y endpoints tipo API
-                is_non_get_head = request.method not in ('GET', 'HEAD')
+                # Si el método NO es GET/HEAD, siempre retornar JSON 429 (aunque no sea JSON request)
+                if request.method not in ('GET', 'HEAD'):
+                    return jsonify({
+                        'error': error_message or 'Rate limit excedido',
+                        'code': 'RATE_LIMIT_EXCEEDED',
+                        'retry_after': int(e.retry_after) if e.retry_after else None,
+                        'path': request.path,
+                        'method': request.method
+                    }), 429
+                
+                # Para GET/HEAD, verificar si es JSON request o API path
                 is_json_request = request.is_json
                 is_api_path = request.path.startswith('/api/') or request.path.startswith('/admin/debug/')
                 
-                if is_non_get_head or is_json_request or is_api_path:
+                if is_json_request or is_api_path:
                     return jsonify({
                         'error': error_message or 'Rate limit excedido',
                         'code': 'RATE_LIMIT_EXCEEDED',
                         'retry_after': int(e.retry_after) if e.retry_after else None
                     }), 429
                 
-                # Para GET/HEAD en páginas normales, usar el sistema de errores estructurado con redirect
+                # Para GET/HEAD en páginas normales (no JSON, no API), usar redirect
                 from flask import flash, redirect, url_for
                 flash(
                     error_message or f"Demasiadas solicitudes. Intenta en {int(e.retry_after)} segundos.",
