@@ -336,7 +336,7 @@ def get_payment_intent(intent_id):
 
 
 @caja_bp.route('/api/payment/agent/pending', methods=['GET'])
-@rate_limit(max_requests=30, window_seconds=60)
+@rate_limit(max_requests=120, window_seconds=60)  # Aumentado para permitir polling cada 0.5s
 def agent_get_pending():
     """
     Obtener PaymentIntent pendiente más antiguo para una caja (AGENT ONLY)
