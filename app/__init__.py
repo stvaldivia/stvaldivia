@@ -113,11 +113,36 @@ def create_app():
     csrf = None
     try:
         from flask_wtf.csrf import CSRFProtect, CSRFError
+        
+        # Verificar si estamos en desarrollo (antes de inicializar CSRFProtect)
+        # Verificar tanto variables de entorno como configuración de la app
+        flask_env = os.environ.get('FLASK_ENV', '').lower()
+        flask_debug = os.environ.get('FLASK_DEBUG', '').lower()
+        
+        # Si no es producción ni Cloud Run, asumimos que es desarrollo
+        # Esto es más seguro: solo habilitamos CSRF en producción explícita
+        is_development = not is_production and not is_cloud_run
+        
+        # También verificar variables de entorno explícitas
+        if flask_env == 'production':
+            is_development = False
+        elif flask_env == 'development':
+            is_development = True
+        elif flask_debug == 'true':
+            is_development = True
+        
         csrf = CSRFProtect(app)
-        app.config['WTF_CSRF_ENABLED'] = True
-        app.config['WTF_CSRF_TIME_LIMIT'] = 3600  # 1 hora
-        app.config['WTF_CSRF_CHECK_DEFAULT'] = True
-        app.config['WTF_CSRF_HEADERS'] = ['X-CSRFToken', 'X-CSRF-Token']  # Headers para AJAX
+        
+        if is_development:
+            # En desarrollo: deshabilitar CSRF para facilitar testing
+            app.config['WTF_CSRF_ENABLED'] = False
+            app.logger.info("🔓 CSRF deshabilitado en modo desarrollo")
+        else:
+            # En producción: habilitar CSRF con configuración estricta
+            app.config['WTF_CSRF_ENABLED'] = True
+            app.config['WTF_CSRF_TIME_LIMIT'] = 3600  # 1 hora
+            app.config['WTF_CSRF_CHECK_DEFAULT'] = True
+            app.config['WTF_CSRF_HEADERS'] = ['X-CSRFToken', 'X-CSRF-Token']  # Headers para AJAX
         
         # Hacer csrf disponible globalmente para usar @csrf.exempt
         app.csrf = csrf
@@ -143,9 +168,15 @@ def create_app():
         def inject_csrf_token():
             """Inyecta csrf_token en todos los templates"""
             try:
-                from flask_wtf.csrf import generate_csrf
-                return dict(csrf_token=generate_csrf)
-            except:
+                # Solo generar token si CSRF está habilitado
+                if app.config.get('WTF_CSRF_ENABLED', False):
+                    from flask_wtf.csrf import generate_csrf
+                    return dict(csrf_token=generate_csrf)
+                else:
+                    # Si CSRF está deshabilitado, retornar función dummy
+                    return dict(csrf_token=lambda: '')
+            except Exception as e:
+                app.logger.warning(f"Error al generar CSRF token: {e}")
                 return dict(csrf_token=lambda: '')
     except ImportError:
         app.logger.warning("⚠️ Flask-WTF no instalado, CSRF protection deshabilitado")
@@ -441,6 +472,13 @@ def create_app():
     else:
         app.register_blueprint(admin_bp, url_prefix='/admin')
     
+    # Eximir blueprint de admin de CSRF si está habilitado (usa autenticación de sesión)
+    if csrf:
+        try:
+            csrf.exempt(admin_bp)
+        except:
+            pass
+    
     app.logger.info("✅ Blueprint de admin (Bot de IA) registrado")
     
     # Eximir APIs de guardarropía de CSRF si está habilitado
@@ -474,6 +512,22 @@ def create_app():
         # Eximir APIs de CSRF si está habilitado
     except Exception as e:
         app.logger.warning(f"No se pudo registrar api_bp: {e}")
+    
+    # Registrar blueprint de API BIMBA
+    try:
+        from .routes.api_bimba import bp as api_bimba_bp
+        app.register_blueprint(api_bimba_bp)
+        
+        # Eximir APIs de BIMBA de CSRF si está habilitado
+        if csrf:
+            try:
+                csrf.exempt(api_bimba_bp)
+            except:
+                pass
+        
+        app.logger.info("✅ Blueprint de API BIMBA registrado")
+    except Exception as e:
+        app.logger.warning(f"No se pudo registrar api_bimba_bp: {e}")
     
     # Registrar blueprint de API V1
     try:

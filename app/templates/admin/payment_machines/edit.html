@@ -147,6 +147,7 @@
     </div>
     
     <form method="POST" class="config-form">
+        {% if csrf_token() %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>{% endif %}
         <div class="form-section">
             <h2 class="section-title">🔌 Configuración Getnet</h2>
             
@@ -244,6 +245,8 @@ function toggleSerialConfig() {
 }
 </script>
 {% endblock %}
+
+
 
 
 

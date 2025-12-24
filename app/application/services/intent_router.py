@@ -19,6 +19,8 @@ class IntentRouter:
     INTENT_HORARIO = "horario"
     INTENT_LISTA = "lista"
     INTENT_DJS = "djs"
+    INTENT_COMO_FUNCIONA = "como_funciona"
+    INTENT_SALUDO = "saludo"
     INTENT_UNKNOWN = "unknown"
     
     @staticmethod
@@ -89,6 +91,25 @@ class IntentRouter:
         # Patrones para "DJ" / "música"
         if re.search(r'\b(dj|djs|disc jockey|musica|musical|quien toca|quienes tocan)\b', normalized):
             return IntentRouter.INTENT_DJS
+        
+        # Patrones para "cómo funciona el sistema" / "pedidos" / "ventas" / "tickets"
+        if re.search(r'\b(como funciona|como es el sistema|como se pide|como se compra|flujo de venta|flujo de pedidos|sistema de tickets|sistema de entregas)\b', normalized):
+            return IntentRouter.INTENT_COMO_FUNCIONA
+        
+        # Patrones para saludos (debe ir al final para no capturar saludos que también preguntan algo)
+        # Detectar saludos simples al inicio del mensaje
+        saludo_patterns = [
+            r'^(hola|buenas|que tal|saludos|hi|hello|buenos dias|buenas tardes|buenas noches)\.?$',
+            r'^(hola|buenas|que tal|saludos|hi|hello)\s+(amigo|amiga|amigues|compa|compañero|compañera)\.?$'
+        ]
+        for pattern in saludo_patterns:
+            if re.match(pattern, normalized):
+                return IntentRouter.INTENT_SALUDO
+        
+        # También detectar si el mensaje es muy corto y contiene solo un saludo
+        palabras = normalized.split()
+        if len(palabras) <= 2 and any(palabra in ['hola', 'buenas', 'saludos', 'hi', 'hello'] for palabra in palabras):
+            return IntentRouter.INTENT_SALUDO
         
         # Si no hay match, retornar unknown
         return IntentRouter.INTENT_UNKNOWN

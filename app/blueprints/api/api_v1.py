@@ -118,8 +118,13 @@ def bot_responder():
         evento_info = programacion_service.get_public_info_for_today()
         
         # Obtener datos operativos del día (contexto privado para el bot)
+        # Esto es opcional y no debe retrasar la respuesta
         from app.application.services.operational_insights_service import OperationalInsightsService
-        operational = OperationalInsightsService.get_daily_summary()
+        try:
+            operational = OperationalInsightsService.get_daily_summary()
+        except Exception:
+            # Si falla, continuar sin datos operativos (no es crítico)
+            operational = None
         
         # CAPA 1: Intent Router - Detectar intención
         from app.application.services.intent_router import IntentRouter
@@ -140,7 +145,9 @@ def bot_responder():
                 "tokens": None
             }), 200
         
-        # CAPA 2 y 3: Si no hay match en reglas, usar OpenAI con contexto operativo
+        # CAPA 2 y 3: Si no hay match en reglas, intentar OpenAI con contexto operativo
+        # PERO: Si el intent es "unknown", intentar primero con OpenAI para respuestas creativas
+        # Si OpenAI falla, usar fallback contextual (no genérico)
         try:
             from app.prompts.prompts_bimba import get_prompt_maestro_bimba
             
@@ -230,13 +237,13 @@ def bot_responder():
         
         try:
             import openai
-            # Timeout de 8 segundos - si OpenAI no responde rápido, usar fallback (más rápido para el usuario)
+            # Timeout de 5 segundos - más agresivo, si OpenAI no responde rápido usa fallback
             response = openai_client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=formatted_messages,
                 temperature=0.7,
                 max_tokens=500,
-                timeout=8.0
+                timeout=5.0
             )
             
             if not response.choices or len(response.choices) == 0:

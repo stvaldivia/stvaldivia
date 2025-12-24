@@ -615,6 +615,31 @@ def agent_programacion_month_public():
         }), 500
 
 
+@api_bp.route('/programacion', methods=['GET'])
+@rate_limit(max_requests=120, per_seconds=300)
+def api_programacion():
+    """
+    Endpoint público: Obtiene lista de eventos próximos
+    Simplificado para uso del bot BIMBA
+    """
+    try:
+        from app.application.services.programacion_service import ProgramacionService
+        
+        limit = request.args.get('limit', type=int) or 10
+        
+        service = ProgramacionService()
+        eventos = service.get_upcoming_events(limit=limit)
+        
+        return jsonify(eventos), 200
+        
+    except Exception as e:
+        logger.error(f"Error en /api/programacion: {e}", exc_info=True)
+        return jsonify({
+            "error": "Error al obtener programación",
+            "detalle": str(e)
+        }), 500
+
+
 @api_bp.route('/v1/agent/programacion/month/internal', methods=['GET'])
 def agent_programacion_month_internal():
     """

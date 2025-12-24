@@ -51,6 +51,14 @@ class BotRuleEngine:
         elif intent == IntentRouter.INTENT_DJS:
             return BotRuleEngine._respuesta_djs(evento_info)
         
+        elif intent == IntentRouter.INTENT_COMO_FUNCIONA:
+            return BotRuleEngine._respuesta_como_funciona(evento_info)
+        
+        elif intent == IntentRouter.INTENT_SALUDO:
+            # Los saludos NO usan reglas hardcodeadas para permitir respuestas variadas y naturales
+            # Deben pasar a OpenAI para generar respuestas humanas según el prompt
+            return None
+        
         return None
     
     @staticmethod
@@ -221,5 +229,30 @@ class BotRuleEngine:
         
         respuesta_partes.append("\n💜 ¡Ven a disfrutar la música!")
         return "\n".join(respuesta_partes)
+    
+    @staticmethod
+    def _respuesta_como_funciona(evento_info: Optional[Dict[str, Any]] = None) -> str:
+        """Genera respuesta para preguntas sobre cómo funciona el sistema"""
+        return """En BIMBA, el sistema funciona así: 💜
+
+**🛒 Haces tu pedido** en el bar o la caja
+**💳 Pagas** (efectivo, débito o crédito)
+**🎫 Recibes un ticket** con código QR
+**📱 El bartender escanea** tu código QR
+**🍺 Te entrega** tu bebida o producto
+
+Es un sistema seguro y automatizado que asegura que recibas exactamente lo que pediste. Todo está diseñado para darte la mejor experiencia posible! ✨
+
+¿Tienes alguna pregunta específica sobre el proceso? 💜"""
+    
+    @staticmethod
+    def _respuesta_saludo(evento_info: Optional[Dict[str, Any]]) -> str:
+        """
+        DEPRECATED: Los saludos ahora pasan a OpenAI para respuestas variadas y naturales.
+        Este método se mantiene solo por compatibilidad pero nunca debería ser llamado.
+        """
+        # No usar respuestas hardcodeadas para saludos
+        # Deben pasar a OpenAI para generar respuestas humanas y variadas
+        return None
 
 

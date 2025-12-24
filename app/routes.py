@@ -8,7 +8,7 @@ from app.application.services.jornada_service import JornadaService
 from app.application.dto.jornada_dto import (
     CrearJornadaRequest, AsignarResponsablesRequest, AbrirLocalRequest
 )
-from app.models.jornada_models import Jornada
+from app.models.jornada_models import Jornada, PlanillaTrabajador
 from app.models import db
 
 # Crear blueprint principal (puede estar vacío si las rutas están en otros módulos)

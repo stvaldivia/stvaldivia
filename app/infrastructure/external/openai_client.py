@@ -102,8 +102,8 @@ class OpenAIAPIClient(OpenAIClient):
             if project:
                 client_kwargs["project"] = project
             
-            # Agregar timeout para evitar conexiones colgadas (10 segundos - más agresivo)
-            client_kwargs["timeout"] = 10.0
+            # Agregar timeout para evitar conexiones colgadas (6 segundos)
+            client_kwargs["timeout"] = 6.0
             
             self._client = openai.OpenAI(**client_kwargs)
             return self._client
@@ -152,13 +152,13 @@ class OpenAIAPIClient(OpenAIClient):
         formatted_messages.extend(messages)
         
         try:
-            # Timeout de 8 segundos para la llamada (más rápido, si falla usa fallback rápido)
+            # Timeout de 5 segundos para la llamada - si no responde rápido, fallback
             response = client.chat.completions.create(
                 model=model,
                 messages=formatted_messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
-                timeout=8.0
+                timeout=5.0
             )
             
             if response.choices and len(response.choices) > 0:

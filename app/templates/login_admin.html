@@ -275,7 +275,7 @@
     <h2>🔐 Acceso Administrador</h2>
 
     <form method="POST" action="{{ url_for('auth.login_admin') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        {% if csrf_token() %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>{% endif %}
         <label for="username">Usuario:</label>
         <input type="text" name="username" id="username" required autofocus placeholder="Ingresa tu usuario"
             autocomplete="username">

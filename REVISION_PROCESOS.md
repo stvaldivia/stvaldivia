@@ -238,3 +238,11 @@ sudo lsof -i :5001
 netstat -an | grep ESTABLISHED | wc -l
 ```
 
+
+
+
+
+
+
+
+

@@ -409,11 +409,22 @@ async function testConnection(registerId) {
     btn.textContent = '⏳ Probando...';
     
     try {
+        // Obtener token CSRF del meta tag o del formulario
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
+                         document.querySelector('input[name="csrf_token"]')?.value || '';
+        
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+        
+        // Agregar token CSRF si está disponible
+        if (csrfToken) {
+            headers['X-CSRFToken'] = csrfToken;
+        }
+        
         const response = await fetch(`/admin/api/payment-machines/${registerId}/test-connection`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
+            headers: headers
         });
         
         const data = await response.json();
@@ -460,27 +471,58 @@ async function testPayment(registerId) {
     btn.textContent = '⏳ Procesando...';
     
     try {
+        // Obtener token CSRF del meta tag o del formulario
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
+                         document.querySelector('input[name="csrf_token"]')?.value || '';
+        
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+        
+        // Agregar token CSRF si está disponible
+        if (csrfToken) {
+            headers['X-CSRFToken'] = csrfToken;
+        }
+        
         const response = await fetch(`/admin/api/payment-machines/${registerId}/test-payment`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: headers,
             body: JSON.stringify({ amount: amount })
         });
         
+        // Verificar si la respuesta es JSON o HTML
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.error('❌ Respuesta no es JSON. Status:', response.status, 'Content:', text.substring(0, 200));
+            alert(`❌ Error al iniciar pago de prueba\n\nEl servidor respondió con un error (Status: ${response.status}).\n\nPor favor, verifica:\n- Que estés autenticado como administrador\n- Que el servidor esté funcionando correctamente\n- Los logs del servidor para más detalles`);
+            btn.disabled = false;
+            btn.textContent = originalText;
+            return;
+        }
+        
         const data = await response.json();
+        
+        if (!response.ok) {
+            // Error HTTP (400, 401, 500, etc.)
+            alert(`❌ Error al iniciar pago de prueba\n\nStatus: ${response.status}\n${data.error || data.message || 'Error desconocido'}\n${data.details || ''}`);
+            btn.disabled = false;
+            btn.textContent = originalText;
+            return;
+        }
         
         if (data.success) {
             // Pago iniciado, hacer polling del resultado
             const intentId = data.intent_id;
             pollPaymentResult(intentId, amount, btn);
         } else {
-            alert(`❌ Error al iniciar pago de prueba\n\n${data.error}\n${data.details || ''}`);
+            alert(`❌ Error al iniciar pago de prueba\n\n${data.error || 'Error desconocido'}\n${data.details || ''}`);
             btn.disabled = false;
             btn.textContent = originalText;
         }
     } catch (error) {
-        alert(`❌ Error al iniciar pago de prueba: ${error.message}`);
+        console.error('❌ Error en testPayment:', error);
+        alert(`❌ Error al iniciar pago de prueba: ${error.message}\n\nPor favor, verifica la consola del navegador para más detalles.`);
         btn.disabled = false;
         btn.textContent = originalText;
     }

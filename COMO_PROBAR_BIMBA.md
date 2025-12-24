@@ -157,3 +157,11 @@ Si encuentras problemas:
 - Verifica que la API key de OpenAI esté configurada
 - Revisa que el prompt se esté cargando correctamente
 
+
+
+
+
+
+
+
+

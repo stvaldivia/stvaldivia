@@ -65,7 +65,8 @@ class OperationalInsightsService:
                 'X-API-KEY': api_key
             }
             
-            response = requests.get(url, headers=headers, timeout=5)
+            # Timeout más corto (2 segundos) - si es lento, mejor no usar esos datos
+            response = requests.get(url, headers=headers, timeout=2)
             
             if response.status_code != 200:
                 return None

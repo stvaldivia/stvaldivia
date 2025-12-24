@@ -227,3 +227,11 @@ def get_connection_pool_stats() -> Dict[str, Any]:
         current_app.logger.warning(f"Error al obtener estadísticas del pool: {e}")
         return {'error': str(e)}
 
+
+
+
+
+
+
+
+

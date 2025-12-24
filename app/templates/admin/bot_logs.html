@@ -313,9 +313,12 @@
     
     <!-- Consola de Prueba -->
     <div class="test-console">
-        <h3>🧪 Consola de Prueba</h3>
+        <h3>🧪 Consola de Prueba{% if is_superadmin %} <span style="color: #ec4899; font-size: 0.8rem;">(Superadmin)</span>{% endif %}</h3>
         <p style="color: #94a3b8; margin-bottom: 20px; font-size: 0.9rem;">
             Prueba el agente BIMBA enviando un mensaje. El mensaje y la respuesta se registrarán en los logs.
+            {% if is_superadmin %}
+            <br><span style="color: #ec4899;">🔧 Modo Superadmin: Verás información detallada del sistema, intenciones detectadas y fuente de respuesta.</span>
+            {% endif %}
         </p>
         <form id="test-form" class="test-form" method="POST" action="{{ url_for('admin.bot_test') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
@@ -336,6 +339,17 @@
             </select>
             <button type="submit" class="btn-test" id="test-btn">Probar Respuesta</button>
         </form>
+        {% if is_superadmin %}
+        <div style="background: rgba(236, 72, 153, 0.1); border: 1px solid rgba(236, 72, 153, 0.3); border-radius: 8px; padding: 15px; margin-top: 15px;">
+            <h4 style="color: #ec4899; margin-bottom: 10px; font-size: 0.9rem;">🔧 Información del Sistema (Superadmin)</h4>
+            <div id="superadmin-info" style="color: #cbd5e1; font-size: 0.85rem; font-family: monospace;">
+                <div>Estado: <span id="system-status">Cargando...</span></div>
+                <div>OpenAI disponible: <span id="openai-status">Verificando...</span></div>
+                <div>Reglas disponibles: ✅</div>
+                <div>Conocimiento del sistema: ✅</div>
+            </div>
+        </div>
+        {% endif %}
         <div id="test-response" class="test-response">
             <h4>Respuesta del Agente BIMBA:</h4>
             <p id="test-response-text"></p>
@@ -425,6 +439,14 @@
                     </td>
                     <td class="message-preview" title="{{ log.message }}">
                         {{ log.get_message_preview(100) }}
+                        {% if is_superadmin and log.meta %}
+                            {% set meta = log.get_meta() %}
+                            {% if meta.get('intent') or meta.get('source') %}
+                                <br><small style="color: #ec4899; font-size: 0.75rem; display: block; margin-top: 5px;">
+                                    🔧 Intent: {{ meta.get('intent', 'N/A') }} | Source: {{ meta.get('source', 'N/A') }}
+                                </small>
+                            {% endif %}
+                        {% endif %}
                     </td>
                     <td>{{ log.model or '-' }}</td>
                     <td class="conversation-id-short">{{ log.get_conversation_id_short() }}</td>
@@ -469,6 +491,49 @@ document.addEventListener('DOMContentLoaded', function() {
             // No necesitamos preventDefault porque queremos que se envíe
         });
     }
+    
+    {% if is_superadmin %}
+    // Información del sistema para superadmin
+    function checkSystemStatus() {
+        // Verificar estado de OpenAI
+        fetch('/api/v1/bot/responder', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({mensaje: 'test', canal: 'interno'})
+        })
+        .then(response => response.json())
+        .then(data => {
+            const openaiStatus = document.getElementById('openai-status');
+            const systemStatus = document.getElementById('system-status');
+            
+            if (data.source === 'rule_based' || data.source === 'rule_based_fallback') {
+                openaiStatus.textContent = 'No usado (respuesta por reglas)';
+                openaiStatus.style.color = '#94a3b8';
+            } else if (data.source === 'fallback' || data.source === 'fallback_contextual' || data.source === 'superadmin_fallback') {
+                openaiStatus.textContent = '⚠️ No disponible';
+                openaiStatus.style.color = '#ff9800';
+            } else if (data.modelo) {
+                openaiStatus.textContent = '✅ Disponible (' + data.modelo + ')';
+                openaiStatus.style.color = '#4caf50';
+            } else {
+                openaiStatus.textContent = '⚠️ Verificar';
+                openaiStatus.style.color = '#ff9800';
+            }
+            
+            systemStatus.textContent = '✅ Operativo';
+            systemStatus.style.color = '#4caf50';
+        })
+        .catch(error => {
+            document.getElementById('openai-status').textContent = '❌ Error al verificar';
+            document.getElementById('openai-status').style.color = '#f44336';
+            document.getElementById('system-status').textContent = '⚠️ Error';
+            document.getElementById('system-status').style.color = '#f44336';
+        });
+    }
+    
+    // Verificar estado al cargar
+    checkSystemStatus();
+    {% endif %}
 });
 </script>
 {% endblock %}

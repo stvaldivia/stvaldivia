@@ -72,6 +72,14 @@ class BimbaBotEngine:
         if re.search(r'\b(dj|djs|disc jockey|musica|musical|quien toca|quienes tocan)\b', normalized):
             return "djs"
         
+        # Patrones para preguntas sobre "cómo funciona"
+        if re.search(r'\b(como funciona|como se|explicame|explica|que es|que significa)\s*(el sistema|un pedido|pedidos|una venta|ventas|ticket|qr|jornada|barra|bartender)\b', normalized):
+            return "como_funciona"
+        
+        # Patrones para saludo genérico
+        if re.search(r'\b(hola|holi|buenas|buenos|saludos|hey|hi|hello)\b', normalized):
+            return "saludo"
+        
         return None
     
     @staticmethod
