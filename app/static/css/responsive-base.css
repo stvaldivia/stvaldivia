@@ -33,7 +33,7 @@
   --container-padding-mobile: var(--spacing-sm);
   --container-padding-tablet: var(--spacing-md);
   --container-padding-desktop: var(--spacing-lg);
-  --container-max-width: 1400px;
+  --container-max-width: min(87.5rem, 95vw);
 }
 
 /* ============================================
@@ -281,11 +281,11 @@ object {
 }
 
 /* ============================================
-   BOTONES TÁCTILES (mínimo 44px)
+   BOTONES TÁCTILES (mínimo 2.75rem / 44px)
    ============================================ */
 .btn-touch {
-  min-height: 44px;
-  min-width: 44px;
+  min-height: 2.75rem;
+  min-width: 2.75rem;
   padding: var(--spacing-sm) var(--spacing-md);
   display: inline-flex;
   align-items: center;
@@ -313,7 +313,7 @@ object {
    INPUTS TÁCTILES
    ============================================ */
 .input-touch {
-  min-height: 44px;
+  min-height: 2.75rem;
   width: 100%;
   padding: var(--spacing-sm) var(--spacing-md);
   font-size: var(--font-size-base);
@@ -339,7 +339,7 @@ object {
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
-  padding: var(--spacing-md);
+  padding: clamp(0.75rem, 3vw, 1.5rem);
   transition: all 0.3s ease;
 }
 
@@ -376,7 +376,7 @@ object {
 
 .modal-responsive-content {
   width: 100%;
-  max-width: 90%;
+  max-width: min(90%, 48rem);
   max-height: 90vh;
   overflow-y: auto;
   background: #1a1a2e;
@@ -387,14 +387,14 @@ object {
 
 @media (min-width: 768px) {
   .modal-responsive-content {
-    max-width: 600px;
+    max-width: min(37.5rem, 90%);
     padding: var(--spacing-lg);
   }
 }
 
 @media (min-width: 1024px) {
   .modal-responsive-content {
-    max-width: 800px;
+    max-width: min(50rem, 80%);
   }
 }
 
