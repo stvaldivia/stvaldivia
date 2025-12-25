@@ -718,7 +718,8 @@ small {
   }
   
   .table {
-    min-width: clamp(37.5rem, 80vw, 50rem); /* Ancho mínimo para scroll horizontal */
+    min-width: clamp(37.5rem, 75vw, 50rem); /* Ancho mínimo para scroll horizontal */
+    max-width: 100%;
     font-size: var(--text-sm);
   }
   

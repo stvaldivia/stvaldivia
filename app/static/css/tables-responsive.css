@@ -205,7 +205,8 @@
   
   /* Solo aplicar min-width si la tabla realmente lo necesita */
   .table-responsive.has-min-width {
-    min-width: clamp(37.5rem, 80vw, 50rem);
+    min-width: clamp(37.5rem, 75vw, 50rem);
+    max-width: 100%;
   }
   
   /* Mantener estructura de tabla pero con scroll */
