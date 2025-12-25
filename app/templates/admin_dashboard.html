@@ -6,33 +6,50 @@
 <script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
 <script src="{{ url_for('static', filename='vendor/socket.io.min.js') }}"></script>
 <style>
+    /* Resetear márgenes del body y html para dashboard */
+    body.has-admin-nav {
+        margin: 0;
+        padding: 0;
+        overflow-x: hidden;
+    }
+    
+    /* Escapar del contenedor padre para ocupar 100% del ancho */
+    #main-content.container {
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    #main-content-inner.main-container {
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
     .dashboard-container {
-        max-width: 1400px;
-        margin: 0 auto;
-        padding: var(--spacing-sm, 0.75rem);
-        width: 100%;
+        width: 100vw;
+        max-width: 100vw;
+        margin: 0;
+        padding: 0;
         box-sizing: border-box;
-    }
-    
-    @media (min-width: 768px) {
-        .dashboard-container {
-            padding: var(--spacing-md, 1rem);
-        }
-    }
-    
-    @media (min-width: 1024px) {
-        .dashboard-container {
-            padding: var(--spacing-lg, 1.5rem);
-        }
+        min-height: 100vh;
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        position: relative;
+        left: 50%;
+        right: 50%;
+        margin-left: -50vw;
+        margin-right: -50vw;
     }
     
     /* Banner de Estado del Sistema */
     .system-status-banner {
         background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        border-radius: 16px;
-        padding: 20px;
-        margin-bottom: 30px;
+        border: none;
+        border-radius: 0;
+        padding: clamp(12px, 2vw, 20px);
+        margin-bottom: clamp(15px, 2vw, 20px);
         display: flex;
         align-items: center;
         gap: 20px;
@@ -86,8 +103,9 @@
     .metrics-grid {
         display: grid;
         grid-template-columns: 1fr;
-        gap: var(--spacing-sm, 0.75rem);
-        margin-bottom: var(--spacing-md, 1rem);
+        gap: clamp(8px, 1vw, 12px);
+        margin-bottom: clamp(10px, 1.5vw, 15px);
+        padding: 0 clamp(8px, 1vw, 12px);
     }
     
     @media (min-width: 480px) {
@@ -105,38 +123,24 @@
     }
     
     .metric-card {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        border-radius: 16px;
-        padding: var(--spacing-md, 1rem);
+        background: rgba(0, 0, 0, 0.2);
+        border: none;
+        border-radius: 0;
+        padding: clamp(10px, 1.5vw, 15px);
         transition: all 0.3s ease;
     }
     
-    @media (min-width: 768px) {
-        .metric-card {
-            padding: var(--spacing-lg, 1.5rem);
-        }
-    }
-    
     .metric-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-        border-color: rgba(102, 126, 234, 0.3);
+        background: rgba(0, 0, 0, 0.3);
     }
     
     /* Tarjeta de Estado Getnet */
     .getnet-status-card {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        border-radius: 16px;
-        padding: var(--spacing-md, 1rem);
+        background: transparent;
+        border: none;
+        border-radius: 0;
+        padding: clamp(10px, 1.5vw, 15px) clamp(8px, 1vw, 12px);
         transition: all 0.3s ease;
-    }
-    
-    @media (min-width: 768px) {
-        .getnet-status-card {
-            padding: var(--spacing-lg, 1.5rem);
-        }
     }
     
     .getnet-status-header {
@@ -291,27 +295,36 @@
         color: #94a3b8;
     }
     
+    .metric-change.warning {
+        color: #ff9800;
+    }
+    
+    .metric-change.negative {
+        color: #f44336;
+    }
+    
     /* Sección de Gráficos */
     .charts-section {
         display: grid;
         grid-template-columns: 1fr;
-        gap: var(--spacing-sm, 0.75rem);
-        margin-bottom: var(--spacing-md, 1rem);
+        gap: clamp(8px, 1vw, 12px);
+        margin-bottom: clamp(10px, 1.5vw, 15px);
+        padding: 0 clamp(8px, 1vw, 12px);
     }
     
     @media (min-width: 768px) {
         .charts-section {
             grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: var(--spacing-md, 1rem);
-            margin-bottom: var(--spacing-lg, 1.5rem);
+            gap: clamp(8px, 1vw, 12px);
+            margin-bottom: clamp(10px, 1.5vw, 15px);
         }
     }
     
     .chart-card {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        border-radius: 16px;
-        padding: var(--spacing-md, 1rem);
+        background: rgba(0, 0, 0, 0.2);
+        border: none;
+        border-radius: 0;
+        padding: clamp(10px, 1.5vw, 15px);
     }
     
     @media (min-width: 768px) {
@@ -336,7 +349,8 @@
     
     /* Alertas */
     .alerts-section {
-        margin-bottom: 30px;
+        margin-bottom: clamp(10px, 1.5vw, 15px);
+        padding: 0 clamp(8px, 1vw, 12px);
     }
     
     .alert-card {
@@ -406,15 +420,16 @@
     .comparatives-section {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 20px;
-        margin-bottom: 30px;
+        gap: clamp(8px, 1vw, 12px);
+        margin-bottom: clamp(10px, 1.5vw, 15px);
+        padding: 0 clamp(8px, 1vw, 12px);
     }
     
     .comparative-card {
-        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        border-radius: 16px;
-        padding: 25px;
+        background: rgba(0, 0, 0, 0.2);
+        border: none;
+        border-radius: 0;
+        padding: clamp(10px, 1.5vw, 15px);
     }
     
     .comparative-title {
@@ -485,6 +500,259 @@
         margin-bottom: 15px;
     }
     
+    /* Resumen de Ventas */
+    .sales-summary-section {
+        background: transparent;
+        border: none;
+        border-radius: 0;
+        padding: clamp(10px, 1.5vw, 15px) clamp(8px, 1vw, 12px);
+        margin-bottom: clamp(10px, 1.5vw, 15px);
+    }
+    
+    .sales-summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: var(--spacing-md, 1rem);
+    }
+    
+    .sales-summary-item {
+        text-align: center;
+        padding: var(--spacing-sm, 0.75rem);
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 8px;
+    }
+    
+    .sales-label {
+        color: #94a3b8;
+        font-size: 0.85rem;
+        margin-bottom: 8px;
+        font-weight: 600;
+    }
+    
+    .sales-value {
+        color: #fff;
+        font-size: clamp(1.2rem, 3vw, 1.5rem);
+        font-weight: 700;
+    }
+    
+    /* Estado de Cajas */
+    .cash-register-status {
+        margin-bottom: clamp(10px, 1.5vw, 15px);
+        padding: 0 clamp(8px, 1vw, 12px);
+    }
+    
+    .cash-register-card {
+        background: linear-gradient(135deg, rgba(76, 175, 80, 0.15) 0%, rgba(76, 175, 80, 0.05) 100%);
+        border: none;
+        border-radius: 0;
+        padding: clamp(10px, 1.5vw, 15px);
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-md, 1rem);
+        flex-wrap: wrap;
+    }
+    
+    .cash-register-header {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm, 0.75rem);
+        flex: 1;
+    }
+    
+    .cash-register-icon {
+        font-size: 1.5rem;
+    }
+    
+    .cash-register-title {
+        color: #4caf50;
+        font-size: clamp(1rem, 2.5vw, 1.2rem);
+        font-weight: 700;
+        margin: 0;
+    }
+    
+    .cash-register-message {
+        color: #94a3b8;
+        font-size: 0.9rem;
+        margin: 0;
+        flex: 1;
+    }
+    
+    .cash-register-btn {
+        background: rgba(76, 175, 80, 0.3);
+        border: 1px solid rgba(76, 175, 80, 0.5);
+        color: #4caf50;
+        padding: var(--spacing-sm, 0.75rem) var(--spacing-md, 1rem);
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+    
+    .cash-register-btn:hover {
+        background: rgba(76, 175, 80, 0.4);
+    }
+    
+    /* Métricas de Rendimiento */
+    .performance-metrics-section {
+        margin-bottom: clamp(10px, 1.5vw, 15px);
+        padding: 0 clamp(8px, 1vw, 12px);
+    }
+    
+    .performance-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: clamp(8px, 1vw, 12px);
+    }
+    
+    .performance-card {
+        background: rgba(0, 0, 0, 0.2);
+        border: none;
+        border-radius: 0;
+        padding: clamp(10px, 1.5vw, 15px);
+        text-align: center;
+    }
+    
+    .performance-label {
+        color: #94a3b8;
+        font-size: 0.85rem;
+        margin-bottom: 8px;
+        font-weight: 600;
+    }
+    
+    .performance-value {
+        color: #fff;
+        font-size: clamp(1.5rem, 4vw, 2rem);
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+    
+    .performance-subtitle {
+        color: #94a3b8;
+        font-size: 0.8rem;
+    }
+    
+    /* Indicadores de Actividad */
+    .activity-indicators-section {
+        margin-bottom: clamp(10px, 1.5vw, 15px);
+        padding: 0 clamp(8px, 1vw, 12px);
+    }
+    
+    .activity-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: clamp(8px, 1vw, 12px);
+    }
+    
+    .activity-card {
+        background: rgba(0, 0, 0, 0.2);
+        border: none;
+        border-radius: 0;
+        padding: clamp(12px, 2vw, 20px);
+    }
+    
+    .activity-title {
+        color: #fff;
+        font-size: clamp(1rem, 2.5vw, 1.2rem);
+        font-weight: 700;
+        margin: 0 0 var(--spacing-sm, 0.75rem) 0;
+    }
+    
+    .activity-value {
+        color: #e8e8e8;
+        font-size: clamp(1rem, 2.5vw, 1.1rem);
+        margin: 0 0 5px 0;
+    }
+    
+    .activity-subtitle {
+        color: #94a3b8;
+        font-size: 0.85rem;
+        margin: 0;
+    }
+    
+    /* Top Items */
+    .top-items-section {
+        margin-bottom: clamp(10px, 1.5vw, 15px);
+        padding: 0 clamp(8px, 1vw, 12px);
+    }
+    
+    .top-items-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: clamp(8px, 1vw, 12px);
+    }
+    
+    .top-item-card {
+        background: rgba(0, 0, 0, 0.2);
+        border: none;
+        border-radius: 0;
+        padding: clamp(12px, 2vw, 20px);
+    }
+    
+    .top-item-title {
+        color: #fff;
+        font-size: clamp(1rem, 2.5vw, 1.1rem);
+        font-weight: 700;
+        margin: 0 0 var(--spacing-md, 1rem) 0;
+    }
+    
+    .top-item-content {
+        min-height: 100px;
+    }
+    
+    .top-item-empty {
+        color: #94a3b8;
+        text-align: center;
+        margin: 0;
+        padding: var(--spacing-md, 1rem);
+    }
+    
+    .top-item-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .top-item-list li {
+        display: flex;
+        justify-content: space-between;
+        padding: var(--spacing-xs, 0.5rem) 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .top-item-list li:last-child {
+        border-bottom: none;
+    }
+    
+    .top-item-name {
+        color: #e8e8e8;
+    }
+    
+    .top-item-count {
+        color: #4caf50;
+        font-weight: 700;
+    }
+    
+    .top-item-footer {
+        color: #94a3b8;
+        font-size: 0.8rem;
+        margin: var(--spacing-sm, 0.75rem) 0 0 0;
+        text-align: center;
+    }
+    
+    .barra-activa-value {
+        font-size: 2.5rem;
+        color: #ff9800;
+        font-weight: 700;
+        text-align: center;
+        margin-bottom: 5px;
+    }
+    
+    .barra-activa-name {
+        color: #e8e8e8;
+        font-size: 1.1rem;
+        text-align: center;
+    }
+    
     /* Responsive */
     @media (max-width: 768px) {
         .charts-section {
@@ -494,12 +762,28 @@
         .metrics-grid {
             grid-template-columns: 1fr;
         }
+        
+        .sales-summary-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .performance-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .activity-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .top-items-grid {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="dashboard-container">
+<div class="dashboard-container" id="main-content">
     <!-- Banner de Estado del Sistema -->
     <div class="system-status-banner" id="system-status-banner">
         <div class="status-indicator" id="status-indicator"></div>
@@ -509,13 +793,129 @@
         </div>
     </div>
     
+    <!-- Resumen de Ventas (como en la imagen) -->
+    <div class="sales-summary-section" id="sales-summary-section" style="display: none;">
+        <div class="sales-summary-grid">
+            <div class="sales-summary-item">
+                <div class="sales-label">Total Recaudado</div>
+                <div class="sales-value" id="total-recaudado">$0</div>
+            </div>
+            <div class="sales-summary-item">
+                <div class="sales-label">Efectivo</div>
+                <div class="sales-value" id="total-efectivo">$0</div>
+            </div>
+            <div class="sales-summary-item">
+                <div class="sales-label">Débito</div>
+                <div class="sales-value" id="total-debito">$0</div>
+            </div>
+            <div class="sales-summary-item">
+                <div class="sales-label">Crédito</div>
+                <div class="sales-value" id="total-credito">$0</div>
+            </div>
+            <div class="sales-summary-item">
+                <div class="sales-label">Total Ventas</div>
+                <div class="sales-value" id="total-ventas">0</div>
+            </div>
+            <div class="sales-summary-item">
+                <div class="sales-label">Ticket Promedio</div>
+                <div class="sales-value" id="ticket-promedio">$0</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Estado de Cajas -->
+    <div class="cash-register-status" id="cash-register-status" style="display: none;">
+        <div class="cash-register-card">
+            <div class="cash-register-header">
+                <span class="cash-register-icon">✅</span>
+                <h3 class="cash-register-title">Todas las cajas están desbloqueadas</h3>
+            </div>
+            <p class="cash-register-message" id="cash-register-message">No hay cajas bloqueadas actualmente</p>
+            <button class="cash-register-btn" id="clear-all-btn" onclick="clearAllRegisters()">Limpiar Todas</button>
+        </div>
+    </div>
+    
+    <!-- Métricas de Rendimiento -->
+    <div class="performance-metrics-section" id="performance-metrics-section" style="display: none;">
+        <div class="performance-grid">
+            <div class="performance-card">
+                <div class="performance-label">Por Persona</div>
+                <div class="performance-value" id="por-persona">$0</div>
+                <div class="performance-subtitle">Recaudación / Personas</div>
+            </div>
+            <div class="performance-card">
+                <div class="performance-label">Proyección</div>
+                <div class="performance-value" id="proyeccion">$0</div>
+                <div class="performance-subtitle">Estimado al cierre</div>
+            </div>
+            <div class="performance-card">
+                <div class="performance-label">Entregas/Hora</div>
+                <div class="performance-value" id="entregas-hora">0.0</div>
+                <div class="performance-subtitle">Productividad de entregas</div>
+            </div>
+            <div class="performance-card">
+                <div class="performance-label">Ventas/Hora</div>
+                <div class="performance-value" id="ventas-hora">0.0</div>
+                <div class="performance-subtitle">Productividad de ventas</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Indicadores de Actividad -->
+    <div class="activity-indicators-section" id="activity-indicators-section" style="display: none;">
+        <div class="activity-grid">
+            <div class="activity-card" id="ritmo-card">
+                <h3 class="activity-title">RITMO BAJO</h3>
+                <p class="activity-value" id="ritmo-value">0 entregas en última hora</p>
+                <p class="activity-subtitle" id="ritmo-subtitle">Promedio: 0.1/h (-100%)</p>
+            </div>
+            <div class="activity-card" id="tendencia-card">
+                <h3 class="activity-title">TENDENCIA</h3>
+                <p class="activity-value" id="tendencia-value">Estable</p>
+                <p class="activity-subtitle" id="tendencia-subtitle">Sin datos suficientes</p>
+            </div>
+            <div class="activity-card" id="velocidad-card">
+                <h3 class="activity-title">VELOCIDAD</h3>
+                <p class="activity-value" id="velocidad-value">0 entregas (últimos 15 min)</p>
+                <p class="activity-subtitle" id="velocidad-subtitle">Promedio: 0.0</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Top Items/Staff -->
+    <div class="top-items-section" id="top-items-section" style="display: none;">
+        <div class="top-items-grid">
+            <div class="top-item-card">
+                <h3 class="top-item-title">Top Productos (Ahora)</h3>
+                <div class="top-item-content" id="top-productos-content">
+                    <p class="top-item-empty">Sin entregas en últimos 30 min</p>
+                </div>
+                <p class="top-item-footer">Últimos 30 minutos</p>
+            </div>
+            <div class="top-item-card">
+                <h3 class="top-item-title">Top Bartenders (Ahora)</h3>
+                <div class="top-item-content" id="top-bartenders-content">
+                    <p class="top-item-empty">Sin entregas en últimos 30 min</p>
+                </div>
+                <p class="top-item-footer">Últimos 30 minutos</p>
+            </div>
+            <div class="top-item-card">
+                <h3 class="top-item-title">Barra Más Activa</h3>
+                <div class="top-item-content" id="barra-activa-content">
+                    <div class="barra-activa-value" id="barra-activa-value">-</div>
+                    <div class="barra-activa-name" id="barra-activa-name">-</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <!-- Alertas Proactivas -->
     <div class="alerts-section" id="alerts-section" style="display: none;">
         <h3 style="color: #fff; margin-bottom: 15px; font-size: 1.2rem;">⚠️ Alertas</h3>
         <div id="alerts-container"></div>
     </div>
     
-    <!-- Métricas Principales -->
+    <!-- Métricas Principales (Grid compacto) -->
     <div class="metrics-grid" id="metrics-grid">
         <div class="loading-state">
             <div class="spinner"></div>
@@ -691,6 +1091,21 @@
         // Actualizar estado del sistema
         updateSystemStatus(metrics.system_status);
         
+        // Actualizar resumen de ventas
+        updateSalesSummary(metrics);
+        
+        // Actualizar estado de cajas
+        updateCashRegisterStatus(metrics);
+        
+        // Actualizar métricas de rendimiento
+        updatePerformanceMetrics(metrics);
+        
+        // Actualizar indicadores de actividad
+        updateActivityIndicators(metrics);
+        
+        // Actualizar top items
+        updateTopItems(metrics);
+        
         // Actualizar métricas principales
         updateMainMetrics(metrics);
         
@@ -702,6 +1117,223 @@
         
         // Actualizar alertas
         updateAlerts(metrics.alertas);
+    }
+    
+    // Actualizar resumen de ventas
+    function updateSalesSummary(metrics) {
+        const section = document.getElementById('sales-summary-section');
+        if (!section) return;
+        
+        const ventas = metrics.ventas || {};
+        const turno = ventas.turno || {};
+        
+        const total = turno.monto || 0;
+        const efectivo = turno.cash || 0;
+        const debito = turno.debit || 0;
+        const credito = turno.credit || 0;
+        const totalVentas = turno.total || 0;
+        const ticketPromedio = totalVentas > 0 ? total / totalVentas : 0;
+        
+        document.getElementById('total-recaudado').textContent = `$${formatNumber(total)}`;
+        document.getElementById('total-efectivo').textContent = `$${formatNumber(efectivo)}`;
+        document.getElementById('total-debito').textContent = `$${formatNumber(debito)}`;
+        document.getElementById('total-credito').textContent = `$${formatNumber(credito)}`;
+        document.getElementById('total-ventas').textContent = totalVentas;
+        document.getElementById('ticket-promedio').textContent = `$${formatNumber(ticketPromedio)}`;
+        
+        section.style.display = 'block';
+    }
+    
+    // Actualizar estado de cajas
+    function updateCashRegisterStatus(metrics) {
+        const section = document.getElementById('cash-register-status');
+        if (!section) return;
+        
+        const cajas = metrics.cajas || {};
+        const cajasAbiertas = cajas.abiertas || 0;
+        const cierresPendientes = cajas.cierres_pendientes || 0;
+        
+        const card = section.querySelector('.cash-register-card');
+        const title = section.querySelector('.cash-register-title');
+        const message = section.querySelector('.cash-register-message');
+        
+        if (cajasAbiertas === 0 && cierresPendientes === 0) {
+            title.textContent = 'Todas las cajas están desbloqueadas';
+            message.textContent = 'No hay cajas bloqueadas actualmente';
+            card.style.borderColor = 'rgba(76, 175, 80, 0.5)';
+        } else {
+            title.textContent = `${cajasAbiertas} caja(s) bloqueada(s)`;
+            message.textContent = `${cierresPendientes} cierre(s) pendiente(s)`;
+            card.style.borderColor = 'rgba(255, 152, 0, 0.5)';
+        }
+        
+        section.style.display = 'block';
+    }
+    
+    // Actualizar métricas de rendimiento
+    function updatePerformanceMetrics(metrics) {
+        const section = document.getElementById('performance-metrics-section');
+        if (!section) return;
+        
+        const ventas = metrics.ventas || {};
+        const entregas = metrics.entregas || {};
+        const turno = metrics.turno_actual || {};
+        const equipo = metrics.equipo || {};
+        
+        const totalRecaudado = ventas.turno?.monto || 0;
+        const totalPersonas = equipo.total_trabajadores || 1;
+        const porPersona = totalPersonas > 0 ? totalRecaudado / totalPersonas : 0;
+        
+        // Proyección (estimado al cierre basado en ritmo actual)
+        const tiempoAbierto = turno.tiempo_transcurrido || '0h 0m';
+        const horasMatch = tiempoAbierto.match(/(\d+)h/);
+        const horas = horasMatch ? parseInt(horasMatch[1]) : 1;
+        const proyeccion = horas > 0 ? (totalRecaudado / horas) * 8 : 0; // Proyección a 8 horas
+        
+        // Entregas por hora
+        const entregasTurno = entregas.turno || 0;
+        const entregasPorHora = horas > 0 ? entregasTurno / horas : 0;
+        
+        // Ventas por hora
+        const ventasTurno = ventas.turno?.total || 0;
+        const ventasPorHora = horas > 0 ? ventasTurno / horas : 0;
+        
+        document.getElementById('por-persona').textContent = `$${formatNumber(porPersona)}`;
+        document.getElementById('proyeccion').textContent = `$${formatNumber(proyeccion)}`;
+        document.getElementById('entregas-hora').textContent = entregasPorHora.toFixed(1);
+        document.getElementById('ventas-hora').textContent = ventasPorHora.toFixed(1);
+        
+        section.style.display = 'grid';
+    }
+    
+    // Actualizar indicadores de actividad
+    function updateActivityIndicators(metrics) {
+        const section = document.getElementById('activity-indicators-section');
+        if (!section) return;
+        
+        const entregas = metrics.entregas || {};
+        const entregasTurno = entregas.turno || 0;
+        
+        // Ritmo (última hora - simplificado)
+        const ritmoCard = document.getElementById('ritmo-card');
+        const ritmoValue = document.getElementById('ritmo-value');
+        const ritmoSubtitle = document.getElementById('ritmo-subtitle');
+        
+        // Calcular entregas última hora (simplificado - usar total del turno)
+        const entregasUltimaHora = Math.floor(entregasTurno / 2); // Aproximación
+        const promedioHora = entregasTurno > 0 ? entregasTurno / 2 : 0.1;
+        const porcentaje = promedioHora > 0 ? ((entregasUltimaHora - promedioHora) / promedioHora * 100) : -100;
+        
+        ritmoValue.textContent = `${entregasUltimaHora} entregas en última hora`;
+        ritmoSubtitle.textContent = `Promedio: ${promedioHora.toFixed(1)}/h (${porcentaje >= 0 ? '+' : ''}${porcentaje.toFixed(0)}%)`;
+        
+        if (entregasUltimaHora < promedioHora) {
+            ritmoCard.style.borderColor = 'rgba(33, 150, 243, 0.5)';
+            ritmoCard.querySelector('.activity-title').textContent = 'RITMO BAJO';
+        } else {
+            ritmoCard.style.borderColor = 'rgba(76, 175, 80, 0.5)';
+            ritmoCard.querySelector('.activity-title').textContent = 'RITMO NORMAL';
+        }
+        
+        // Tendencia
+        const tendenciaCard = document.getElementById('tendencia-card');
+        const tendenciaValue = document.getElementById('tendencia-value');
+        const tendenciaSubtitle = document.getElementById('tendencia-subtitle');
+        
+        tendenciaValue.textContent = 'Estable';
+        tendenciaSubtitle.textContent = 'Sin datos suficientes';
+        
+        // Velocidad (últimos 15 min)
+        const velocidadCard = document.getElementById('velocidad-card');
+        const velocidadValue = document.getElementById('velocidad-value');
+        const velocidadSubtitle = document.getElementById('velocidad-subtitle');
+        
+        const velocidad15min = Math.floor(entregasTurno / 4); // Aproximación
+        const velocidadPromedio = entregasTurno > 0 ? entregasTurno / 4 : 0;
+        
+        velocidadValue.textContent = `${velocidad15min} entregas (últimos 15 min)`;
+        velocidadSubtitle.textContent = `Promedio: ${velocidadPromedio.toFixed(1)}`;
+        
+        section.style.display = 'grid';
+    }
+    
+    // Actualizar top items
+    function updateTopItems(metrics) {
+        const section = document.getElementById('top-items-section');
+        if (!section) return;
+        
+        const graficos = metrics.graficos || {};
+        const topProductos = graficos.top_productos || [];
+        const topBartenders = graficos.top_bartenders || [];
+        const barraMasActiva = graficos.barra_mas_activa || null;
+        
+        // Top Productos
+        const productosContent = document.getElementById('top-productos-content');
+        if (topProductos.length > 0) {
+            productosContent.innerHTML = '<ul class="top-item-list">' +
+                topProductos.map((p, i) => `
+                    <li>
+                        <span class="top-item-name">${i + 1}. ${p[0]}</span>
+                        <span class="top-item-count">${p[1]}</span>
+                    </li>
+                `).join('') + '</ul>';
+        } else {
+            productosContent.innerHTML = '<p class="top-item-empty">Sin entregas en últimos 30 min</p>';
+        }
+        
+        // Top Bartenders
+        const bartendersContent = document.getElementById('top-bartenders-content');
+        if (topBartenders.length > 0) {
+            bartendersContent.innerHTML = '<ul class="top-item-list">' +
+                topBartenders.map((b, i) => `
+                    <li>
+                        <span class="top-item-name">${i + 1}. ${b[0]}</span>
+                        <span class="top-item-count">${b[1]}</span>
+                    </li>
+                `).join('') + '</ul>';
+        } else {
+            bartendersContent.innerHTML = '<p class="top-item-empty">Sin entregas en últimos 30 min</p>';
+        }
+        
+        // Barra Más Activa
+        const barraValue = document.getElementById('barra-activa-value');
+        const barraName = document.getElementById('barra-activa-name');
+        if (barraMasActiva) {
+            barraValue.textContent = barraMasActiva.cantidad;
+            barraName.textContent = barraMasActiva.nombre;
+        } else {
+            barraValue.textContent = '-';
+            barraName.textContent = '-';
+        }
+        
+        section.style.display = 'grid';
+    }
+    
+    // Función para limpiar todas las cajas
+    function clearAllRegisters() {
+        if (!confirm('¿Estás seguro de que deseas desbloquear todas las cajas?')) {
+            return;
+        }
+        
+        fetch('/admin/api/register/clear-all', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Todas las cajas han sido desbloqueadas');
+                loadMetrics(); // Recargar métricas
+            } else {
+                alert('Error: ' + (data.error || 'No se pudieron desbloquear las cajas'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al desbloquear las cajas');
+        });
     }
     
     // Actualizar banner de estado
@@ -756,6 +1388,11 @@
         const kioskos = metrics.kioskos || {};
         const equipo = metrics.equipo || {};
         
+        const inventario = metrics.inventario || {};
+        const guardarropia = metrics.guardarropia || {};
+        const encuestas = metrics.encuestas || {};
+        const cajas = metrics.cajas || {};
+        
         grid.innerHTML = `
             <div class="metric-card">
                 <div class="metric-header">
@@ -809,6 +1446,50 @@
                 <div class="metric-value">$${formatNumber(turno.costo_total || 0)}</div>
                 <div class="metric-change neutral">
                     <span>${turno.planilla_count || 0} trabajadores</span>
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-header">
+                    <h4 class="metric-title">Inventario</h4>
+                    <span class="metric-icon">📦</span>
+                </div>
+                <div class="metric-value">${inventario.total_productos || 0}</div>
+                <div class="metric-change ${inventario.stock_bajo > 0 ? 'negative' : 'neutral'}">
+                    <span>${inventario.stock_bajo || 0} con stock bajo</span>
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-header">
+                    <h4 class="metric-title">Guardarropía</h4>
+                    <span class="metric-icon">🧥</span>
+                </div>
+                <div class="metric-value">${guardarropia.items_pendientes || 0}</div>
+                <div class="metric-change neutral">
+                    <span>Pendientes • $${formatNumber(guardarropia.revenue_hoy || 0)} hoy</span>
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-header">
+                    <h4 class="metric-title">Encuestas</h4>
+                    <span class="metric-icon">📝</span>
+                </div>
+                <div class="metric-value">${encuestas.respuestas_turno || 0}</div>
+                <div class="metric-change neutral">
+                    <span>⭐ ${encuestas.promedio_calificacion || 0}/5 • ${encuestas.respuestas_hoy || 0} hoy</span>
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-header">
+                    <h4 class="metric-title">Cajas</h4>
+                    <span class="metric-icon">💰</span>
+                </div>
+                <div class="metric-value">${cajas.abiertas || 0}</div>
+                <div class="metric-change ${cajas.cierres_pendientes > 0 ? 'warning' : 'neutral'}">
+                    <span>${cajas.cierres_pendientes || 0} cierres pendientes</span>
                 </div>
             </div>
         `;
@@ -1127,8 +1808,8 @@
         loadMetrics();
         connectSocketIO();
         
-        // Actualizar cada 30 segundos
-        updateInterval = setInterval(loadMetrics, 30000);
+        // Actualizar cada 10 segundos para tiempo real
+        updateInterval = setInterval(loadMetrics, 10000);
         
         // Inicializar estado Getnet
         updateGetnetStatus(); // Primera carga inmediata

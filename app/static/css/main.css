@@ -110,7 +110,8 @@ body {
   box-shadow: var(--elevation-2);
   z-index: 10000;
   transition: all var(--transition-normal);
-  overflow-x: hidden;
+  overflow-x: visible; /* Cambiado de hidden a visible */
+  overflow-y: visible;
   box-sizing: border-box;
 }
 
@@ -131,17 +132,38 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--space-3, 0.75rem) var(--space-5, 3rem);
+  padding: var(--space-3, 0.75rem) var(--spacing-sm, 0.75rem);
   flex-wrap: nowrap;
   gap: var(--space-3, 0.75rem);
   overflow-x: visible;
   overflow-y: visible;
   box-sizing: border-box;
+  min-width: 0; /* Permite que el contenedor se reduzca */
+}
+
+@media (min-width: 768px) {
+  .admin-nav-container {
+    padding: var(--space-3, 0.75rem) var(--spacing-md, 1rem);
+  }
+}
+
+@media (min-width: 1024px) {
+  .admin-nav-container {
+    padding: var(--space-3, 0.75rem) var(--spacing-md, 1rem);
+    gap: var(--space-2, 0.5rem); /* Reducir gap para más espacio */
+  }
+}
+
+@media (min-width: 1280px) {
+  .admin-nav-container {
+    padding: var(--space-3, 0.75rem) var(--space-5, 3rem);
+    gap: var(--space-3, 0.75rem);
+  }
 }
 
 @media (max-width: 767px) {
   .admin-nav-container {
-    padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+    padding: var(--space-2, 0.5rem) var(--spacing-sm, 0.75rem);
     gap: var(--space-2, 0.5rem);
   }
 }
@@ -152,22 +174,54 @@ body {
   align-items: center;
   gap: var(--space-2);
   flex-wrap: nowrap;
-  flex-shrink: 0;
   overflow: visible;
+}
+
+.admin-nav-left {
+  flex-shrink: 0;
+}
+
+.admin-nav-right {
+  flex-shrink: 1;
+  min-width: 0; /* Permite que se reduzca */
 }
 
 .admin-nav-right {
   margin-left: auto;
 }
 
-/* Menú desktop (dentro del nav, solo visible en >=1024px) */
+/* Menú desktop (dentro del nav, visible en >=768px) */
 .admin-nav-desktop {
   display: none;
+  gap: var(--space-2);
+  flex-wrap: wrap; /* Permitir wrap si es necesario */
+  align-items: center;
+}
+
+/* Tablet y desktop - mostrar menú desktop */
+@media (min-width: 768px) {
+  .admin-nav-desktop {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+  
+  .mobile-menu-toggle {
+    display: none !important;
+  }
 }
 
 @media (min-width: 1024px) {
   .admin-nav-desktop {
     display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .admin-nav-desktop {
+    flex-wrap: nowrap; /* En pantallas grandes, no hacer wrap */
   }
 }
 
@@ -246,6 +300,8 @@ body {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
+  flex-shrink: 0; /* Los botones no se reducen */
+  min-width: fit-content;
 }
 
 .admin-nav-btn::before {
@@ -414,7 +470,7 @@ body.has-admin-nav {
   .admin-nav-container {
     position: relative;
     flex-wrap: nowrap;
-    overflow-x: hidden;
+    overflow-x: visible;
     width: 100%;
     max-width: 100%;
   }
@@ -422,7 +478,7 @@ body.has-admin-nav {
   .admin-nav-left {
     flex: 1;
     min-width: 0;
-    overflow: hidden;
+    overflow: visible;
   }
   
   body.has-admin-nav {
@@ -446,9 +502,37 @@ body.has-admin-nav {
     display: none !important;
   }
   
-  /* En desktop, mostrar menú desktop normal */
+  /* En desktop, mostrar menú desktop SIEMPRE */
   .admin-nav-desktop {
     display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+}
+
+/* Desktop medio - permitir wrap si es necesario */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .admin-nav-desktop {
+    flex-wrap: wrap;
+    gap: var(--space-1, 0.25rem);
+  }
+  
+  .admin-nav-btn {
+    padding: var(--space-2, 0.5rem) var(--space-2, 0.5rem);
+    font-size: var(--text-xs, 0.875rem);
+  }
+}
+
+/* Desktop grande - sin wrap */
+@media (min-width: 1280px) {
+  .admin-nav-desktop {
+    flex-wrap: nowrap;
+    gap: var(--space-2);
+  }
+  
+  .admin-nav-btn {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-sm);
   }
 }
 

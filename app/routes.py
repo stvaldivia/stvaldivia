@@ -94,6 +94,41 @@ def api_toggle_register():
     """API deshabilitada - módulo de cajas eliminado"""
     return jsonify({'success': False, 'error': 'Módulo de gestión de cajas eliminado'}), 410
 
+@bp.route('/admin/api/register/clear-all', methods=['POST'])
+def api_clear_all_registers():
+    """API: Desbloquear todas las cajas"""
+    if not session.get('admin_logged_in'):
+        return jsonify({'success': False, 'error': 'No autenticado'}), 401
+    
+    try:
+        from app.helpers.register_lock_db import unlock_all_registers
+        
+        count = unlock_all_registers()
+        
+        if count > 0:
+            # Emitir actualización de métricas
+            try:
+                from app import socketio
+                from app.helpers.dashboard_metrics_service import get_metrics_service
+                
+                metrics_service = get_metrics_service()
+                metrics = metrics_service.get_all_metrics(use_cache=False)
+                socketio.emit('metrics_update', {'metrics': metrics}, namespace='/admin_stats')
+            except Exception as e:
+                current_app.logger.warning(f"No se pudo emitir actualización: {e}")
+        
+        return jsonify({
+            'success': True,
+            'message': f'{count} caja(s) desbloqueada(s)',
+            'count': count
+        })
+    except Exception as e:
+        current_app.logger.error(f"Error al desbloquear todas las cajas: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 
 @bp.route('/admin/panel_control')
 def admin_panel_control():

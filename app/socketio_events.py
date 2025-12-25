@@ -81,10 +81,10 @@ def register_socketio_events(socketio):
     def start_metrics_thread(app_instance):
         """Iniciar thread para emitir métricas periódicamente"""
         def emit_periodic_metrics():
-            """Emitir métricas cada 30 segundos a todos los clientes conectados"""
+            """Emitir métricas cada 10 segundos a todos los clientes conectados para tiempo real"""
             while True:
                 try:
-                    time.sleep(30)  # Esperar 30 segundos
+                    time.sleep(10)  # Esperar 10 segundos para actualización en tiempo real
                     
                     with app_instance.app_context():
                         try:

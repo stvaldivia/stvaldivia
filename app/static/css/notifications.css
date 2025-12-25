@@ -77,7 +77,7 @@
     top: 60px;
     right: 20px;
     width: auto;
-    max-width: min(400px, calc(100% - 40px));
+    max-width: min(400px, calc(100vw - 40px));
     max-height: calc(100vh - 100px);
     background: white;
     border-radius: 12px;
@@ -279,7 +279,7 @@
     top: 20px;
     right: 20px;
     width: auto;
-    max-width: min(360px, calc(100% - 40px));
+    max-width: min(360px, calc(100vw - 40px));
     background: white;
     border-radius: 8px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
@@ -409,25 +409,65 @@
 }
 
 /* Responsive */
-@media (max-width: 768px) {
+@media (max-width: 767px) {
     .notification-panel {
-        top: 10px;
-        right: 10px;
-        left: 10px;
+        top: var(--spacing-sm, 0.5rem);
+        right: var(--spacing-sm, 0.5rem);
+        left: var(--spacing-sm, 0.5rem);
         width: auto;
         max-width: none;
+        max-height: calc(100vh - 80px);
+        border-radius: 12px;
+    }
+    
+    .notification-panel-header {
+        padding: var(--spacing-sm, 0.75rem) var(--spacing-md, 1rem);
+    }
+    
+    .notification-panel-header h3 {
+        font-size: clamp(0.9rem, 3vw, 1rem);
+    }
+    
+    .notification-item {
+        padding: var(--spacing-sm, 0.75rem);
+        gap: var(--spacing-xs, 0.5rem);
+    }
+    
+    .notification-title {
+        font-size: clamp(0.85rem, 2.5vw, 0.875rem);
+    }
+    
+    .notification-message {
+        font-size: clamp(0.8rem, 2.5vw, 0.8125rem);
     }
     
     .notification-toast {
-        top: 10px;
-        right: 10px;
-        left: 10px;
+        top: var(--spacing-sm, 0.5rem);
+        right: var(--spacing-sm, 0.5rem);
+        left: var(--spacing-sm, 0.5rem);
         width: auto;
         max-width: none;
+        padding: var(--spacing-sm, 0.75rem);
     }
     
     .notification-toast + .notification-toast {
-        top: calc(10px + 90px);
+        top: calc(var(--spacing-sm, 0.5rem) + 80px);
+    }
+    
+    .notification-toast + .notification-toast + .notification-toast {
+        top: calc(var(--spacing-sm, 0.5rem) + 160px);
+    }
+    
+    .toast-icon {
+        font-size: 20px;
+    }
+    
+    .toast-title {
+        font-size: clamp(0.85rem, 2.5vw, 0.875rem);
+    }
+    
+    .toast-message {
+        font-size: clamp(0.8rem, 2.5vw, 0.8125rem);
     }
 }
 

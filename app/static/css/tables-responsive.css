@@ -43,7 +43,7 @@
    ============================================ */
 .table-responsive {
   width: 100%;
-  min-width: 600px; /* Mínimo para mantener estructura en scroll */
+  min-width: 0; /* Sin mínimo fijo - responsive por defecto */
   border-collapse: collapse;
   background: transparent;
 }
@@ -144,7 +144,9 @@
     letter-spacing: 0.5px;
     margin-right: var(--spacing-sm, 0.75rem);
     flex-shrink: 0;
-    min-width: 100px;
+    min-width: 0;
+    max-width: 40%;
+    word-break: break-word;
   }
   
   /* Si no hay data-label, usar el th correspondiente */
@@ -193,7 +195,7 @@
 }
 
 /* ============================================
-   TABLET: Scroll horizontal controlado
+   TABLET: Scroll horizontal controlado (solo si es necesario)
    ============================================ */
 @media (min-width: 768px) and (max-width: 1023px) {
   .table-responsive-wrapper {
@@ -201,8 +203,9 @@
     overflow-y: visible;
   }
   
-  .table-responsive {
-    min-width: 700px;
+  /* Solo aplicar min-width si la tabla realmente lo necesita */
+  .table-responsive.has-min-width {
+    min-width: 600px;
   }
   
   /* Mantener estructura de tabla pero con scroll */

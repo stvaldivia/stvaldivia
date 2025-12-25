@@ -46,6 +46,9 @@ class DashboardMetricsService:
                 'cajas': self._get_cajas_metrics(),
                 'kioskos': self._get_kioskos_metrics(),
                 'equipo': self._get_equipo_metrics(),
+                'inventario': self._get_inventario_metrics(),
+                'guardarropia': self._get_guardarropia_metrics(),
+                'encuestas': self._get_encuestas_metrics(),
                 'comparativas': self._get_comparativas(),
                 'graficos': self._get_graficos_data(),
                 'alertas': self._get_alertas_proactivas(),
@@ -150,6 +153,18 @@ class DashboardMetricsService:
             planilla = PlanillaTrabajador.query.filter_by(jornada_id=jornada_abierta.id).all()
             costo_total = sum(float(t.costo_total) if t.costo_total else 0 for t in planilla)
             
+            # Calcular tiempo transcurrido
+            tiempo_transcurrido = None
+            if jornada_abierta.abierto_en:
+                ahora = datetime.now(CHILE_TZ)
+                abierto_en = jornada_abierta.abierto_en
+                if abierto_en.tzinfo is None:
+                    abierto_en = CHILE_TZ.localize(abierto_en)
+                diferencia = ahora - abierto_en
+                horas = int(diferencia.total_seconds() // 3600)
+                minutos = int((diferencia.total_seconds() % 3600) // 60)
+                tiempo_transcurrido = f"{horas}h {minutos}m"
+            
             return {
                 'existe': True,
                 'id': jornada_abierta.id,
@@ -158,7 +173,8 @@ class DashboardMetricsService:
                 'tipo': jornada_abierta.tipo_turno,
                 'costo_total': costo_total,
                 'planilla_count': len(planilla),
-                'abierto_en': jornada_abierta.abierto_en.isoformat() if jornada_abierta.abierto_en else None
+                'abierto_en': jornada_abierta.abierto_en.isoformat() if jornada_abierta.abierto_en else None,
+                'tiempo_transcurrido': tiempo_transcurrido
             }
         except Exception as e:
             logger.error(f"Error obteniendo métricas del turno: {e}", exc_info=True)
@@ -540,10 +556,80 @@ class DashboardMetricsService:
                         'cantidad': int(cantidad or 0)
                     }
             
+            # Top productos del turno
+            top_productos = []
+            if jornada_abierta and jornada_abierta.abierto_en:
+                opened_dt = jornada_abierta.abierto_en
+                if opened_dt.tzinfo:
+                    opened_dt = opened_dt.replace(tzinfo=None)
+                
+                from app.models.delivery_models import Delivery
+                productos_query = db.session.query(
+                    Delivery.product_name,
+                    func.count(Delivery.id).label('cantidad')
+                ).filter(
+                    Delivery.timestamp >= opened_dt
+                ).group_by(
+                    Delivery.product_name
+                ).order_by(
+                    func.count(Delivery.id).desc()
+                ).limit(5).all()
+                
+                top_productos = [(p[0], int(p[1])) for p in productos_query if p[0]]
+            
+            # Top bartenders del turno
+            top_bartenders = []
+            if jornada_abierta and jornada_abierta.abierto_en:
+                opened_dt = jornada_abierta.abierto_en
+                if opened_dt.tzinfo:
+                    opened_dt = opened_dt.replace(tzinfo=None)
+                
+                bartenders_query = db.session.query(
+                    Delivery.bartender_name,
+                    func.count(Delivery.id).label('cantidad')
+                ).filter(
+                    Delivery.timestamp >= opened_dt,
+                    Delivery.bartender_name.isnot(None)
+                ).group_by(
+                    Delivery.bartender_name
+                ).order_by(
+                    func.count(Delivery.id).desc()
+                ).limit(5).all()
+                
+                top_bartenders = [(b[0], int(b[1])) for b in bartenders_query if b[0]]
+            
+            # Barra más activa
+            barra_mas_activa = None
+            if jornada_abierta and jornada_abierta.abierto_en:
+                opened_dt = jornada_abierta.abierto_en
+                if opened_dt.tzinfo:
+                    opened_dt = opened_dt.replace(tzinfo=None)
+                
+                barra_query = db.session.query(
+                    Delivery.barra,
+                    func.count(Delivery.id).label('cantidad')
+                ).filter(
+                    Delivery.timestamp >= opened_dt,
+                    Delivery.barra.isnot(None)
+                ).group_by(
+                    Delivery.barra
+                ).order_by(
+                    func.count(Delivery.id).desc()
+                ).first()
+                
+                if barra_query:
+                    barra_mas_activa = {
+                        'nombre': barra_query[0],
+                        'cantidad': int(barra_query[1])
+                    }
+            
             return {
                 'ventas_por_hora': ventas_por_hora,
                 'metodos_pago': metodos_pago,
-                'ventas_por_caja': ventas_por_caja
+                'ventas_por_caja': ventas_por_caja,
+                'top_productos': top_productos,
+                'top_bartenders': top_bartenders,
+                'barra_mas_activa': barra_mas_activa
             }
         except Exception as e:
             logger.error(f"Error obteniendo datos de gráficos: {e}", exc_info=True)
@@ -666,6 +752,178 @@ class DashboardMetricsService:
         
         return alertas
     
+    def _get_inventario_metrics(self) -> Dict[str, Any]:
+        """Obtiene métricas de inventario"""
+        try:
+            from app.models.inventory_models import Product, Ingredient, Recipe
+            from app.models.inventory_stock_models import InventoryStock
+            
+            # Productos totales
+            total_productos = Product.query.filter_by(is_active=True).count()
+            
+            # Productos con stock bajo
+            stock_bajo = db.session.query(InventoryStock).join(Product).filter(
+                Product.is_active == True,
+                InventoryStock.current_stock <= InventoryStock.min_stock
+            ).count()
+            
+            # Ingredientes totales
+            total_ingredientes = Ingredient.query.filter_by(is_active=True).count()
+            
+            # Recetas totales
+            total_recetas = Recipe.query.filter_by(is_active=True).count()
+            
+            # Productos sin receta
+            productos_sin_receta = db.session.query(Product).filter(
+                Product.is_active == True,
+                ~Product.id.in_(
+                    db.session.query(Recipe.product_id).filter(Recipe.is_active == True)
+                )
+            ).count()
+            
+            return {
+                'total_productos': total_productos,
+                'total_ingredientes': total_ingredientes,
+                'total_recetas': total_recetas,
+                'stock_bajo': stock_bajo,
+                'productos_sin_receta': productos_sin_receta
+            }
+        except Exception as e:
+            logger.error(f"Error obteniendo métricas de inventario: {e}", exc_info=True)
+            return {
+                'total_productos': 0,
+                'total_ingredientes': 0,
+                'total_recetas': 0,
+                'stock_bajo': 0,
+                'productos_sin_receta': 0
+            }
+    
+    def _get_guardarropia_metrics(self) -> Dict[str, Any]:
+        """Obtiene métricas de guardarropía"""
+        try:
+            from app.models.guardarropia_models import GuardarropiaTicket
+            from app.models.jornada_models import Jornada
+            
+            fecha_hoy = datetime.now(CHILE_TZ).date()
+            
+            # Obtener jornada abierta
+            jornada_abierta = Jornada.query.filter_by(
+                estado_apertura='abierto',
+                eliminado_en=None
+            ).order_by(Jornada.fecha_jornada.desc()).first()
+            
+            # Items depositados hoy
+            items_depositados_hoy = GuardarropiaTicket.query.filter(
+                func.date(GuardarropiaTicket.created_at) == fecha_hoy,
+                GuardarropiaTicket.estado == 'depositado'
+            ).count()
+            
+            # Items retirados hoy
+            items_retirados_hoy = GuardarropiaTicket.query.filter(
+                func.date(GuardarropiaTicket.updated_at) == fecha_hoy,
+                GuardarropiaTicket.estado == 'retirado'
+            ).count()
+            
+            # Items pendientes (depositados pero no retirados)
+            items_pendientes = GuardarropiaTicket.query.filter(
+                GuardarropiaTicket.estado == 'depositado'
+            ).count()
+            
+            # Recaudación hoy
+            tickets_hoy = GuardarropiaTicket.query.filter(
+                func.date(GuardarropiaTicket.created_at) == fecha_hoy
+            ).all()
+            
+            revenue_hoy = sum(float(t.costo_deposito or 0) for t in tickets_hoy if t.costo_deposito)
+            
+            # Items del turno
+            items_turno = 0
+            if jornada_abierta and jornada_abierta.abierto_en:
+                opened_dt = jornada_abierta.abierto_en
+                if opened_dt.tzinfo:
+                    opened_dt = opened_dt.replace(tzinfo=None)
+                
+                items_turno = GuardarropiaTicket.query.filter(
+                    GuardarropiaTicket.created_at >= opened_dt
+                ).count()
+            
+            return {
+                'items_depositados_hoy': items_depositados_hoy,
+                'items_retirados_hoy': items_retirados_hoy,
+                'items_pendientes': items_pendientes,
+                'revenue_hoy': revenue_hoy,
+                'items_turno': items_turno
+            }
+        except Exception as e:
+            logger.error(f"Error obteniendo métricas de guardarropía: {e}", exc_info=True)
+            return {
+                'items_depositados_hoy': 0,
+                'items_retirados_hoy': 0,
+                'items_pendientes': 0,
+                'revenue_hoy': 0.0,
+                'items_turno': 0
+            }
+    
+    def _get_encuestas_metrics(self) -> Dict[str, Any]:
+        """Obtiene métricas de encuestas"""
+        try:
+            from app.models.survey_models import SurveyResponse
+            from app.models.jornada_models import Jornada
+            
+            fecha_hoy = datetime.now(CHILE_TZ).date()
+            
+            # Respuestas hoy
+            respuestas_hoy = SurveyResponse.query.filter(
+                func.date(SurveyResponse.created_at) == fecha_hoy
+            ).count()
+            
+            # Total respuestas
+            total_respuestas = SurveyResponse.query.count()
+            
+            # Obtener jornada abierta
+            jornada_abierta = Jornada.query.filter_by(
+                estado_apertura='abierto',
+                eliminado_en=None
+            ).order_by(Jornada.fecha_jornada.desc()).first()
+            
+            # Respuestas del turno
+            respuestas_turno = 0
+            if jornada_abierta and jornada_abierta.abierto_en:
+                opened_dt = jornada_abierta.abierto_en
+                if opened_dt.tzinfo:
+                    opened_dt = opened_dt.replace(tzinfo=None)
+                
+                respuestas_turno = SurveyResponse.query.filter(
+                    SurveyResponse.created_at >= opened_dt
+                ).count()
+            
+            # Promedio de calificación (últimas 24 horas)
+            fecha_24h_atras = datetime.now(CHILE_TZ) - timedelta(hours=24)
+            respuestas_24h = SurveyResponse.query.filter(
+                SurveyResponse.created_at >= fecha_24h_atras
+            ).all()
+            
+            promedio_calificacion = 0.0
+            if respuestas_24h:
+                calificaciones = [float(r.rating or 0) for r in respuestas_24h if r.rating]
+                if calificaciones:
+                    promedio_calificacion = sum(calificaciones) / len(calificaciones)
+            
+            return {
+                'respuestas_hoy': respuestas_hoy,
+                'respuestas_turno': respuestas_turno,
+                'total_respuestas': total_respuestas,
+                'promedio_calificacion': round(promedio_calificacion, 1)
+            }
+        except Exception as e:
+            logger.error(f"Error obteniendo métricas de encuestas: {e}", exc_info=True)
+            return {
+                'respuestas_hoy': 0,
+                'respuestas_turno': 0,
+                'total_respuestas': 0,
+                'promedio_calificacion': 0.0
+            }
+    
     def _get_empty_metrics(self) -> Dict[str, Any]:
         """Retorna métricas vacías en caso de error"""
         return {
@@ -681,6 +939,9 @@ class DashboardMetricsService:
             'cajas': {'abiertas': 0},
             'kioskos': {'pagos_turno': 0},
             'equipo': {'total_trabajadores': 0},
+            'inventario': {'total_productos': 0, 'stock_bajo': 0},
+            'guardarropia': {'items_pendientes': 0, 'revenue_hoy': 0.0},
+            'encuestas': {'respuestas_hoy': 0, 'promedio_calificacion': 0.0},
             'comparativas': {},
             'graficos': {},
             'alertas': []
