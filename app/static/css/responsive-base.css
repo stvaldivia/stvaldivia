@@ -490,7 +490,7 @@ html,
 body {
   overflow-x: hidden;
   width: 100%;
-  max-width: 100vw;
+  max-width: 100%;
 }
 
 /* Prevenir overflow en todos los contenedores */
@@ -537,7 +537,7 @@ select {
 /* Media queries para prevenir overflow en diferentes tamaños */
 @media (max-width: 320px) {
   * {
-    max-width: 100vw;
+    max-width: 100%;
   }
   
   .container,
