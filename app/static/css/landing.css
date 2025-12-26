@@ -80,7 +80,10 @@
     flex: 1;
     max-width: 500px;
     background: rgba(30, 41, 59, 0.8);
-    border: 1px solid rgba(102, 126, 234, 0.3);
+    border-left: 1px solid rgba(102, 126, 234, 0.3);
+    border-right: 1px solid rgba(102, 126, 234, 0.3);
+    border-top: none;
+    border-bottom: none;
     border-radius: 20px;
     padding: 2rem;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
@@ -167,7 +170,8 @@
     justify-content: space-between;
     align-items: center;
     padding-top: 1rem;
-    border-top: 2px solid rgba(102, 126, 234, 0.3);
+    border-top: none;
+    border-bottom: none;
 }
 
 .total-label {
