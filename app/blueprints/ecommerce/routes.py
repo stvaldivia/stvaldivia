@@ -104,6 +104,11 @@ def landing():
             if not comprador_email:
                 comprador_email = 'cliente@ejemplo.com'
             
+            # Validar límite de 2 entradas por persona
+            if cantidad > 2:
+                flash('Solo se pueden comprar máximo 2 entradas por persona', 'error')
+                return redirect(url_for('ecommerce.landing'))
+            
             if cantidad <= 0 or precio_total <= 0:
                 flash('Cantidad y precio deben ser mayores a 0', 'error')
                 return redirect(url_for('ecommerce.landing'))

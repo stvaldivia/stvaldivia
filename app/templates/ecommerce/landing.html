@@ -100,8 +100,7 @@
                     <label for="cantidad" class="quantity-label">Cantidad de entradas:</label>
                     <div class="quantity-controls">
                         <button type="button" class="quantity-btn" id="decrease-qty">−</button>
-                        <input type="number" id="cantidad" name="cantidad" value="1" min="1" 
-                               {% if producto.stock_quantity %}max="{{ producto.stock_quantity }}"{% endif %}
+                        <input type="number" id="cantidad" name="cantidad" value="1" min="1" max="2"
                                class="quantity-input" required>
                         <button type="button" class="quantity-btn" id="increase-qty">+</button>
                     </div>
@@ -197,10 +196,12 @@ document.addEventListener('DOMContentLoaded', function() {
     if (increaseBtn) {
         increaseBtn.addEventListener('click', function() {
             const current = parseInt(cantidadInput.value) || 1;
-            const max = parseInt(cantidadInput.getAttribute('max')) || Infinity;
+            const max = 2; // Máximo 2 entradas por persona
             if (current < max) {
                 cantidadInput.value = current + 1;
                 updateTotal();
+            } else {
+                alert('Solo se pueden comprar máximo 2 entradas por persona');
             }
         });
     }
@@ -208,7 +209,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Actualizar cuando el usuario escribe directamente
     cantidadInput.addEventListener('input', function() {
         let value = parseInt(this.value) || 1;
-        const max = parseInt(this.getAttribute('max')) || Infinity;
+        const max = 2; // Máximo 2 entradas por persona
         const min = parseInt(this.getAttribute('min')) || 1;
         
         // Validar y corregir el valor
@@ -218,6 +219,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (value > max) {
             value = max;
             this.value = max;
+            alert('Solo se pueden comprar máximo 2 entradas por persona');
         }
         
         updateTotal();
@@ -226,7 +228,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Actualizar cuando el input pierde el foco
     cantidadInput.addEventListener('change', function() {
         let value = parseInt(this.value) || 1;
-        const max = parseInt(this.getAttribute('max')) || Infinity;
+        const max = 2; // Máximo 2 entradas por persona
         const min = parseInt(this.getAttribute('min')) || 1;
         
         // Validar y corregir el valor
@@ -236,6 +238,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (value > max) {
             value = max;
             this.value = max;
+            alert('Solo se pueden comprar máximo 2 entradas por persona');
         }
         
         updateTotal();
