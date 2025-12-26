@@ -191,6 +191,8 @@ def generate_resumen_compra_html(entrada: Entrada, preview: bool = False) -> tup
     Returns:
         Tupla con (subject, html_body)
     """
+    from app.helpers.qr_ticket_helper import generate_ticket_qr
+    
     email_subject = f"Resumen de tu compra - {entrada.evento_nombre} | BIMBA"
     
     # Generar URL del ticket
@@ -234,6 +236,12 @@ def generate_resumen_compra_html(entrada: Entrada, preview: bool = False) -> tup
     # Determinar si mostrar link de pago (solo si el estado es "recibido")
     mostrar_link_pago = entrada.estado_pago.lower() == 'recibido'
     
+    # Generar QR solo si el pago está realizado (pagado o entregado)
+    mostrar_qr = entrada.estado_pago.lower() in ['pagado', 'entregado']
+    qr_code_base64 = None
+    if mostrar_qr:
+        qr_code_base64 = generate_ticket_qr(entrada.ticket_code, size=250)
+    
     email_body = f"""
     <!DOCTYPE html>
     <html>
@@ -263,6 +271,24 @@ def generate_resumen_compra_html(entrada: Entrada, preview: bool = False) -> tup
                     {entrada.ticket_code}
                 </p>
             </div>
+            
+            {'<!-- Código QR (solo válido si el pago está realizado) -->' if mostrar_qr and qr_code_base64 else ''}
+            {f'''
+            <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px; border-radius: 8px; margin: 25px 0; text-align: center;">
+                <h2 style="color: white; margin-top: 0; font-size: 22px; margin-bottom: 15px;">✅ Código QR de Acceso</h2>
+                <p style="color: rgba(255,255,255,0.95); margin: 0 0 20px 0; font-size: 16px; font-weight: 500;">
+                    Presenta este código QR en la entrada del evento
+                </p>
+                <div style="background: white; padding: 20px; border-radius: 12px; display: inline-block; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+                    <img src="{qr_code_base64}" 
+                         alt="Código QR - Ticket {entrada.ticket_code}" 
+                         style="width: 250px; height: 250px; display: block; margin: 0 auto;" />
+                </div>
+                <p style="color: rgba(255,255,255,0.9); margin: 20px 0 0 0; font-size: 14px;">
+                    <strong>✓ Pago Verificado</strong> - Este código QR es válido para ingresar al evento
+                </p>
+            </div>
+            ''' if mostrar_qr and qr_code_base64 else ''}
             
             <!-- Información del Evento -->
             <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea;">

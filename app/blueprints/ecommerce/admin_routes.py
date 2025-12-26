@@ -345,12 +345,16 @@ def preview_resumen_compra(entrada_id):
         from app.helpers.email_ticket_helper import get_payment_link_by_amount
         payment_link = get_payment_link_by_amount(precio_total)
         
+        # Verificar si se mostrará QR (solo si está pagado o entregado)
+        mostrar_qr = entrada.estado_pago.lower() in ['pagado', 'entregado']
+        
         return render_template('admin/preview_email.html',
                              entrada=entrada,
                              email_subject=email_subject,
                              email_body=email_body,
                              precio_total=precio_total,
-                             payment_link=payment_link)
+                             payment_link=payment_link,
+                             mostrar_qr=mostrar_qr)
         
     except Exception as e:
         flash(f'Error al generar vista previa: {str(e)}', 'error')

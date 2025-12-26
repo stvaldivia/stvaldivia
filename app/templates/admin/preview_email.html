@@ -150,6 +150,18 @@
             Solo se muestra el link de pago cuando el estado es "Recibido".
         </div>
         {% endif %}
+        
+        {% if mostrar_qr %}
+        <div class="payment-link-info" style="background: #d1fae5; border-color: #10b981;">
+            <strong>✅ Código QR Incluido:</strong> Este email incluirá el código QR porque el estado es "{{ entrada.estado_pago|title }}". 
+            El QR es válido para ingresar al evento.
+        </div>
+        {% else %}
+        <div class="payment-link-info" style="background: #fee2e2; border-color: #ef4444;">
+            <strong>⚠️ Sin Código QR:</strong> Este email NO incluirá el código QR porque el estado es "{{ entrada.estado_pago|title }}". 
+            El QR solo se muestra cuando el estado es "Pagado" o "Entregado" (pago verificado).
+        </div>
+        {% endif %}
     </div>
     
     <!-- Vista Previa del Email -->
