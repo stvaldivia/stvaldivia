@@ -832,6 +832,57 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+    
+    // Botones para enviar email directamente
+    const btnEnviarEmails = document.querySelectorAll('.btn-enviar-email');
+    btnEnviarEmails.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const entradaId = this.getAttribute('data-entrada-id');
+            const email = this.getAttribute('data-email');
+            
+            if (!entradaId) {
+                alert('Error: No se pudo identificar la compra');
+                return;
+            }
+            
+            if (!confirm(`¿Enviar email de resumen a ${email}?`)) {
+                return;
+            }
+            
+            this.disabled = true;
+            const textoOriginal = this.textContent;
+            this.textContent = 'Enviando...';
+            
+            fetch(`/admin/ecommerce/compras/${entradaId}/enviar-resumen`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    this.textContent = '✅ Enviado';
+                    this.style.background = '#10b981';
+                    setTimeout(() => {
+                        this.textContent = textoOriginal;
+                        this.style.background = '#667eea';
+                        this.disabled = false;
+                    }, 2000);
+                } else {
+                    alert('Error: ' + (data.error || 'No se pudo enviar el email'));
+                    this.disabled = false;
+                    this.textContent = textoOriginal;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al enviar email. Por favor intenta nuevamente.');
+                this.disabled = false;
+                this.textContent = textoOriginal;
+            });
+        });
+    });
 });
 </script>
 {% endblock %}
