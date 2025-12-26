@@ -294,6 +294,13 @@ def create_app():
     app.config['TIMEZONE'] = 'America/Santiago'
     app.config['CHILE_TZ'] = CHILE_TZ
     
+    # Configuración SMTP para envío de emails
+    app.config['SMTP_SERVER'] = os.environ.get('SMTP_SERVER')
+    app.config['SMTP_PORT'] = int(os.environ.get('SMTP_PORT', '587'))
+    app.config['SMTP_USER'] = os.environ.get('SMTP_USER')
+    app.config['SMTP_PASSWORD'] = os.environ.get('SMTP_PASSWORD')
+    app.config['SMTP_FROM'] = os.environ.get('SMTP_FROM')
+    
     
     # Configuración de OpenAI para Agente de Redes Sociales (legacy)
     # Puede configurarse independientemente del modo local
@@ -1453,5 +1460,54 @@ def create_app():
         app.logger.warning(f"⚠️  No se pudo registrar el blueprint de debug: {e}")
     except Exception as e:
         app.logger.error(f"❌ Error al registrar blueprint de debug: {e}")
+
+    # Middleware para cerrar el sitio al público
+    # Controlado por variable de entorno SITE_CLOSED (true/false)
+    site_closed = os.environ.get('SITE_CLOSED', 'false').lower() in ('true', '1', 'yes')
+    app.config['SITE_CLOSED'] = site_closed
+    
+    if site_closed:
+        app.logger.warning("🔒 SITIO CERRADO AL PÚBLICO - Solo acceso autenticado permitido")
+        
+        @app.before_request
+        def check_site_closed():
+            """Bloquea el acceso público si el sitio está cerrado"""
+            from flask import request, session, redirect, url_for, render_template_string
+            
+            # Permitir rutas estáticas
+            if request.endpoint and request.endpoint.startswith('static'):
+                return None
+            
+            # Rutas permitidas sin autenticación (login, autenticación)
+            allowed_paths = [
+                '/login_admin',
+                '/scanner/bartender',
+                '/scanner/seleccionar_bartender',
+                '/caja/login',
+                '/guardarropia/login',
+            ]
+            
+            # Verificar si la ruta actual está permitida
+            path_allowed = any(request.path.startswith(path) for path in allowed_paths)
+            
+            # Verificar si el usuario está autenticado (admin, bartender, caja, guardarropía)
+            is_authenticated = (
+                session.get('admin_logged_in') or
+                session.get('bartender') or
+                session.get('pos_logged_in') or
+                session.get('guardarropia_logged_in')
+            )
+            
+            # Si no está autenticado y la ruta no está permitida, bloquear acceso
+            if not is_authenticated and not path_allowed:
+                # Si es una petición API, retornar JSON
+                if request.path.startswith('/api') or request.is_json:
+                    from flask import jsonify
+                    return jsonify({'error': 'Sitio cerrado al público. Acceso restringido.'}), 403
+                
+                # Para otras rutas, redirigir al login de admin
+                return redirect(url_for('auth.login_admin'))
+            
+            return None
 
     return app# Version bump Sun Dec  7 02:37:54 -03 2025
