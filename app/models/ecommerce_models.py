@@ -56,6 +56,7 @@ class Entrada(db.Model):
     __table_args__ = (
         Index('idx_entradas_estado_fecha', 'estado_pago', 'evento_fecha'),
         Index('idx_entradas_email_estado', 'comprador_email', 'estado_pago'),
+        {'extend_existing': True}  # Permitir que la tabla se extienda sin errores
     )
     
     def to_dict(self):
