@@ -563,3 +563,88 @@ def cambiar_todos_a_recibido():
 
 
 
+                }
+            }), 500
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': f'Error inesperado: {str(e)}',
+                'config': {
+                    'server': smtp_server,
+                    'port': smtp_port,
+                    'user': smtp_user
+                }
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"Error en test SMTP: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': f'Error al probar SMTP: {str(e)}'
+        }), 500
+
+
+@admin_ecommerce_bp.route('/compras/test-smtp', methods=['POST'])
+def test_smtp():
+    """API: Probar conexión SMTP"""
+    auth_check = require_admin()
+    if auth_check:
+        return jsonify({'success': False, 'error': 'No autorizado'}), 401
+    
+    try:
+        import os
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+        from flask import current_app
+        
+        smtp_server = current_app.config.get('SMTP_SERVER') or os.environ.get('SMTP_SERVER')
+        smtp_port = int(current_app.config.get('SMTP_PORT') or os.environ.get('SMTP_PORT', '587'))
+        smtp_user = current_app.config.get('SMTP_USER') or os.environ.get('SMTP_USER')
+        smtp_password = current_app.config.get('SMTP_PASSWORD') or os.environ.get('SMTP_PASSWORD')
+        smtp_from = current_app.config.get('SMTP_FROM') or os.environ.get('SMTP_FROM') or smtp_user
+        
+        if not all([smtp_server, smtp_user, smtp_password]):
+            return jsonify({
+                'success': False,
+                'error': 'Configuración SMTP incompleta',
+                'config': {'server': bool(smtp_server), 'port': smtp_port, 'user': bool(smtp_user), 'password': bool(smtp_password)}
+            }), 500
+        
+        try:
+            if smtp_port == 465:
+                server = smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=30)
+            else:
+                server = smtplib.SMTP(smtp_server, smtp_port, timeout=30)
+                server.starttls()
+            
+            server.login(smtp_user, smtp_password)
+            msg = MIMEMultipart()
+            msg['From'] = smtp_from
+            msg['To'] = smtp_user
+            msg['Subject'] = 'Prueba SMTP'
+            msg.attach(MIMEText('Prueba de configuración SMTP.', 'plain'))
+            server.send_message(msg)
+            server.quit()
+            
+            return jsonify({
+                'success': True,
+                'message': f'Conexión SMTP exitosa. Email enviado a {smtp_user}',
+                'config': {'server': smtp_server, 'port': smtp_port, 'user': smtp_user}
+            })
+        except smtplib.SMTPAuthenticationError as e:
+            return jsonify({
+                'success': False,
+                'error': f'Error de autenticación: {str(e)}',
+                'config': {'server': smtp_server, 'port': smtp_port, 'user': smtp_user},
+                'suggestion': 'Verifica credenciales y que la cuenta esté activa'
+            }), 500
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': f'Error: {str(e)}',
+                'config': {'server': smtp_server, 'port': smtp_port, 'user': smtp_user}
+            }), 500
+    except Exception as e:
+        logger.error(f"Error en test SMTP: {e}", exc_info=True)
+        return jsonify({'success': False, 'error': f'Error: {str(e)}'}), 500
