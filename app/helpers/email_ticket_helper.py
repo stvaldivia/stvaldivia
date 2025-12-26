@@ -206,7 +206,11 @@ def generate_resumen_compra_html(entrada: Entrada, preview: bool = False) -> tup
             ticket_url = f"/ecommerce/ticket/{entrada.ticket_code}"
     
     # Formatear fechas
-    fecha_evento = entrada.evento_fecha.strftime('%d de %B de %Y a las %H:%M') if entrada.evento_fecha else 'No especificada'
+    if entrada.evento_fecha:
+        # Usar la fecha del evento pero siempre mostrar 23:59 como hora
+        fecha_evento = entrada.evento_fecha.strftime('%d de %B de %Y a las 23:59')
+    else:
+        fecha_evento = 'No especificada'
     fecha_compra = entrada.created_at.strftime('%d/%m/%Y %H:%M') if entrada.created_at else 'N/A'
     fecha_pago = entrada.paid_at.strftime('%d/%m/%Y %H:%M') if entrada.paid_at else 'N/A'
     
