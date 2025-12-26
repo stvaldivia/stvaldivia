@@ -117,27 +117,7 @@ def checkout():
         evento_fecha_str = request.args.get('fecha')
         evento_lugar = request.args.get('lugar', '')
         cantidad = int(request.args.get('cantidad', 1))
-        precio_param = request.args.get('precio')
-        
-        # Validar que el precio esté presente y sea válido
-        if not precio_param:
-            flash('Por favor selecciona un evento desde la página principal para continuar con la compra.', 'error')
-            return redirect(url_for('ecommerce.index'))
-        
-        try:
-            precio_unitario = float(precio_param)
-        except (ValueError, TypeError):
-            flash('El precio del evento no es válido. Por favor selecciona un evento desde la página principal.', 'error')
-            return redirect(url_for('ecommerce.index'))
-        
-        # Validar que el precio sea mayor a 0
-        if precio_unitario <= 0:
-            flash('El precio del evento debe ser mayor a 0. Por favor selecciona un evento válido.', 'error')
-            return redirect(url_for('ecommerce.index'))
-        
-        # Validar cantidad
-        if cantidad <= 0:
-            cantidad = 1
+        precio_unitario = float(request.args.get('precio', 0))
         
         # Parsear fecha
         evento_fecha = None

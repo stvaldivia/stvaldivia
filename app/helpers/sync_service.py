@@ -346,11 +346,38 @@ def sync_all_data_async():
                 print(f"⚠️  Advertencia: No se pudo crear backup: {backup_result.get('error', 'Error desconocido')}")
                 _sync_status['backup'] = {'error': backup_result.get('error', 'Error desconocido')}
 
-            # Conectar a producción
-            prod_url = os.environ.get(
-                'PROD_DATABASE_URL',
-                "postgresql://bimba_user:qbiqpVcv9zJPVB0aaA9YwfAJSzFIGroUBcwJHNhzsas=@localhost:5432/bimba"
-            )
+            # Eliminar fallback hardcodeado a PostgreSQL - requerir PROD_DATABASE_URL explícito
+            prod_url = os.environ.get('PROD_DATABASE_URL', '').strip()
+            
+            if not prod_url:
+                error_msg = "PROD_DATABASE_URL no configurado. Sincronización abortada."
+                _sync_status['error'] = error_msg
+                _sync_status['running'] = False
+                print(f"⚠️  {error_msg}")
+                try:
+                    from flask import current_app
+                    current_app.logger.warning("Sync blocked: PROD_DATABASE_URL missing")
+                except:
+                    pass
+                return
+            
+            # Warning si local es MySQL y PROD_DATABASE_URL es postgresql (solo warning, no bloquear)
+            try:
+                from flask import current_app
+                local_db_type = current_app.config.get('DB_TYPE', 'unknown')
+                database_url = current_app.config.get('SQLALCHEMY_DATABASE_URI', '')
+                is_local_mysql = (
+                    local_db_type == 'mysql' or 
+                    database_url.startswith('mysql') or 
+                    'mysql+' in database_url
+                )
+                if is_local_mysql and prod_url.startswith('postgresql'):
+                    current_app.logger.warning(
+                        "Sync: BD local es MySQL pero PROD_DATABASE_URL apunta a PostgreSQL. "
+                        "Verifica la configuración."
+                    )
+            except:
+                pass
 
             try:
                 prod_engine = create_engine(prod_url, connect_args={'connect_timeout': 10})
@@ -360,6 +387,14 @@ def sync_all_data_async():
                 _sync_status['error'] = error_msg
                 _sync_status['running'] = False
                 print(f"❌ Error al conectar a producción: {error_msg}")
+                # Intentar loguear si hay contexto de Flask
+                try:
+                    from flask import current_app
+                    current_app.logger.warning(
+                        f"⚠️ Sincronización: Error de conexión a PROD_DATABASE_URL: {error_msg}"
+                    )
+                except:
+                    pass  # Si no hay contexto de Flask, solo usar print
                 return
             
             local_conn = sqlite3.connect(local_db)

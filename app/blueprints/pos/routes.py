@@ -22,6 +22,9 @@ logger = logging.getLogger(__name__)
 def test_print():
     """Ruta para probar la impresión de un ticket de prueba"""
     if not session.get('pos_logged_in'):
+        # Si es una petición AJAX, devolver JSON
+        if request.is_json or request.headers.get('Content-Type') == 'application/json':
+            return jsonify({'success': False, 'error': 'No autenticado'}), 401
         flash("Por favor, inicia sesión primero.", "info")
         return redirect(url_for('caja.login'))
     
@@ -52,6 +55,14 @@ def test_print():
             employee_name=session.get('pos_employee_name', 'Test')
         )
         
+        # Si es una petición AJAX, devolver JSON
+        if request.is_json or request.headers.get('Content-Type') == 'application/json' or request.method == 'POST':
+            if success:
+                return jsonify({'success': True, 'message': '✅ Ticket de prueba impreso correctamente'})
+            else:
+                return jsonify({'success': False, 'message': '⚠️ No se pudo imprimir el ticket de prueba. Verifica la impresora.'}), 400
+        
+        # Comportamiento legacy para GET (redirección)
         if success:
             flash("✅ Ticket de prueba impreso correctamente", "success")
         else:
@@ -61,6 +72,9 @@ def test_print():
         
     except Exception as e:
         logger.error(f"Error al imprimir ticket de prueba: {e}", exc_info=True)
+        # Si es una petición AJAX, devolver JSON
+        if request.is_json or request.headers.get('Content-Type') == 'application/json' or request.method == 'POST':
+            return jsonify({'success': False, 'error': str(e)}), 500
         flash(f"Error al imprimir: {str(e)}", "error")
         return redirect(url_for('caja.sales'))
 

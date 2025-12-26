@@ -691,6 +691,14 @@ class RegisterSession(db.Model):
             'closed_by': self.closed_by,
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
+    
+    def is_open(self) -> bool:
+        """Verifica si la sesión está abierta"""
+        return self.status == 'OPEN'
+    
+    def can_sell(self) -> bool:
+        """Verifica si se pueden hacer ventas en esta sesión"""
+        return self.status == 'OPEN'
 
 
 class PaymentAgent(db.Model):
@@ -740,14 +748,6 @@ class PaymentAgent(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
-    
-    def is_open(self) -> bool:
-        """Verifica si la sesión está abierta"""
-        return self.status == 'OPEN'
-    
-    def can_sell(self) -> bool:
-        """Verifica si se pueden hacer ventas en esta sesión"""
-        return self.status == 'OPEN'
 
 
 class LogIntentoPago(db.Model):

@@ -3,21 +3,6 @@
    Optimizado para stvaldivia.cl
 */
 
-/* Container específico para ecommerce - sobrescribe estilos base */
-.ecommerce-container.container {
-    max-width: 900px !important;
-    margin: 2rem auto !important;
-    padding: 2rem !important;
-    box-sizing: border-box;
-}
-
-.ecommerce-container {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 2rem;
-    box-sizing: border-box;
-}
-
 /* Hero Section */
 .ecommerce-hero {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
@@ -29,7 +14,6 @@
     box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
     position: relative;
     overflow: hidden;
-    box-sizing: border-box;
 }
 
 .ecommerce-hero::before {
@@ -53,7 +37,6 @@
     word-wrap: break-word;
     overflow-wrap: break-word;
     hyphens: auto;
-    line-height: 1.2;
 }
 
 .ecommerce-hero p {
@@ -62,29 +45,22 @@
     position: relative;
     z-index: 1;
     margin: 0;
-    line-height: 1.5;
 }
 
 /* Event Cards */
 .event-card {
-    background: #1a1a2e;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: white;
+    border: 1px solid #e0e0e0;
     border-radius: 8px;
     padding: 1.5rem;
     margin-bottom: 1.5rem;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    box-sizing: border-box;
-    color: #e8e8e8;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
 .event-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-
-.event-card:last-child {
-    margin-bottom: 0;
 }
 
 /* Títulos y texto - Prevenir cortes */
@@ -100,7 +76,7 @@
 .event-card h2 {
     font-size: 1.75rem;
     font-weight: 600;
-    color: #e8e8e8;
+    color: #333;
     margin-bottom: 1.5rem;
     word-break: normal;
     white-space: normal;
@@ -152,18 +128,16 @@
 .feature-item {
     text-align: center;
     padding: 1.5rem;
-    background: #252540;
+    background: #f8f9fa;
     border-radius: 8px;
     transition: transform 0.2s, box-shadow 0.2s;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: #e8e8e8;
+    border: 1px solid #e9ecef;
 }
 
 .feature-item:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-    background: #2d2d4a;
-    border-color: rgba(102, 126, 234, 0.3);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    background: white;
 }
 
 .feature-item .icon {
@@ -175,47 +149,35 @@
 .feature-item h4 {
     margin: 0.5rem 0;
     font-size: 1.1rem;
-    color: #e8e8e8;
+    color: #333;
     font-weight: 600;
 }
 
 .feature-item p {
     margin: 0.5rem 0 0 0;
-    color: #aaaaaa;
+    color: #666;
     font-size: 0.9rem;
 }
 
 /* Card Container */
+.ecommerce-container {
+    max-width: 900px;
+    margin: 2rem auto;
+    padding: 2rem;
+}
+
 .ecommerce-card {
     padding: 2rem;
     margin-bottom: 2rem;
-    background: #1a1a2e;
+    background: white;
     border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    box-sizing: border-box;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: #e8e8e8;
-}
-
-.ecommerce-card:last-child {
-    margin-bottom: 0;
-}
-
-.ecommerce-card h2 {
-    margin-top: 0;
-    margin-bottom: 1.5rem;
-    font-size: 1.75rem;
-    font-weight: 600;
-    color: #e8e8e8;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
 /* Estado vacío */
 .event-card.empty-state {
     text-align: center;
     padding: 3rem 2rem;
-    color: #e8e8e8;
 }
 
 .event-card.empty-state .icon-large {
@@ -224,88 +186,68 @@
     display: block;
 }
 
-.event-card.empty-state h3 {
-    color: #e8e8e8;
-}
-
-.event-card.empty-state p {
-    color: #aaaaaa;
-}
-
 /* Evento de prueba */
 .event-card.test-event {
-    background: rgba(255, 193, 7, 0.15);
+    background: #fff3cd;
     border-color: #ffc107;
     border-width: 2px;
 }
 
 .event-card.test-event h3 {
-    color: #ffc107;
+    color: #856404;
 }
 
 /* Información del sistema */
 .system-info {
     padding: 1.5rem;
     margin-top: 2rem;
-    background: rgba(33, 150, 243, 0.15);
+    background: #e3f2fd;
     border-radius: 8px;
     border-left: 4px solid #2196f3;
-    color: #e8e8e8;
 }
 
 .system-info h3 {
     margin-top: 0;
-    color: #64b5f6;
+    color: #1976d2;
 }
 
 .system-info code {
-    background: rgba(0,0,0,0.3);
+    background: rgba(0,0,0,0.05);
     padding: 0.2rem 0.4rem;
     border-radius: 4px;
     font-family: 'Courier New', monospace;
     font-size: 0.9em;
-    color: #ffc107;
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
-    .ecommerce-container {
-        padding: 1rem !important;
-        margin: 1rem auto;
-    }
-    
     .ecommerce-hero {
         padding: 2rem 1.5rem;
-        margin-bottom: 1.5rem;
     }
     
     .ecommerce-hero h1 {
         font-size: 2rem;
-        line-height: 1.3;
     }
     
     .ecommerce-hero p {
         font-size: 1rem;
     }
     
-    .ecommerce-card {
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
+    .ecommerce-container {
+        padding: 1rem;
     }
     
-    .ecommerce-card h2 {
-        font-size: 1.5rem;
+    .ecommerce-card {
+        padding: 1.5rem;
     }
     
     .event-card {
         padding: 1rem;
-        margin-bottom: 1rem;
     }
     
     .features {
         grid-template-columns: 1fr;
         gap: 1rem;
-        margin-top: 1.5rem;
     }
     
     .feature-item {
@@ -316,72 +258,20 @@
         width: 100%;
         text-align: center;
         padding: 1rem;
-        display: block;
-    }
-    
-    .system-info {
-        padding: 1rem;
-        margin-top: 1.5rem;
     }
 }
 
 @media (max-width: 480px) {
-    .ecommerce-container {
-        padding: 0.75rem !important;
-        margin: 0.5rem auto;
-    }
-    
-    .ecommerce-hero {
-        padding: 1.5rem 1rem;
-        border-radius: 8px;
-    }
-    
     .ecommerce-hero h1 {
         font-size: 1.75rem;
-        margin-bottom: 0.75rem;
-    }
-    
-    .ecommerce-hero p {
-        font-size: 0.95rem;
-    }
-    
-    .ecommerce-card {
-        padding: 1rem;
-        border-radius: 8px;
-    }
-    
-    .ecommerce-card h2 {
-        font-size: 1.35rem;
-        margin-bottom: 1rem;
-    }
-    
-    .event-card {
-        padding: 1rem;
-        border-radius: 6px;
     }
     
     .event-card h2 {
-        font-size: 1.35rem;
+        font-size: 1.5rem;
     }
     
     .event-card h3 {
         font-size: 1.25rem;
-    }
-    
-    .feature-item {
-        padding: 0.875rem;
-    }
-    
-    .feature-item .icon {
-        font-size: 2rem;
-    }
-    
-    .feature-item h4 {
-        font-size: 1rem;
-    }
-    
-    .feature-item p {
-        font-size: 0.85rem;
     }
 }
 
@@ -403,146 +293,12 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Mejoras de contraste para accesibilidad */
 .event-card p {
-    color: #aaaaaa;
+    color: #555;
     line-height: 1.6;
-    margin: 0.5rem 0;
 }
 
 .event-card strong {
-    color: #e8e8e8;
+    color: #333;
     font-weight: 600;
-}
-
-/* Asegurar que los elementos inline en event-card no rompan el layout */
-.event-card > div {
-    width: 100%;
-    box-sizing: border-box;
-}
-
-/* Mejorar el layout de los eventos - sobrescribir estilos inline */
-.event-card > div[style*="display: flex"] {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: flex-start !important;
-    flex-wrap: wrap !important;
-    gap: 1rem !important;
-    width: 100% !important;
-}
-
-.event-card > div > div[style*="flex: 1"] {
-    flex: 1 !important;
-    min-width: 0; /* Permite que flexbox maneje el overflow correctamente */
-    box-sizing: border-box;
-}
-
-/* En pantallas grandes, asegurar un ancho mínimo razonable */
-@media (min-width: 769px) {
-    .event-card > div > div[style*="flex: 1"] {
-        min-width: 250px;
-    }
-}
-
-.event-card > div > div[style*="flex-direction: column"] {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 0.5rem !important;
-    align-items: flex-end !important;
-    flex-shrink: 0;
-}
-
-/* Asegurar que los botones checkout se adapten bien */
-.event-card .btn-checkout {
-    min-width: 150px;
-}
-
-@media (max-width: 768px) {
-    .event-card > div > div[style*="flex-direction: column"] {
-        align-items: stretch !important;
-        width: 100% !important;
-    }
-    
-    .event-card .btn-checkout {
-        width: 100% !important;
-        min-width: auto;
-    }
-}
-
-/* Asegurar que el código en system-info no rompa el layout */
-.system-info code {
-    word-break: break-word;
-    overflow-wrap: break-word;
-    white-space: pre-wrap;
-}
-
-/* Mejorar estilos inline del HTML mediante CSS */
-.event-card h3[style*="margin-top: 0"] {
-    margin-top: 0 !important;
-}
-
-.event-card p[style*="margin: 0.5rem 0"] {
-    margin: 0.5rem 0 !important;
-}
-
-.event-card p[style*="font-size: 1.3rem"] {
-    font-size: 1.3rem !important;
-    font-weight: bold !important;
-    color: #4caf50 !important;
-    margin: 1rem 0 0 0 !important;
-}
-
-/* Mejorar el badge de tipo_noche */
-.event-card span[style*="background: #667eea"] {
-    display: inline-block;
-    background: #667eea !important;
-    color: white !important;
-    padding: 0.25rem 0.75rem !important;
-    border-radius: 12px !important;
-    font-size: 0.85rem !important;
-    white-space: nowrap;
-}
-
-/* Corregir colores de texto en event-card para que sean legibles */
-.event-card p[style*="color: #666"] {
-    color: #aaaaaa !important;
-}
-
-/* Asegurar que el evento de prueba tenga buen espaciado */
-.event-card.test-event[style*="margin-top"] {
-    margin-top: 1.5rem !important;
-}
-
-/* Mejorar el espaciado general */
-.ecommerce-container * {
-    box-sizing: border-box;
-}
-
-/* Asegurar que las listas en system-info tengan buen espaciado */
-.system-info ol,
-.system-info ul {
-    margin: 0.5rem 0;
-    padding-left: 1.5rem;
-    color: #e8e8e8;
-}
-
-.system-info p {
-    margin: 0.75rem 0;
-    line-height: 1.6;
-    color: #e8e8e8;
-}
-
-.system-info p strong {
-    color: #e8e8e8;
-}
-
-.system-info p:first-of-type {
-    margin-top: 0;
-}
-
-.system-info p:last-of-type {
-    margin-bottom: 0;
-}
-
-.system-info p[style*="color: #666"] {
-    color: #aaaaaa !important;
 }
 

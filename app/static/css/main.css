@@ -1034,3 +1034,80 @@ form button[type="submit"]:hover {
     font-weight: 700;
   }
 }
+
+/* --- MENÚ TPV CON ESTADO (TODO JUNTO) --- */
+.admin-nav-tpv {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: nowrap;
+  position: relative;
+  cursor: default;
+}
+
+.tpv-inline-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  text-decoration: none;
+  color: var(--text-secondary, #aaa);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  transition: all var(--transition-fast);
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.tpv-inline-item:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.tpv-inline-item.active {
+  color: #fff;
+  background: rgba(102, 126, 234, 0.3);
+  font-weight: 600;
+}
+
+.tpv-separator {
+  color: var(--text-secondary, #666);
+  font-size: var(--text-sm);
+  margin: 0 var(--space-1);
+  user-select: none;
+}
+
+/* Menú TPV en móvil (todo junto) */
+.mobile-tpv-compact {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.mobile-tpv-compact .tpv-inline-item {
+  font-size: var(--text-sm);
+}
+
+@media (max-width: 767px) {
+  .admin-nav-tpv {
+    flex-wrap: wrap;
+    gap: var(--space-1);
+  }
+  
+  .tpv-separator {
+    display: none;
+  }
+  
+  .mobile-tpv-compact {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-1);
+  }
+  
+  .mobile-tpv-compact .tpv-separator {
+    display: none;
+  }
+}

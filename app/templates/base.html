@@ -117,6 +117,21 @@
                     aria-label="Gestionar Inventario">
                     📦 Inventario
                 </a>
+                <!-- Menú TPV con estado (todo junto) -->
+                <div class="admin-nav-btn admin-nav-tpv {% if request.path.startswith('/caja') or request.path.startswith('/kiosk') or request.path.startswith('/ecommerce') or (request.endpoint and ('caja' in request.endpoint or 'kiosk' in request.endpoint or 'ecommerce' in request.endpoint)) %}active{% endif %}" title="Puntos de Venta TPV">
+                    <span>💰 TPV:</span>
+                    <a href="{{ url_for('caja.login') }}" class="tpv-inline-item {% if request.path.startswith('/caja') or (request.endpoint and 'caja' in request.endpoint) %}active{% endif %}" title="Cajas">
+                        🏪 {{ tpv_status.cajas.abiertas }}/{{ tpv_status.cajas.total }}
+                    </a>
+                    <span class="tpv-separator">|</span>
+                    <a href="{{ url_for('kiosk.kiosk_home') }}" class="tpv-inline-item {% if request.path.startswith('/kiosk') or (request.endpoint and 'kiosk' in request.endpoint) %}active{% endif %}" title="Kioskos">
+                        🛒 {% if tpv_status.kioskos.activos > 0 %}●{% else %}○{% endif %}
+                    </a>
+                    <span class="tpv-separator">|</span>
+                    <a href="/ecommerce" class="tpv-inline-item {% if request.path.startswith('/ecommerce') or (request.endpoint and 'ecommerce' in request.endpoint) %}active{% endif %}" title="Ecommerce">
+                        🌐 {% if tpv_status.ecommerce.activo %}●{% else %}○{% endif %}
+                    </a>
+                </div>
                 <a href="{{ url_for('equipo.listar') }}"
                     class="admin-nav-btn {% if request.endpoint and request.endpoint.startswith('equipo.') %}active{% endif %}"
                     aria-label="Gestionar Equipo">
@@ -180,6 +195,27 @@
             aria-label="Gestionar Inventario">
             📦 Inventario
         </a>
+        <!-- Menú TPV en móvil (todo junto) -->
+        <div class="admin-nav-btn mobile-tpv-compact">
+            <span>💰 TPV:</span>
+            <a href="{{ url_for('caja.login') }}"
+                class="tpv-inline-item {% if request.path.startswith('/caja') or (request.endpoint and 'caja' in request.endpoint) %}active{% endif %}"
+                aria-label="Cajas">
+                🏪 {{ tpv_status.cajas.abiertas }}/{{ tpv_status.cajas.total }}
+            </a>
+            <span class="tpv-separator">|</span>
+            <a href="{{ url_for('kiosk.kiosk_home') }}"
+                class="tpv-inline-item {% if request.path.startswith('/kiosk') or (request.endpoint and 'kiosk' in request.endpoint) %}active{% endif %}"
+                aria-label="Kioskos">
+                🛒 {% if tpv_status.kioskos.activos > 0 %}●{% else %}○{% endif %}
+            </a>
+            <span class="tpv-separator">|</span>
+            <a href="/ecommerce"
+                class="tpv-inline-item {% if request.path.startswith('/ecommerce') or (request.endpoint and 'ecommerce' in request.endpoint) %}active{% endif %}"
+                aria-label="Ecommerce">
+                🌐 {% if tpv_status.ecommerce.activo %}●{% else %}○{% endif %}
+            </a>
+        </div>
         <a href="{{ url_for('equipo.listar') }}"
             class="admin-nav-btn {% if request.endpoint and request.endpoint.startswith('equipo.') %}active{% endif %}"
             aria-label="Gestionar Equipo">
@@ -863,6 +899,7 @@
                     });
                 });
             }
+            
         });
     </script>
 
