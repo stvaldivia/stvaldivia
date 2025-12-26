@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}Venta de Entradas Express{% endblock %}
+
+{% block head_extra %}
+<style>
+    .ecommerce-hero {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 3rem 2rem;
+        text-align: center;
+        border-radius: 12px;
+        margin-bottom: 2rem;
+    }
+    .ecommerce-hero h1 {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+    }
+    .event-card {
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .event-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .btn-checkout {
+        background: #667eea;
+        color: white;
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        text-decoration: none;
+        display: inline-block;
+        font-weight: 600;
+        transition: background 0.2s;
+    }
+    .btn-checkout:hover {
+        background: #5568d3;
+        color: white;
+    }
+    .features {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-top: 2rem;
+    }
+    .feature-item {
+        text-align: center;
+        padding: 1.5rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+    .feature-item .icon {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 900px; margin: 2rem auto; padding: 2rem;">
+    <div class="ecommerce-hero">
+        <h1>🎫 Venta de Entradas Express</h1>
+        <p style="font-size: 1.2rem; opacity: 0.95;">Compra tus entradas de forma rápida y segura</p>
+    </div>
+    
+    <div class="card" style="padding: 2rem; margin-bottom: 2rem;">
+        <h2 style="margin-top: 0;">Eventos Disponibles</h2>
+        
+        {% if eventos %}
+            {% for evento in eventos %}
+            <div class="event-card">
+                <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: 1rem;">
+                    <div style="flex: 1; min-width: 250px;">
+                        <h3 style="margin-top: 0; color: #667eea;">{{ evento.nombre }}</h3>
+                        {% if evento.tipo_noche %}
+                        <p style="margin: 0.5rem 0; color: #666; font-size: 0.9rem;">
+                            <span style="background: #667eea; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.85rem;">
+                                {{ evento.tipo_noche }}
+                            </span>
+                        </p>
+                        {% endif %}
+                        <p style="margin: 0.5rem 0;"><strong>📅 Fecha:</strong> {{ evento.fecha_display }} - {{ evento.hora }}</p>
+                        {% if evento.dj_principal %}
+                        <p style="margin: 0.5rem 0;"><strong>🎵 DJ:</strong> {{ evento.dj_principal }}</p>
+                        {% endif %}
+                        {% if evento.descripcion %}
+                        <p style="margin: 0.5rem 0; color: #666; font-size: 0.9rem;">{{ evento.descripcion[:100] }}{% if evento.descripcion|length > 100 %}...{% endif %}</p>
+                        {% endif %}
+                        <p style="margin: 1rem 0 0 0; font-size: 1.3rem; font-weight: bold; color: #4caf50;">
+                            ${{ "{:,.0f}".format(evento.precio) }}
+                        </p>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;">
+                        <a href="{{ url_for('ecommerce.checkout', evento=evento.nombre, fecha=evento.fecha.isoformat() if evento.fecha else '', lugar=evento.lugar, cantidad=1, precio=evento.precio) }}" 
+                           class="btn-checkout">
+                            Comprar Entradas
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="event-card" style="text-align: center; padding: 3rem 2rem;">
+                <div style="font-size: 3rem; margin-bottom: 1rem;">🎫</div>
+                <h3 style="margin-top: 0;">No hay eventos disponibles</h3>
+                <p style="color: #666;">Los eventos se mostrarán aquí cuando estén publicados.</p>
+            </div>
+        {% endif %}
+        
+        {% if not eventos %}
+        <div class="event-card" style="background: #fff3cd; border-color: #ffc107; margin-top: 1.5rem;">
+            <h3 style="margin-top: 0;">💡 Evento de Prueba</h3>
+            <p>Puedes probar el sistema con este evento de ejemplo:</p>
+            <div style="margin-top: 1rem;">
+                <a href="{{ url_for('ecommerce.checkout', evento='Evento de Prueba', fecha='2025-12-31T20:00:00', lugar='BIMBA', cantidad=1, precio=10000) }}" 
+                   class="btn-checkout">
+                    Probar Checkout
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="features">
+        <div class="feature-item">
+            <div class="icon">🔒</div>
+            <h4>Pago Seguro</h4>
+            <p>Procesado por GetNet</p>
+        </div>
+        <div class="feature-item">
+            <div class="icon">📧</div>
+            <h4>Ticket por Email</h4>
+            <p>Recibirás tu entrada al instante</p>
+        </div>
+        <div class="feature-item">
+            <div class="icon">⚡</div>
+            <h4>Checkout Rápido</h4>
+            <p>Proceso simple y directo</p>
+        </div>
+        <div class="feature-item">
+            <div class="icon">📱</div>
+            <h4>Código QR</h4>
+            <p>Validación rápida en la entrada</p>
+        </div>
+    </div>
+    
+    <div class="card" style="padding: 1.5rem; margin-top: 2rem; background: #e3f2fd;">
+        <h3 style="margin-top: 0;">ℹ️ Información del Sistema</h3>
+        <p><strong>Estado:</strong> Sistema listo para validación con GetNet</p>
+        <p><strong>Próximos pasos:</strong></p>
+        <ol>
+            <li>Configurar credenciales de GetNet en variables de entorno</li>
+            <li>Ajustar endpoints según documentación oficial</li>
+            <li>Probar en ambiente sandbox</li>
+        </ol>
+        <p style="margin-top: 1rem; font-size: 0.9rem; color: #666;">
+            Consulta <code>GETNET_INTEGRATION_READY.md</code> para más detalles.
+        </p>
+    </div>
+</div>
+{% endblock %}
+

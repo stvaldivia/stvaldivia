@@ -53,6 +53,20 @@ class Config:
     # GETNET Serial Integration (Windows COM ports)
     ENABLE_GETNET_SERIAL: bool = os.environ.get('ENABLE_GETNET_SERIAL', '0').lower() in ('1', 'true', 'yes')
     
+    # GetNet Web Checkout (para pagos online)
+    GETNET_API_BASE_URL: str = os.environ.get('GETNET_API_BASE_URL', 'https://checkout.test.getnet.cl')
+    GETNET_LOGIN: Optional[str] = os.environ.get('GETNET_LOGIN', '7ffbb7bf1f7361b1200b2e8d74e1d76f')  # Credenciales de prueba por defecto
+    GETNET_TRANKEY: Optional[str] = os.environ.get('GETNET_TRANKEY', 'SnZP3D63n3I9dH9O')  # Credenciales de prueba por defecto
+    GETNET_CLIENT_ID: Optional[str] = os.environ.get('GETNET_CLIENT_ID')  # Legacy/OAuth2
+    GETNET_CLIENT_SECRET: Optional[str] = os.environ.get('GETNET_CLIENT_SECRET')  # Legacy/OAuth2
+    GETNET_MERCHANT_ID: Optional[str] = os.environ.get('GETNET_MERCHANT_ID')
+    GETNET_SANDBOX: bool = os.environ.get('GETNET_SANDBOX', 'true').lower() in ('1', 'true', 'yes')
+    
+    # URL pública para callbacks de GetNet (requerida porque GetNet necesita acceder desde internet)
+    # En producción: https://stvaldivia.cl
+    # En desarrollo local: puede usar ngrok o dejar None para usar SERVER_NAME
+    PUBLIC_BASE_URL: Optional[str] = os.environ.get('PUBLIC_BASE_URL') or os.environ.get('BASE_URL')
+    
     # Payment Agent API Key (para autenticación del agente local)
     AGENT_API_KEY: Optional[str] = os.environ.get('AGENT_API_KEY')
     
@@ -120,4 +134,33 @@ def init_app_config(app: Flask):
     app.config['OPENAI_PROJECT_ID'] = Config.OPENAI_PROJECT_ID
     app.config['OPENAI_DEFAULT_MODEL'] = Config.OPENAI_DEFAULT_MODEL
     app.config['OPENAI_DEFAULT_TEMPERATURE'] = Config.OPENAI_DEFAULT_TEMPERATURE
+    
+    # Configuración de GetNet Web Checkout
+    app.config['GETNET_API_BASE_URL'] = Config.GETNET_API_BASE_URL
+    app.config['GETNET_LOGIN'] = Config.GETNET_LOGIN
+    app.config['GETNET_TRANKEY'] = Config.GETNET_TRANKEY
+    app.config['GETNET_CLIENT_ID'] = Config.GETNET_CLIENT_ID  # Legacy/OAuth2
+    app.config['GETNET_CLIENT_SECRET'] = Config.GETNET_CLIENT_SECRET  # Legacy/OAuth2
+    app.config['GETNET_MERCHANT_ID'] = Config.GETNET_MERCHANT_ID
+    app.config['GETNET_SANDBOX'] = Config.GETNET_SANDBOX
+    
+    # URL pública para callbacks (GetNet necesita URLs accesibles desde internet)
+    app.config['PUBLIC_BASE_URL'] = Config.PUBLIC_BASE_URL
+    
+    # Si no hay PUBLIC_BASE_URL, intentar usar SERVER_NAME o BASE_URL
+    if not app.config['PUBLIC_BASE_URL']:
+        server_name = app.config.get('SERVER_NAME')
+        if server_name:
+            scheme = 'https' if not is_production or os.environ.get('PREFERRED_URL_SCHEME') == 'https' else 'http'
+            app.config['PUBLIC_BASE_URL'] = f"{scheme}://{server_name}"
+        else:
+            # En desarrollo, puede necesitar ngrok o similar
+            app.config['PUBLIC_BASE_URL'] = None
+    
+    # Logging de configuración GetNet (solo en desarrollo)
+    if not is_production:
+        if app.config['GETNET_CLIENT_ID']:
+            app.logger.info("✅ GetNet Web Checkout configurado")
+        else:
+            app.logger.warning("⚠️ GetNet Web Checkout no configurado (GETNET_CLIENT_ID faltante)")
 

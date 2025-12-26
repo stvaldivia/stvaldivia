@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Confirmación de Compra{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 700px; margin: 2rem auto; padding: 2rem;">
+    <div style="text-align: center; margin-bottom: 2rem;">
+        <div style="font-size: 4rem; margin-bottom: 1rem;">✅</div>
+        <h1 style="color: #4caf50;">¡Compra Exitosa!</h1>
+        <p style="font-size: 1.2rem; color: #666;">Tu entrada ha sido confirmada</p>
+    </div>
+    
+    <div class="card" style="padding: 2rem; margin-bottom: 2rem; border: 2px solid #4caf50;">
+        <h2 style="margin-bottom: 1rem;">{{ entrada.evento_nombre }}</h2>
+        <div style="background: #f5f5f5; padding: 1.5rem; border-radius: 8px; margin: 1rem 0; text-align: center;">
+            <p style="font-size: 1.5rem; font-weight: bold; letter-spacing: 2px; margin: 0 0 1rem 0;">
+                {{ entrada.ticket_code }}
+            </p>
+            {% if qr_code %}
+            <div style="margin: 1rem 0;">
+                <img src="{{ qr_code }}" alt="QR Code Ticket" style="max-width: 200px; height: auto;">
+                <p style="font-size: 0.9rem; color: #666; margin-top: 0.5rem;">Escanea este código en la entrada</p>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div style="margin-top: 1.5rem;">
+            <p><strong>Fecha del evento:</strong> {{ entrada.evento_fecha.strftime('%d/%m/%Y %H:%M') if entrada.evento_fecha else 'N/A' }}</p>
+            {% if entrada.evento_lugar %}
+            <p><strong>Lugar:</strong> {{ entrada.evento_lugar }}</p>
+            {% endif %}
+            <p><strong>Cantidad:</strong> {{ entrada.cantidad }} entrada(s)</p>
+            <p><strong>Comprador:</strong> {{ entrada.comprador_nombre }}</p>
+            <p><strong>Email:</strong> {{ entrada.comprador_email }}</p>
+            <p><strong>Total pagado:</strong> ${{ "{:,.0f}".format(entrada.precio_total) }}</p>
+            {% if entrada.getnet_auth_code %}
+            <p><strong>Código de autorización:</strong> {{ entrada.getnet_auth_code }}</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="card" style="padding: 1.5rem; background: #e3f2fd;">
+        <h3 style="margin-top: 0;">📧 Recibirás un email con tu ticket</h3>
+        <p>Hemos enviado los detalles de tu compra a <strong>{{ entrada.comprador_email }}</strong></p>
+    </div>
+    
+    <div style="text-align: center; margin-top: 2rem;">
+        <a href="{{ url_for('ecommerce.view_ticket', ticket_code=entrada.ticket_code) }}" 
+           class="btn btn-primary" 
+           style="display: inline-block; padding: 1rem 2rem; text-decoration: none; margin-right: 1rem;">
+            Ver Ticket
+        </a>
+        <a href="{{ url_for('ecommerce.index') }}" 
+           class="btn" 
+           style="display: inline-block; padding: 1rem 2rem; text-decoration: none; background: #f5f5f5; color: #333;">
+            Volver al Inicio
+        </a>
+    </div>
+</div>
+{% endblock %}
+
