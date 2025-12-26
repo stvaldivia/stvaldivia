@@ -287,6 +287,10 @@ def create_app():
     # Payment Agent API Key
     app.config['AGENT_API_KEY'] = os.environ.get('AGENT_API_KEY')
     
+    # SumUp API Configuration
+    app.config['SUMUP_API_KEY'] = os.environ.get('SUMUP_API_KEY')
+    app.config['SUMUP_MERCHANT_CODE'] = os.environ.get('SUMUP_MERCHANT_CODE')
+    
     # Test Registers
     app.config['ENABLE_TEST_REGISTERS'] = os.environ.get('ENABLE_TEST_REGISTERS', '0').lower() in ('1', 'true', 'yes')
     

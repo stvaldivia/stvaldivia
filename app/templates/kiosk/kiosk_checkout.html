@@ -28,8 +28,14 @@
                 ← Volver a Productos
             </button>
             <div style="display: flex; flex-direction: column; gap: 1rem; width: 100%; margin-top: 2rem;">
-                <p style="text-align: center; color: #666; padding: 1rem;">
-                    Acércate a la caja para realizar el pago en efectivo.
+                <button id="btn-pagar-sumup" class="btn-primary btn-large" onclick="pagarConSumUp()" style="display: none;">
+                    💳 Pagar con SumUp
+                </button>
+                <div id="loading-sumup" style="display: none; text-align: center; padding: 1rem;">
+                    <p>Creando pago...</p>
+                </div>
+                <p style="text-align: center; color: #666; padding: 1rem; font-size: 0.9rem;">
+                    O acércate a la caja para realizar el pago en efectivo.
                 </p>
             </div>
         </div>
@@ -77,8 +83,86 @@ function mostrarCarrito() {
 }
 
 
+// Mostrar botón de pago SumUp si hay items
+function mostrarBotonesPago() {
+    if (carritoItems.length > 0) {
+        const btnSumUp = document.getElementById('btn-pagar-sumup');
+        if (btnSumUp) {
+            btnSumUp.style.display = 'block';
+        }
+    }
+}
+
+// Función para pagar con SumUp
+async function pagarConSumUp() {
+    if (carritoItems.length === 0) {
+        alert('No hay items en el carrito');
+        return;
+    }
+    
+    const btnSumUp = document.getElementById('btn-pagar-sumup');
+    const loadingDiv = document.getElementById('loading-sumup');
+    
+    if (btnSumUp) btnSumUp.style.display = 'none';
+    if (loadingDiv) loadingDiv.style.display = 'block';
+    
+    try {
+        const response = await fetch('/kiosk/api/pagos/sumup/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                carrito: carritoItems
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.ok && data.pago_id) {
+            // Redirigir a pantalla de pago SumUp
+            window.location.href = `/kiosk/sumup/payment/${data.pago_id}`;
+        } else {
+            alert('Error al crear el pago: ' + (data.error || 'Error desconocido'));
+            if (btnSumUp) btnSumUp.style.display = 'block';
+            if (loadingDiv) loadingDiv.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error al procesar el pago. Por favor intenta de nuevo.');
+        if (btnSumUp) btnSumUp.style.display = 'block';
+        if (loadingDiv) loadingDiv.style.display = 'none';
+    }
+}
+
 // Cargar carrito al iniciar
 cargarCarrito();
+mostrarBotonesPago();
 </script>
+
+<style>
+.btn-primary {
+    background: linear-gradient(135deg, #FF0000 0%, #FFC72C 100%);
+    color: white;
+    border: none;
+    padding: 1.5rem 2rem;
+    font-size: 1.5rem;
+    font-weight: bold;
+    border-radius: 15px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    width: 100%;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+</style>
 {% endblock %}
 

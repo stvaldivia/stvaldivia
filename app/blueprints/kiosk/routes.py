@@ -15,9 +15,16 @@ import qrcode
 from ...models import db
 from ...models.kiosk_models import Pago, PagoItem
 from ...infrastructure.external.phppos_kiosk_client import PHPPosKioskClient
+from ...infrastructure.external.sumup_client import SumUpClient
 from . import kiosk_bp
 
 logger = logging.getLogger(__name__)
+
+# Decorador para eximir funciones de CSRF (para webhooks)
+def exempt_from_csrf(func):
+    """Decorador para marcar función como exenta de CSRF"""
+    func._csrf_exempt = True
+    return func
 
 # Configuración del kiosko
 TICKET_PREFIX = os.environ.get('KIOSK_TICKET_PREFIX', 'B')
@@ -28,6 +35,10 @@ PHP_POS_REGISTER_ID = os.environ.get('PHP_POS_REGISTER_ID', '5')
 def get_phppos_client():
     """Obtiene instancia del cliente PHP POS"""
     return PHPPosKioskClient()
+
+def get_sumup_client():
+    """Obtiene instancia del cliente SumUp"""
+    return SumUpClient()
 
 # Cache de productos (se actualiza periódicamente)
 _productos_cache = None
@@ -215,6 +226,43 @@ def kiosk_waiting():
     return render_template('kiosk/kiosk_waiting_payment.html', pago_id=pago_id)
 
 
+@kiosk_bp.route('/sumup/payment/<int:pago_id>')
+def kiosk_sumup_payment(pago_id):
+    """Pantalla de pago con SumUp - muestra QR para escanear"""
+    try:
+        pago = Pago.query.get_or_404(pago_id)
+        
+        if pago.estado != 'PENDING':
+            # Si ya está pagado, redirigir a éxito
+            if pago.estado == 'PAID':
+                return redirect(url_for('kiosk.kiosk_success', pago_id=pago_id))
+            # Si falló, volver al checkout
+            return redirect(url_for('kiosk.kiosk_checkout'))
+        
+        # Generar QR code si no existe
+        qr_image = None
+        if pago.sumup_checkout_url:
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_L,
+                box_size=10,
+                border=4,
+            )
+            qr.add_data(pago.sumup_checkout_url)
+            qr.make(fit=True)
+            
+            img = qr.make_image(fill_color="black", back_color="white")
+            img_buffer = io.BytesIO()
+            img.save(img_buffer, format='PNG')
+            qr_image = base64.b64encode(img_buffer.getvalue()).decode()
+            qr_image = f"data:image/png;base64,{qr_image}"
+        
+        return render_template('kiosk/kiosk_sumup_payment.html', pago=pago, qr_image=qr_image)
+    except Exception as e:
+        logger.error(f"Error en kiosk_sumup_payment: {e}", exc_info=True)
+        return redirect(url_for('kiosk.kiosk_home'))
+
+
 @kiosk_bp.route('/success')
 def kiosk_success():
     """Pantalla de pago aprobado con código/QR y código de barras"""
@@ -296,4 +344,297 @@ def api_productos():
     """API para obtener lista de productos"""
     productos = get_productos()
     return jsonify({'ok': True, 'productos': productos})
+
+
+@kiosk_bp.route('/api/pagos/sumup/create', methods=['POST'])
+def api_create_sumup_checkout():
+    """Crea un checkout de SumUp para un pago del kiosko"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'ok': False, 'error': 'No se recibieron datos'}), 400
+        
+        carrito_items = data.get('carrito', [])
+        if not carrito_items:
+            return jsonify({'ok': False, 'error': 'Carrito vacío'}), 400
+        
+        # Calcular total
+        total = sum(float(item.get('total', 0)) for item in carrito_items)
+        if total <= 0:
+            return jsonify({'ok': False, 'error': 'Monto inválido'}), 400
+        
+        # Crear registro de pago en estado PENDING
+        pago = Pago(
+            monto=Decimal(str(total)),
+            moneda='CLP',
+            estado='PENDING',
+            metodo='SUMUP',
+            kiosko_id=KIOSKO_ID
+        )
+        db.session.add(pago)
+        db.session.flush()
+        
+        # Crear items del pago
+        for item in carrito_items:
+            pago_item = PagoItem(
+                pago_id=pago.id,
+                item_id_phppos=str(item.get('id', '')),
+                nombre_item=item.get('nombre', 'Producto'),
+                cantidad=int(item.get('cantidad', 1)),
+                precio_unitario=Decimal(str(item.get('precio', 0))),
+                total_linea=Decimal(str(item.get('total', 0)))
+            )
+            db.session.add(pago_item)
+        
+        # Generar referencia única para el checkout
+        checkout_reference = f"KIOSK-{pago.id}-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        
+        # Construir return URL
+        public_base_url = os.environ.get('PUBLIC_BASE_URL')
+        if public_base_url:
+            return_url = f"{public_base_url.rstrip('/')}{url_for('kiosk.sumup_payment_callback', pago_id=pago.id, _external=False)}"
+        else:
+            return_url = url_for('kiosk.sumup_payment_callback', pago_id=pago.id, _external=True)
+        
+        # Obtener merchant code de configuración
+        merchant_code = current_app.config.get('SUMUP_MERCHANT_CODE')
+        
+        # Crear checkout en SumUp
+        sumup_client = get_sumup_client()
+        checkout_result = sumup_client.create_checkout(
+            amount=total,
+            currency='CLP',
+            checkout_reference=checkout_reference,
+            description=f"Kiosko {KIOSKO_ID} - Pedido #{pago.id}",
+            return_url=return_url,
+            merchant_code=merchant_code
+        )
+        
+        if not checkout_result.get('success'):
+            db.session.rollback()
+            logger.error(f"Error al crear checkout SumUp: {checkout_result.get('error')}")
+            return jsonify({
+                'ok': False,
+                'error': checkout_result.get('error', 'Error al crear checkout de pago')
+            }), 500
+        
+        checkout_data = checkout_result.get('data', {})
+        checkout_id = checkout_data.get('id')
+        checkout_url = checkout_data.get('redirect_url') or checkout_data.get('href')
+        
+        # Actualizar pago con información de SumUp
+        pago.sumup_checkout_id = checkout_id
+        pago.sumup_checkout_url = checkout_url
+        pago.sumup_merchant_code = merchant_code
+        pago.transaction_id = checkout_id  # Mantener compatibilidad
+        db.session.commit()
+        
+        logger.info(f"✅ Checkout SumUp creado: pago_id={pago.id}, checkout_id={checkout_id}")
+        
+        return jsonify({
+            'ok': True,
+            'pago_id': pago.id,
+            'checkout_id': checkout_id,
+            'checkout_url': checkout_url,
+            'checkout_reference': checkout_reference
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error al crear checkout SumUp: {e}", exc_info=True)
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@kiosk_bp.route('/api/pagos/sumup/qr/<int:pago_id>')
+def api_get_sumup_qr(pago_id):
+    """Genera un QR code con la URL del checkout SumUp"""
+    try:
+        pago = Pago.query.get_or_404(pago_id)
+        
+        if not pago.sumup_checkout_url:
+            return jsonify({'ok': False, 'error': 'No hay URL de checkout disponible'}), 404
+        
+        # Generar QR code con la URL del checkout
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(pago.sumup_checkout_url)
+        qr.make(fit=True)
+        
+        img = qr.make_image(fill_color="black", back_color="white")
+        img_buffer = io.BytesIO()
+        img.save(img_buffer, format='PNG')
+        img_str = base64.b64encode(img_buffer.getvalue()).decode()
+        
+        return jsonify({
+            'ok': True,
+            'qr_image': f"data:image/png;base64,{img_str}",
+            'checkout_url': pago.sumup_checkout_url,
+            'pago_id': pago.id
+        })
+        
+    except Exception as e:
+        logger.error(f"Error al generar QR SumUp: {e}", exc_info=True)
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@kiosk_bp.route('/sumup/callback/<int:pago_id>', methods=['GET', 'POST'])
+@exempt_from_csrf
+def sumup_payment_callback(pago_id):
+    """Callback desde SumUp después del pago"""
+    try:
+        pago = Pago.query.get_or_404(pago_id)
+        
+        logger.info(f"Callback SumUp recibido: pago_id={pago_id}, checkout_id={pago.sumup_checkout_id}")
+        
+        # Obtener checkout_id de parámetros o usar el guardado
+        checkout_id = (
+            request.args.get('checkout_id') or
+            request.form.get('checkout_id') or
+            request.args.get('id') or
+            pago.sumup_checkout_id
+        )
+        
+        if not checkout_id:
+            logger.error(f"Callback sin checkout_id: pago_id={pago_id}")
+            return redirect(url_for('kiosk.kiosk_checkout'))
+        
+        # Verificar estado del checkout en SumUp
+        sumup_client = get_sumup_client()
+        checkout_result = sumup_client.get_checkout(checkout_id)
+        
+        if not checkout_result.get('success'):
+            logger.error(f"Error al obtener estado del checkout: {checkout_result.get('error')}")
+            return redirect(url_for('kiosk.kiosk_waiting', pago_id=pago_id))
+        
+        checkout_data = checkout_result.get('data', {})
+        checkout_status = checkout_data.get('status', '').upper()
+        
+        logger.info(f"Estado del checkout SumUp: {checkout_status} para pago_id={pago_id}")
+        
+        # Actualizar estado del pago
+        if checkout_status == 'PAID':
+            # Pago aprobado
+            pago.estado = 'PAID'
+            db.session.commit()
+            
+            # Sincronizar con PHP POS
+            _sync_pago_to_phppos(pago)
+            
+            # Redirigir a pantalla de éxito
+            return redirect(url_for('kiosk.kiosk_success', pago_id=pago_id))
+        elif checkout_status in ('FAILED', 'EXPIRED'):
+            # Pago rechazado o expirado
+            pago.estado = 'FAILED'
+            db.session.commit()
+            return redirect(url_for('kiosk.kiosk_checkout'))
+        else:
+            # Estado pendiente
+            return redirect(url_for('kiosk.kiosk_waiting', pago_id=pago_id))
+        
+    except Exception as e:
+        logger.error(f"Error en callback SumUp: {e}", exc_info=True)
+        return redirect(url_for('kiosk.kiosk_checkout'))
+
+
+@kiosk_bp.route('/api/sumup/webhook', methods=['POST'])
+@exempt_from_csrf
+def sumup_webhook():
+    """Webhook para recibir notificaciones de SumUp"""
+    try:
+        data = request.get_json()
+        
+        if not data:
+            logger.warning("Webhook SumUp recibido sin datos")
+            return jsonify({'ok': False, 'error': 'No data'}), 400
+        
+        logger.info(f"Webhook SumUp recibido: {data}")
+        
+        # Extraer información del webhook
+        event_type = data.get('type', '')
+        checkout_id = data.get('id') or data.get('checkout_id') or data.get('checkout', {}).get('id')
+        
+        if not checkout_id:
+            logger.warning(f"Webhook SumUp sin checkout_id: {data}")
+            return jsonify({'ok': False, 'error': 'No checkout_id'}), 400
+        
+        # Buscar pago por checkout_id
+        pago = Pago.query.filter_by(sumup_checkout_id=checkout_id).first()
+        
+        if not pago:
+            logger.warning(f"Pago no encontrado para checkout_id: {checkout_id}")
+            return jsonify({'ok': False, 'error': 'Pago not found'}), 404
+        
+        # Procesar según tipo de evento
+        if event_type in ('checkout.succeeded', 'checkout.paid'):
+            # Pago exitoso
+            pago.estado = 'PAID'
+            db.session.commit()
+            
+            # Sincronizar con PHP POS
+            _sync_pago_to_phppos(pago)
+            
+            logger.info(f"✅ Pago marcado como PAID vía webhook: pago_id={pago.id}, checkout_id={checkout_id}")
+        elif event_type in ('checkout.failed', 'checkout.expired'):
+            # Pago fallido o expirado
+            pago.estado = 'FAILED'
+            db.session.commit()
+            logger.info(f"⚠️ Pago marcado como FAILED vía webhook: pago_id={pago.id}, checkout_id={checkout_id}")
+        
+        return jsonify({'ok': True})
+        
+    except Exception as e:
+        logger.error(f"Error en webhook SumUp: {e}", exc_info=True)
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+def _sync_pago_to_phppos(pago: Pago):
+    """Sincroniza un pago confirmado con PHP POS"""
+    try:
+        if pago.sale_id_phppos:
+            logger.info(f"Pago {pago.id} ya sincronizado con PHP POS (sale_id={pago.sale_id_phppos})")
+            return
+        
+        # Preparar items para PHP POS
+        items = []
+        for item in pago.items:
+            items.append({
+                'item_id': item.item_id_phppos,
+                'quantity': item.cantidad,
+                'price': float(item.precio_unitario)
+            })
+        
+        # Crear venta en PHP POS
+        phppos_client = get_phppos_client()
+        sale_result = phppos_client.create_sale(
+            items=items,
+            total=float(pago.monto),
+            payment_type='SumUp',
+            register_id=PHP_POS_REGISTER_ID
+        )
+        
+        if sale_result.get('success'):
+            sale_id = sale_result.get('sale_id')
+            pago.sale_id_phppos = str(sale_id)
+            
+            # Generar ticket code
+            if not pago.ticket_code:
+                receipt_code = sale_result.get('receipt_code')
+                if receipt_code:
+                    pago.ticket_code = receipt_code
+                else:
+                    pago.ticket_code = generate_ticket_code()
+            
+            db.session.commit()
+            logger.info(f"✅ Pago {pago.id} sincronizado con PHP POS: sale_id={sale_id}")
+        else:
+            logger.error(f"Error al sincronizar pago {pago.id} con PHP POS: {sale_result.get('error')}")
+        
+    except Exception as e:
+        logger.error(f"Error al sincronizar pago {pago.id} con PHP POS: {e}", exc_info=True)
+        # No hacer rollback aquí, el pago ya está marcado como PAID
 

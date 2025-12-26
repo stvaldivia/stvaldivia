@@ -22,6 +22,11 @@ class Pago(db.Model):
     # Transaction ID genérico (para almacenar cualquier ID de transacción)
     transaction_id = db.Column(db.String(100), nullable=True)
     
+    # SumUp integration
+    sumup_checkout_id = db.Column(db.String(100), nullable=True, index=True)
+    sumup_checkout_url = db.Column(db.Text, nullable=True)
+    sumup_merchant_code = db.Column(db.String(50), nullable=True)
+    
     # Ticket code único
     ticket_code = db.Column(db.String(20), unique=True, nullable=True)
     
@@ -43,6 +48,8 @@ class Pago(db.Model):
             'kiosko_id': self.kiosko_id,
             'ticket_code': self.ticket_code,
             'sale_id_phppos': self.sale_id_phppos,
+            'sumup_checkout_id': self.sumup_checkout_id,
+            'sumup_checkout_url': self.sumup_checkout_url,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
