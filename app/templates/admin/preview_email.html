@@ -151,17 +151,14 @@
         </div>
         {% endif %}
         
-        {% if mostrar_qr %}
         <div class="payment-link-info" style="background: #d1fae5; border-color: #10b981;">
-            <strong>✅ Código QR Incluido:</strong> Este email incluirá el código QR porque el estado es "{{ entrada.estado_pago|title }}". 
-            El QR es válido para ingresar al evento.
+            <strong>✅ Código QR Incluido:</strong> Este email siempre incluirá el código QR. 
+            {% if entrada.estado_pago in ['pagado', 'entregado'] %}
+            El QR está <strong>activo</strong> porque el estado es "{{ entrada.estado_pago|title }}" (pago verificado).
+            {% else %}
+            El QR se mostrará pero con mensaje de que solo se <strong>activará</strong> cuando se reciba el pago (estado actual: "{{ entrada.estado_pago|title }}").
+            {% endif %}
         </div>
-        {% else %}
-        <div class="payment-link-info" style="background: #fee2e2; border-color: #ef4444;">
-            <strong>⚠️ Sin Código QR:</strong> Este email NO incluirá el código QR porque el estado es "{{ entrada.estado_pago|title }}". 
-            El QR solo se muestra cuando el estado es "Pagado" o "Entregado" (pago verificado).
-        </div>
-        {% endif %}
     </div>
     
     <!-- Vista Previa del Email -->
