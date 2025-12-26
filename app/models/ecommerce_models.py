@@ -44,13 +44,14 @@ class Entrada(db.Model):
     metadata_json = db.Column(Text, nullable=True)  # JSON con información adicional
     
     # Seguimiento de emails (opcionales - se agregan con migración)
-    # Nota: Estas columnas pueden no existir en la BD aún
-    # Se verifica con hasattr() antes de usar
-    # IMPORTANTE: Si las columnas no existen en la BD, SQLAlchemy fallará
-    # Se deben agregar con: ALTER TABLE entradas ADD COLUMN email_resumen_enviado BOOLEAN DEFAULT 0 NOT NULL;
-    #                      ALTER TABLE entradas ADD COLUMN email_resumen_enviado_at DATETIME;
-    email_resumen_enviado = db.Column(Boolean, default=False, nullable=True)
-    email_resumen_enviado_at = db.Column(db.DateTime, nullable=True)
+    # TEMPORALMENTE COMENTADAS hasta que se ejecute la migración en producción
+    # Para agregar las columnas, ejecutar:
+    # ALTER TABLE entradas ADD COLUMN email_resumen_enviado BOOLEAN DEFAULT 0 NOT NULL;
+    # ALTER TABLE entradas ADD COLUMN email_resumen_enviado_at DATETIME;
+    # 
+    # Una vez agregadas, descomentar estas líneas:
+    # email_resumen_enviado = db.Column(Boolean, default=False, nullable=True)
+    # email_resumen_enviado_at = db.Column(db.DateTime, nullable=True)
     
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
