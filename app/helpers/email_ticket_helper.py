@@ -293,7 +293,7 @@ def generate_resumen_compra_html(entrada: Entrada, preview: bool = False) -> tup
             {f'''
             <div style="text-align: center; margin: 30px 0; padding: 20px; background: #f9f9f9; border-radius: 8px;">
                 <h2 style="color: #333; margin-top: 0; font-size: 18px;">Código QR</h2>
-                <img src="{qr_code_base64}" 
+                <img src="cid:qr_{entrada.ticket_code}" 
                      alt="Código QR - Ticket {entrada.ticket_code}" 
                      style="width: 200px; height: 200px; display: block; margin: 15px auto; background: white; padding: 10px; border-radius: 8px;" />
                 <p style="color: #666; font-size: 14px; margin: 15px 0 0 0;">
