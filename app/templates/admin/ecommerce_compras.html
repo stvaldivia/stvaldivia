@@ -318,6 +318,37 @@
         background: rgba(76, 175, 80, 0.1);
         color: #4caf50;
     }
+    
+    /* Estilos para acciones masivas */
+    .acciones-masivas {
+        animation: slideDown 0.3s ease;
+    }
+    
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .acciones-masivas button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
+    /* Estilos para checkboxes */
+    .checkbox-pedido,
+    #seleccionar-todos {
+        accent-color: #667eea;
+    }
+    
+    tr:hover .checkbox-pedido {
+        opacity: 1;
+    }
 </style>
 
 <div class="compras-container">
@@ -401,6 +432,27 @@
         </form>
     </div>
     
+    <!-- Panel de Acciones Masivas -->
+    <div id="acciones-masivas" class="acciones-masivas" style="display: none; background: rgba(30, 41, 59, 0.5); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 1rem; margin-bottom: 1rem;">
+        <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+            <span style="color: #fff; font-weight: 600;">
+                <span id="contador-seleccionados">0</span> pedido(s) seleccionado(s)
+            </span>
+            <select id="estado-masivo" style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; padding: 0.75rem; color: #fff; font-size: 0.9rem; min-width: 150px;">
+                <option value="">Seleccionar estado...</option>
+                <option value="recibido">Recibido</option>
+                <option value="pagado">Pagado</option>
+                <option value="entregado">Entregado</option>
+            </select>
+            <button id="aplicar-estado-masivo" style="background: #667eea; color: #fff; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600;">
+                Aplicar Estado
+            </button>
+            <button id="deseleccionar-todos" style="background: rgba(255, 255, 255, 0.1); color: #fff; border: 1px solid rgba(255, 255, 255, 0.2); padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-size: 0.9rem;">
+                Deseleccionar Todos
+            </button>
+        </div>
+    </div>
+    
     <!-- Tabla de Compras -->
     <div class="compras-table">
         <div class="table-header" style="display: flex; justify-content: space-between; align-items: center;">
@@ -415,6 +467,9 @@
             <table>
                 <thead>
                     <tr>
+                        <th style="width: 40px;">
+                            <input type="checkbox" id="seleccionar-todos" style="cursor: pointer; width: 18px; height: 18px;">
+                        </th>
                         <th>Ticket</th>
                         <th>Comprador</th>
                         <th>Email</th>
@@ -431,6 +486,9 @@
                 <tbody>
                     {% for compra in compras %}
                     <tr>
+                        <td>
+                            <input type="checkbox" class="checkbox-pedido" data-entrada-id="{{ compra.id }}" style="cursor: pointer; width: 18px; height: 18px;">
+                        </td>
                         <td><code style="color: #667eea;">{{ compra.ticket_code }}</code></td>
                         <td>{{ compra.comprador_nombre }}</td>
                         <td>{{ compra.comprador_email }}</td>
@@ -472,6 +530,33 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const estadoSelectors = document.querySelectorAll('.estado-selector');
+    const checkboxPedidos = document.querySelectorAll('.checkbox-pedido');
+    const seleccionarTodos = document.getElementById('seleccionar-todos');
+    const accionesMasivas = document.getElementById('acciones-masivas');
+    const contadorSeleccionados = document.getElementById('contador-seleccionados');
+    const estadoMasivo = document.getElementById('estado-masivo');
+    const aplicarEstadoMasivo = document.getElementById('aplicar-estado-masivo');
+    const deseleccionarTodos = document.getElementById('deseleccionar-todos');
+    
+    // Función para actualizar el contador y mostrar/ocultar el panel
+    function actualizarContador() {
+        const seleccionados = document.querySelectorAll('.checkbox-pedido:checked');
+        const cantidad = seleccionados.length;
+        contadorSeleccionados.textContent = cantidad;
+        
+        if (cantidad > 0) {
+            accionesMasivas.style.display = 'block';
+        } else {
+            accionesMasivas.style.display = 'none';
+            estadoMasivo.value = '';
+        }
+        
+        // Actualizar el estado del checkbox "Seleccionar todos"
+        if (seleccionarTodos) {
+            seleccionarTodos.checked = cantidad === checkboxPedidos.length && cantidad > 0;
+            seleccionarTodos.indeterminate = cantidad > 0 && cantidad < checkboxPedidos.length;
+        }
+    }
     
     // Función para actualizar el color del selector según el estado
     function actualizarColorSelector(selector, estado) {
@@ -481,6 +566,120 @@ document.addEventListener('DOMContentLoaded', function() {
         selector.classList.add('estado-' + estado);
         // Actualizar el atributo data-estado-actual
         selector.dataset.estadoActual = estado;
+    }
+    
+    // Manejar selección/deselección de todos
+    if (seleccionarTodos) {
+        seleccionarTodos.addEventListener('change', function() {
+            checkboxPedidos.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            actualizarContador();
+        });
+    }
+    
+    // Manejar selección individual
+    checkboxPedidos.forEach(checkbox => {
+        checkbox.addEventListener('change', actualizarContador);
+    });
+    
+    // Manejar deseleccionar todos
+    if (deseleccionarTodos) {
+        deseleccionarTodos.addEventListener('click', function() {
+            checkboxPedidos.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            if (seleccionarTodos) {
+                seleccionarTodos.checked = false;
+                seleccionarTodos.indeterminate = false;
+            }
+            actualizarContador();
+        });
+    }
+    
+    // Manejar aplicación de estado masivo
+    if (aplicarEstadoMasivo) {
+        aplicarEstadoMasivo.addEventListener('click', function() {
+            const nuevoEstado = estadoMasivo.value;
+            
+            if (!nuevoEstado) {
+                alert('Por favor selecciona un estado');
+                return;
+            }
+            
+            const seleccionados = document.querySelectorAll('.checkbox-pedido:checked');
+            if (seleccionados.length === 0) {
+                alert('Por favor selecciona al menos un pedido');
+                return;
+            }
+            
+            const entradaIds = Array.from(seleccionados).map(cb => parseInt(cb.dataset.entradaId));
+            
+            // Confirmar acción
+            if (!confirm(`¿Estás seguro de cambiar el estado de ${entradaIds.length} pedido(s) a "${nuevoEstado}"?`)) {
+                return;
+            }
+            
+            // Deshabilitar botón mientras se procesa
+            this.disabled = true;
+            this.textContent = 'Procesando...';
+            const estiloOriginal = this.style.opacity;
+            this.style.opacity = '0.7';
+            
+            // Hacer la petición AJAX
+            fetch('/admin/ecommerce/compras/cambiar-estado-masivo', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    entrada_ids: entradaIds,
+                    estado: nuevoEstado
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Actualizar los selectores de estado de los pedidos actualizados
+                    seleccionados.forEach(checkbox => {
+                        const entradaId = checkbox.dataset.entradaId;
+                        const selector = document.querySelector(`.estado-selector[data-entrada-id="${entradaId}"]`);
+                        if (selector) {
+                            selector.value = nuevoEstado;
+                            actualizarColorSelector(selector, nuevoEstado);
+                            selector.dataset.estadoActual = nuevoEstado;
+                        }
+                        checkbox.checked = false;
+                    });
+                    
+                    // Deseleccionar todos
+                    if (seleccionarTodos) {
+                        seleccionarTodos.checked = false;
+                        seleccionarTodos.indeterminate = false;
+                    }
+                    
+                    actualizarContador();
+                    estadoMasivo.value = '';
+                    
+                    alert(`✅ ${data.message}`);
+                    
+                    // Opcional: recargar la página después de un breve delay
+                    // setTimeout(() => location.reload(), 1000);
+                } else {
+                    alert('Error: ' + (data.error || 'No se pudieron cambiar los estados'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al cambiar los estados. Por favor intenta nuevamente.');
+            })
+            .finally(() => {
+                // Rehabilitar botón
+                this.disabled = false;
+                this.textContent = 'Aplicar Estado';
+                this.style.opacity = estiloOriginal || '1';
+            });
+        });
     }
     
     estadoSelectors.forEach(selector => {

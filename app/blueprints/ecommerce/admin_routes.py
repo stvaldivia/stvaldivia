@@ -158,6 +158,71 @@ def api_stats():
     })
 
 
+@admin_ecommerce_bp.route('/compras/cambiar-estado-masivo', methods=['POST'])
+def cambiar_estado_masivo():
+    """API: Cambiar el estado de múltiples pedidos"""
+    auth_check = require_admin()
+    if auth_check:
+        return jsonify({'success': False, 'error': 'No autorizado'}), 401
+    
+    try:
+        data = request.get_json()
+        entrada_ids = data.get('entrada_ids', [])
+        nuevo_estado = data.get('estado', '').lower()
+        
+        if not entrada_ids:
+            return jsonify({
+                'success': False,
+                'error': 'No se seleccionaron pedidos'
+            }), 400
+        
+        # Validar estado
+        estados_validos = ['recibido', 'pagado', 'entregado']
+        if nuevo_estado not in estados_validos:
+            return jsonify({
+                'success': False,
+                'error': f'Estado inválido. Debe ser uno de: {", ".join(estados_validos)}'
+            }), 400
+        
+        # Buscar las entradas
+        entradas = Entrada.query.filter(Entrada.id.in_(entrada_ids)).all()
+        
+        if not entradas:
+            return jsonify({
+                'success': False,
+                'error': 'No se encontraron pedidos con los IDs proporcionados'
+            }), 404
+        
+        # Actualizar cada entrada
+        actualizados = 0
+        for entrada in entradas:
+            entrada.estado_pago = nuevo_estado
+            
+            # Actualizar timestamps según el estado
+            if nuevo_estado == 'pagado' and not entrada.paid_at:
+                entrada.paid_at = datetime.utcnow()
+            elif nuevo_estado == 'entregado' and not entrada.paid_at:
+                entrada.paid_at = datetime.utcnow()
+            
+            actualizados += 1
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Se actualizaron {actualizados} pedido(s) a estado {nuevo_estado}',
+            'actualizados': actualizados,
+            'nuevo_estado': nuevo_estado
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': f'Error al cambiar estados: {str(e)}'
+        }), 500
+
+
 @admin_ecommerce_bp.route('/compras/<int:entrada_id>/cambiar-estado', methods=['POST'])
 def cambiar_estado_pedido(entrada_id):
     """API: Cambiar el estado de un pedido"""
