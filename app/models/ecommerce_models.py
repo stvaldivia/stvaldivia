@@ -43,6 +43,10 @@ class Entrada(db.Model):
     # Información adicional
     metadata_json = db.Column(Text, nullable=True)  # JSON con información adicional
     
+    # Seguimiento de emails
+    email_resumen_enviado = db.Column(Boolean, default=False, nullable=False, index=True)
+    email_resumen_enviado_at = db.Column(db.DateTime, nullable=True)
+    
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
     paid_at = db.Column(db.DateTime, nullable=True)

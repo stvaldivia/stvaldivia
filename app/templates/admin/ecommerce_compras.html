@@ -507,7 +507,18 @@
                         </td>
                         <td><code style="color: #667eea;">{{ compra.ticket_code }}</code></td>
                         <td>{{ compra.comprador_nombre }}</td>
-                        <td>{{ compra.comprador_email }}</td>
+                        <td>
+                            {{ compra.comprador_email }}
+                            {% if compra.email_resumen_enviado %}
+                                <span style="color: #10b981; font-size: 0.85rem; margin-left: 0.5rem;" title="Email enviado el {{ compra.email_resumen_enviado_at.strftime('%d/%m/%Y %H:%M') if compra.email_resumen_enviado_at else 'N/A' }}">
+                                    ✅ Enviado
+                                </span>
+                            {% else %}
+                                <span style="color: #f59e0b; font-size: 0.85rem; margin-left: 0.5rem;" title="Email no enviado">
+                                    ⏳ Pendiente
+                                </span>
+                            {% endif %}
+                        </td>
                         <td>{{ compra.evento_nombre }}</td>
                         <td>{{ compra.evento_fecha.strftime('%d/%m/%Y %H:%M') if compra.evento_fecha else 'N/A' }}</td>
                         <td>{{ compra.cantidad }}</td>

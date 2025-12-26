@@ -4,6 +4,7 @@ Helper para envío de emails con tickets de entrada
 import logging
 import os
 from typing import Optional
+from datetime import datetime
 from flask import current_app, url_for
 from app.models.ecommerce_models import Entrada
 
@@ -427,6 +428,12 @@ def send_resumen_compra_email(entrada: Entrada) -> bool:
             server.login(smtp_user, smtp_password)
             server.send_message(msg)
             server.quit()
+            
+            # Marcar como enviado en la base de datos
+            from app.models import db
+            entrada.email_resumen_enviado = True
+            entrada.email_resumen_enviado_at = datetime.utcnow()
+            db.session.commit()
             
             logger.info(f"✅ Email de resumen enviado exitosamente a {entrada.comprador_email} (Ticket: {entrada.ticket_code})")
             return True
