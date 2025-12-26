@@ -251,171 +251,91 @@ def generate_resumen_compra_html(entrada: Entrada, preview: bool = False) -> tup
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
     </head>
-    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
         
-        <!-- Header -->
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 28px;">🎫 BIMBA</h1>
-            <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;">Resumen de tu Compra</p>
-        </div>
-        
-        <!-- Contenido Principal -->
-        <div style="background: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+        <div style="background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
             
-            <p style="font-size: 16px; margin-bottom: 20px;">Hola <strong>{entrada.comprador_nombre}</strong>,</p>
+            <h1 style="color: #333; margin-top: 0; font-size: 24px;">¡Gracias por querer ser parte de nuestra fiesta! 🎉</h1>
             
-            <p style="font-size: 16px; color: #666; line-height: 1.8;">
-                ¡Gracias por querer ser parte de nuestra fiesta! 🎉<br><br>
-                Estamos muy emocionados de tenerte con nosotros. A continuación encontrarás toda la información importante para completar tu compra y acceder al evento.
+            <p style="font-size: 16px; margin-bottom: 25px;">Hola <strong>{entrada.comprador_nombre}</strong>,</p>
+            
+            <p style="font-size: 16px; color: #666; margin-bottom: 25px;">
+                Te adjuntamos el link de pago y el código QR que deberás presentar junto con tu cédula de identidad el día del evento. 
+                El código QR solo se activa cuando se recibe el pago.
             </p>
             
-            <!-- Código de Ticket -->
-            <div style="background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%); padding: 25px; border-radius: 8px; margin: 25px 0; text-align: center; border: 2px dashed #667eea;">
-                <p style="margin: 0 0 10px 0; color: #666; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Código de Ticket</p>
-                <p style="font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #667eea; margin: 0; font-family: 'Courier New', monospace;">
-                    {entrada.ticket_code}
-                </p>
-            </div>
-            
-            {'<!-- Código QR (siempre incluido, pero con mensaje según estado de pago) -->' if mostrar_qr and qr_code_base64 else ''}
+            <!-- Código QR -->
             {f'''
-            <div style="background: linear-gradient(135deg, {'#10b981 0%, #059669 100%' if pago_realizado else '#f59e0b 0%, #f97316 100%'}); padding: 30px; border-radius: 8px; margin: 25px 0; text-align: center;">
-                <h2 style="color: white; margin-top: 0; font-size: 22px; margin-bottom: 15px;">{'✅' if pago_realizado else '⏳'} Código QR de Acceso</h2>
-                <p style="color: rgba(255,255,255,0.95); margin: 0 0 20px 0; font-size: 16px; font-weight: 500;">
-                    {'Presenta este código QR junto con tu cédula de identidad el día del evento' if pago_realizado else 'Este código QR se activará automáticamente cuando recibamos tu pago'}
-                </p>
-                <div style="background: white; padding: 20px; border-radius: 12px; display: inline-block; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
-                    <img src="{qr_code_base64}" 
-                         alt="Código QR - Ticket {entrada.ticket_code}" 
-                         style="width: 250px; height: 250px; display: block; margin: 0 auto; {'opacity: 0.7;' if not pago_realizado else ''}" />
-                </div>
-                <p style="color: rgba(255,255,255,0.9); margin: 20px 0 0 0; font-size: 14px;">
-                    {'<strong>✓ Pago Verificado</strong> - Este código QR es válido para ingresar al evento' if pago_realizado else '<strong>⚠️ Pendiente de Pago</strong> - Realiza el pago para activar este código QR. Deberás presentarlo junto con tu cédula de identidad el día del evento.'}
+            <div style="text-align: center; margin: 30px 0; padding: 20px; background: #f9f9f9; border-radius: 8px;">
+                <h2 style="color: #333; margin-top: 0; font-size: 18px;">Código QR</h2>
+                <img src="{qr_code_base64}" 
+                     alt="Código QR - Ticket {entrada.ticket_code}" 
+                     style="width: 200px; height: 200px; display: block; margin: 15px auto; background: white; padding: 10px; border-radius: 8px;" />
+                <p style="color: #666; font-size: 14px; margin: 15px 0 0 0;">
+                    {'✓ Pago verificado - QR activo' if pago_realizado else '⏳ Pendiente de pago - Se activará al recibir el pago'}
                 </p>
             </div>
             ''' if mostrar_qr and qr_code_base64 else ''}
             
-            <!-- Información del Evento -->
-            <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea;">
-                <h2 style="color: #667eea; margin-top: 0; font-size: 22px;">📅 Información del Evento</h2>
+            <!-- Link de Pago -->
+            {f'''
+            <div style="text-align: center; margin: 30px 0; padding: 20px; background: #fff3cd; border-radius: 8px;">
+                <h2 style="color: #856404; margin-top: 0; font-size: 18px;">Link de Pago</h2>
+                <a href="{payment_link}" 
+                   target="_blank"
+                   style="background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px; margin: 10px 0;">
+                    Pagar ${precio_total:,.0f}
+                </a>
+                <p style="color: #856404; font-size: 12px; margin: 10px 0 0 0;">
+                    <a href="{payment_link}" style="color: #856404; word-break: break-all;">{payment_link}</a>
+                </p>
+            </div>
+            ''' if mostrar_link_pago else ''}
+            
+            <!-- Información -->
+            <div style="margin: 30px 0; padding: 20px; background: #f9f9f9; border-radius: 8px;">
+                <h2 style="color: #333; margin-top: 0; font-size: 18px;">Información</h2>
                 <table style="width: 100%; border-collapse: collapse;">
                     <tr>
-                        <td style="padding: 8px 0; color: #666; width: 40%;"><strong>Evento:</strong></td>
+                        <td style="padding: 8px 0; color: #666;"><strong>Evento:</strong></td>
                         <td style="padding: 8px 0; color: #333;">{entrada.evento_nombre}</td>
                     </tr>
                     <tr>
                         <td style="padding: 8px 0; color: #666;"><strong>Fecha:</strong></td>
                         <td style="padding: 8px 0; color: #333;">{fecha_evento}</td>
                     </tr>
-                    {f'<tr><td style="padding: 8px 0; color: #666;"><strong>Lugar:</strong></td><td style="padding: 8px 0; color: #333;">{entrada.evento_lugar}</td></tr>' if entrada.evento_lugar else ''}
-                </table>
-            </div>
-            
-            <!-- Detalles de la Compra -->
-            <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
-                <h2 style="color: #10b981; margin-top: 0; font-size: 22px;">💰 Detalles de la Compra</h2>
-                <table style="width: 100%; border-collapse: collapse;">
                     <tr>
-                        <td style="padding: 8px 0; color: #666; width: 40%;"><strong>Cantidad:</strong></td>
+                        <td style="padding: 8px 0; color: #666;"><strong>Cantidad:</strong></td>
                         <td style="padding: 8px 0; color: #333;">{entrada.cantidad} entrada(s)</td>
                     </tr>
                     <tr>
-                        <td style="padding: 8px 0; color: #666;"><strong>Precio unitario:</strong></td>
-                        <td style="padding: 8px 0; color: #333;">${float(entrada.precio_unitario):,.0f}</td>
+                        <td style="padding: 8px 0; color: #666;"><strong>Total:</strong></td>
+                        <td style="padding: 8px 0; color: #333; font-weight: bold;">${precio_total:,.0f}</td>
                     </tr>
-                    <tr style="border-top: 2px solid #ddd;">
-                        <td style="padding: 12px 0; color: #333; font-size: 18px;"><strong>Total a pagar:</strong></td>
-                        <td style="padding: 12px 0; color: #10b981; font-size: 20px; font-weight: bold;">${precio_total:,.0f}</td>
+                    <tr>
+                        <td style="padding: 8px 0; color: #666;"><strong>Estado:</strong></td>
+                        <td style="padding: 8px 0; color: #333;">{estado_display}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 0; color: #666;"><strong>Ticket:</strong></td>
+                        <td style="padding: 8px 0; color: #333; font-family: monospace;">{entrada.ticket_code}</td>
                     </tr>
                 </table>
             </div>
             
-            {'<!-- Link de Pago -->' if mostrar_link_pago else ''}
-            {f'''
-            <div style="background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%); padding: 25px; border-radius: 8px; margin: 20px 0; text-align: center;">
-                <h2 style="color: white; margin-top: 0; font-size: 22px;">💳 Realizar Pago</h2>
-                <p style="color: rgba(255,255,255,0.9); margin: 15px 0; font-size: 16px;">
-                    Para completar tu compra, haz clic en el siguiente botón para realizar el pago:
-                </p>
-                <a href="{payment_link}" 
-                   target="_blank"
-                   style="background: white; color: #f59e0b; padding: 15px 30px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); margin-top: 10px;">
-                    💳 Pagar ${precio_total:,.0f}
-                </a>
-                <p style="color: rgba(255,255,255,0.8); margin: 15px 0 0 0; font-size: 12px;">
-                    O copia este link: <a href="{payment_link}" style="color: white; word-break: break-all;">{payment_link}</a>
-                </p>
-            </div>
-            ''' if mostrar_link_pago else ''}
-            
-            <!-- Información de Pago -->
-            <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
-                <h2 style="color: #f59e0b; margin-top: 0; font-size: 22px;">💳 Información de Pago</h2>
-                <table style="width: 100%; border-collapse: collapse;">
-                    <tr>
-                        <td style="padding: 8px 0; color: #666; width: 40%;"><strong>Estado:</strong></td>
-                        <td style="padding: 8px 0; color: #333;">
-                            <span style="background: {'#10b981' if entrada.estado_pago in ['pagado', 'entregado'] else '#f59e0b'}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">
-                                {estado_display}
-                            </span>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 8px 0; color: #666;"><strong>Método de pago:</strong></td>
-                        <td style="padding: 8px 0; color: #333;">{metodo_display}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 8px 0; color: #666;"><strong>Fecha de compra:</strong></td>
-                        <td style="padding: 8px 0; color: #333;">{fecha_compra}</td>
-                    </tr>
-                    {f'<tr><td style="padding: 8px 0; color: #666;"><strong>Fecha de pago:</strong></td><td style="padding: 8px 0; color: #333;">{fecha_pago}</td></tr>' if entrada.paid_at else ''}
-                    {f'<tr><td style="padding: 8px 0; color: #666;"><strong>ID Transacción:</strong></td><td style="padding: 8px 0; color: #333; font-family: monospace; font-size: 12px;">{entrada.getnet_transaction_id}</td></tr>' if entrada.getnet_transaction_id else ''}
-                </table>
-            </div>
-            
-            <!-- Tus Datos -->
-            <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #8b5cf6;">
-                <h2 style="color: #8b5cf6; margin-top: 0; font-size: 22px;">👤 Tus Datos</h2>
-                <table style="width: 100%; border-collapse: collapse;">
-                    <tr>
-                        <td style="padding: 8px 0; color: #666; width: 40%;"><strong>Nombre:</strong></td>
-                        <td style="padding: 8px 0; color: #333;">{entrada.comprador_nombre}</td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 8px 0; color: #666;"><strong>Email:</strong></td>
-                        <td style="padding: 8px 0; color: #333;">{entrada.comprador_email}</td>
-                    </tr>
-                    {f'<tr><td style="padding: 8px 0; color: #666;"><strong>Teléfono:</strong></td><td style="padding: 8px 0; color: #333;">{entrada.comprador_telefono}</td></tr>' if entrada.comprador_telefono else ''}
-                    {f'<tr><td style="padding: 8px 0; color: #666;"><strong>RUT:</strong></td><td style="padding: 8px 0; color: #333;">{entrada.comprador_rut}</td></tr>' if entrada.comprador_rut else ''}
-                </table>
-            </div>
-            
-            <!-- Botón Ver Ticket -->
-            <div style="text-align: center; margin: 30px 0;">
-                <a href="{ticket_url}" 
-                   style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);">
-                    📱 Ver mi Ticket Digital
-                </a>
-            </div>
-            
-            <!-- Información Importante -->
-            <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 15px; margin: 20px 0;">
-                <p style="margin: 0; color: #856404; font-size: 14px; line-height: 1.6;">
-                    <strong>ℹ️ Importante:</strong><br>
-                    • Presenta el código QR junto con tu cédula de identidad el día del evento<br>
-                    • Puedes mostrar el QR desde tu teléfono o imprimirlo<br>
-                    • Guarda este email como comprobante de tu compra<br>
-                    {'• Tu código QR ya está activo y listo para usar' if pago_realizado else '• Una vez recibido el pago, tu código QR se activará automáticamente'}
+            <!-- Instrucciones -->
+            <div style="margin: 30px 0; padding: 15px; background: #e7f3ff; border-left: 4px solid #2196F3; border-radius: 4px;">
+                <p style="margin: 0; color: #1976D2; font-size: 14px;">
+                    <strong>Importante:</strong> Presenta el código QR junto con tu cédula de identidad el día del evento. 
+                    Puedes mostrarlo desde tu teléfono o imprimirlo.
                 </p>
             </div>
             
         </div>
         
-        <!-- Footer -->
         <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
             <p style="margin: 5px 0;">BIMBA - Valdivia es BIMBA</p>
-            <p style="margin: 5px 0;">Si tienes alguna pregunta, contáctanos en hola@valdiviaesbimba.cl</p>
-            <p style="margin: 5px 0;">Este es un email automático, por favor no respondas a este mensaje.</p>
+            <p style="margin: 5px 0;">hola@valdiviaesbimba.cl</p>
         </div>
         
     </body>
