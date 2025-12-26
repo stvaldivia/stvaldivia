@@ -167,3 +167,5 @@ CREATE TABLE system_config (
 - `database_dev_url`: URL de base de datos de desarrollo
 - `database_prod_url`: URL de base de datos de producción
 
+
+

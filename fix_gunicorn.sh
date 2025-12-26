@@ -34,3 +34,5 @@ fi
 # Probar conexión
 curl -s http://127.0.0.1:5001/api/v1/public/evento/hoy > /dev/null && echo "✅ Aplicación respondiendo" || echo "⚠️  Aplicación no responde"
 
+
+

@@ -267,3 +267,5 @@ cat .env | grep DATABASE
 - [ ] Seguridad configurada (VPN, firewall, IPs permitidas)
 - [ ] Toggle funcionando en panel de control
 
+
+

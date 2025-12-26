@@ -190,3 +190,5 @@ def verificar_eventos_ecommerce():
 if __name__ == '__main__':
     verificar_eventos_ecommerce()
 
+
+

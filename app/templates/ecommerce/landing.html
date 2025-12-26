@@ -31,13 +31,9 @@
     
     /* Mejoras de responsividad */
     @media (max-width: 968px) {
-        .landing-page {
-            max-height: none;
-            overflow-y: visible;
-        }
-        
         .landing-hero-compact {
-            max-height: none;
+            min-height: auto;
+            padding: 1.5rem 1rem;
         }
     }
     
@@ -52,7 +48,7 @@
     }
 </style>
 
-<div class="landing-page" style="min-height: 100vh; max-height: 100vh; overflow-y: auto; padding: 2rem; color: #f8fafc;">
+<div class="landing-page" style="min-height: 100vh; padding: 2rem; color: #f8fafc;">
     {% if producto %}
     <!-- Hero Section Compacto -->
     <section class="landing-hero-compact">

@@ -259,11 +259,12 @@ def bot_responder():
         try:
             import openai
             # Timeout de 5 segundos - más agresivo, si OpenAI no responde rápido usa fallback
+            # Temperature reducida a 0.3 para respuestas más cortas y consistentes
             response = openai_client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=formatted_messages,
-                temperature=0.7,
-                max_tokens=500,
+                temperature=0.3,  # Reducido de 0.7 a 0.3 para respuestas más cortas
+                max_tokens=200,  # Reducido de 500 a 200 para respuestas más cortas (máx 12 palabras, 2 líneas)
                 timeout=5.0
             )
             

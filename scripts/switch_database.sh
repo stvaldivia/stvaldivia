@@ -117,3 +117,5 @@ else
     echo "   DATABASE_URL=(no configurado - usará SQLite)"
 fi
 
+
+

@@ -173,3 +173,5 @@ Busca en los logs:
 3. **SSL/TLS**: Las URLs deben usar HTTPS
 4. **Callbacks**: Los callbacks pueden tardar algunos segundos en llegar
 
+
+

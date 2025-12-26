@@ -99,3 +99,5 @@ if __name__ == '__main__':
     product_id = int(sys.argv[1]) if len(sys.argv) > 1 else None
     debug_checkout_producto(product_id)
 
+
+

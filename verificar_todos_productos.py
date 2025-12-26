@@ -140,3 +140,5 @@ def verificar_todos_productos():
 if __name__ == '__main__':
     verificar_todos_productos()
 
+
+

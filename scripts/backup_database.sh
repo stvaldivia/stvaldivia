@@ -117,3 +117,5 @@ cd "$BACKUP_DIR"
 ls -t *.gz 2>/dev/null | tail -n +11 | xargs rm -f 2>/dev/null
 echo "✅ Limpieza completada"
 
+
+

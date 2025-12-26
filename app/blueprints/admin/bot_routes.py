@@ -2,7 +2,13 @@
 Rutas del Bot de IA (BimbaBot) para el Panel de Control
 """
 import uuid
-from flask import render_template, request, redirect, url_for, session, flash, current_app
+import os
+import subprocess
+import tempfile
+import shutil
+import re
+from datetime import datetime
+from flask import render_template, request, redirect, url_for, session, flash, current_app, jsonify
 from app.models import db
 from app.models.bot_log_models import BotLog
 from app.application.services.bot_log_service import BotLogService
@@ -336,5 +342,317 @@ def bot_config():
         current_app.logger.error(f"Error al cargar configuración del bot: {e}", exc_info=True)
         flash(f'Error al cargar configuración: {str(e)}', 'error')
         return redirect(url_for('admin.bot_logs'))
+
+
+@admin_bp.route('/bot/env-vars', methods=['GET'])
+def bot_env_vars():
+    """
+    Vista para gestionar variables de entorno del bot (solo superadmin).
+    Permite ver y modificar variables del servicio systemd.
+    """
+    # Verificar autenticación
+    if not session.get('admin_logged_in'):
+        flash("Debes iniciar sesión como administrador.", "error")
+        return redirect(url_for('auth.login_admin'))
+    
+    # Verificar si es superadmin
+    username = session.get('admin_username', '').lower()
+    is_superadmin = (username == 'sebagatica')
+    
+    if not is_superadmin:
+        flash("Solo el superadministrador puede gestionar variables de entorno.", "error")
+        return redirect(url_for('admin.bot_config'))
+    
+    try:
+        import os
+        import subprocess
+        
+        # Variables que se pueden gestionar
+        manageable_vars = {
+            'OPENAI_API_KEY': {
+                'label': 'OpenAI API Key',
+                'description': 'Clave de API de OpenAI para IA generativa',
+                'required': True,
+                'type': 'password',
+                'current': os.environ.get('OPENAI_API_KEY', '')
+            },
+            'OPENAI_ORGANIZATION_ID': {
+                'label': 'OpenAI Organization ID',
+                'description': 'ID de organización de OpenAI (opcional)',
+                'required': False,
+                'type': 'text',
+                'current': os.environ.get('OPENAI_ORGANIZATION_ID', '')
+            },
+            'OPENAI_PROJECT_ID': {
+                'label': 'OpenAI Project ID',
+                'description': 'ID de proyecto de OpenAI (opcional, requerido para Admin Keys)',
+                'required': False,
+                'type': 'text',
+                'current': os.environ.get('OPENAI_PROJECT_ID', '')
+            },
+            'BIMBA_INTERNAL_API_KEY': {
+                'label': 'API Operacional - API Key',
+                'description': 'Clave de API para la API operacional interna',
+                'required': False,
+                'type': 'password',
+                'current': os.environ.get('BIMBA_INTERNAL_API_KEY', '')
+            },
+            'BIMBA_INTERNAL_API_BASE_URL': {
+                'label': 'API Operacional - Base URL',
+                'description': 'URL base de la API operacional (normalmente http://127.0.0.1:5001)',
+                'required': False,
+                'type': 'text',
+                'current': os.environ.get('BIMBA_INTERNAL_API_BASE_URL', '')
+            },
+            'SMTP_SERVER': {
+                'label': 'SMTP Server',
+                'description': 'Servidor SMTP para envío de emails',
+                'required': False,
+                'type': 'text',
+                'current': os.environ.get('SMTP_SERVER', '')
+            },
+            'SMTP_PORT': {
+                'label': 'SMTP Port',
+                'description': 'Puerto SMTP (587 para TLS, 465 para SSL)',
+                'required': False,
+                'type': 'text',
+                'current': os.environ.get('SMTP_PORT', '')
+            },
+            'SMTP_USER': {
+                'label': 'SMTP User',
+                'description': 'Usuario SMTP',
+                'required': False,
+                'type': 'text',
+                'current': os.environ.get('SMTP_USER', '')
+            },
+            'SMTP_PASSWORD': {
+                'label': 'SMTP Password',
+                'description': 'Contraseña SMTP',
+                'required': False,
+                'type': 'password',
+                'current': os.environ.get('SMTP_PASSWORD', '')
+            },
+            'SMTP_FROM': {
+                'label': 'SMTP From',
+                'description': 'Email remitente',
+                'required': False,
+                'type': 'text',
+                'current': os.environ.get('SMTP_FROM', '')
+            }
+        }
+        
+        # Intentar leer variables del servicio systemd
+        service_file = '/etc/systemd/system/stvaldivia.service'
+        systemd_vars = {}
+        
+        try:
+            if os.path.exists(service_file):
+                with open(service_file, 'r') as f:
+                    content = f.read()
+                    # Buscar líneas Environment="VAR=value"
+                    import re
+                    for line in content.split('\n'):
+                        match = re.match(r'Environment="([^=]+)=(.*)"', line)
+                        if match:
+                            var_name = match.group(1)
+                            var_value = match.group(2)
+                            systemd_vars[var_name] = var_value
+                            
+                            # Actualizar valores actuales si están en systemd
+                            if var_name in manageable_vars:
+                                manageable_vars[var_name]['current'] = var_value
+        except Exception as e:
+            current_app.logger.warning(f"No se pudo leer archivo systemd: {e}")
+        
+        return render_template(
+            'admin/bot_env_vars.html',
+            vars=manageable_vars,
+            systemd_vars=systemd_vars,
+            service_file=service_file,
+            is_superadmin=is_superadmin
+        )
+        
+    except Exception as e:
+        current_app.logger.error(f"Error al cargar variables de entorno: {e}", exc_info=True)
+        flash(f'Error al cargar variables: {str(e)}', 'error')
+        return redirect(url_for('admin.bot_config'))
+
+
+@admin_bp.route('/bot/env-vars/update', methods=['POST'])
+def bot_env_vars_update():
+    """
+    Actualiza variables de entorno en el servicio systemd (solo superadmin).
+    """
+    # Verificar autenticación
+    if not session.get('admin_logged_in'):
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    # Verificar si es superadmin
+    username = session.get('admin_username', '').lower()
+    is_superadmin = (username == 'sebagatica')
+    
+    if not is_superadmin:
+        return jsonify({'success': False, 'message': 'Solo el superadministrador puede modificar variables'}), 403
+    
+    try:
+        import subprocess
+        import tempfile
+        import shutil
+        from datetime import datetime
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'message': 'Datos requeridos'}), 400
+        
+        # Variables permitidas para modificar
+        allowed_vars = [
+            'OPENAI_API_KEY', 'OPENAI_ORGANIZATION_ID', 'OPENAI_PROJECT_ID',
+            'BIMBA_INTERNAL_API_KEY', 'BIMBA_INTERNAL_API_BASE_URL',
+            'SMTP_SERVER', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASSWORD', 'SMTP_FROM'
+        ]
+        
+        service_file = '/etc/systemd/system/stvaldivia.service'
+        
+        if not os.path.exists(service_file):
+            return jsonify({'success': False, 'message': 'Archivo de servicio no encontrado'}), 404
+        
+        # Leer archivo actual
+        with open(service_file, 'r') as f:
+            content = f.read()
+        
+        # Crear backup
+        backup_file = f"{service_file}.backup.{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        shutil.copy2(service_file, backup_file)
+        
+        # Procesar cada variable
+        lines = content.split('\n')
+        new_lines = []
+        vars_to_add = {}
+        
+        for var_name in allowed_vars:
+            if var_name in data:
+                var_value = data[var_name].strip()
+                vars_to_add[var_name] = var_value
+        
+        # Eliminar líneas Environment existentes de variables que vamos a actualizar
+        for line in lines:
+            should_skip = False
+            for var_name in vars_to_add.keys():
+                if line.strip().startswith(f'Environment="{var_name}='):
+                    should_skip = True
+                    break
+            if not should_skip:
+                new_lines.append(line)
+        
+        # Encontrar posición de ExecStart para insertar antes
+        exec_start_idx = None
+        for i, line in enumerate(new_lines):
+            if line.strip().startswith('ExecStart='):
+                exec_start_idx = i
+                break
+        
+        if exec_start_idx is None:
+            return jsonify({'success': False, 'message': 'No se encontró ExecStart en el servicio'}), 500
+        
+        # Insertar nuevas variables antes de ExecStart
+        env_lines = []
+        for var_name, var_value in vars_to_add.items():
+            if var_value:  # Solo agregar si tiene valor
+                env_lines.append(f'Environment="{var_name}={var_value}"')
+        
+        # Insertar líneas
+        new_lines[exec_start_idx:exec_start_idx] = env_lines
+        
+        # Escribir archivo temporal
+        temp_file = tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.service')
+        temp_file.write('\n'.join(new_lines))
+        temp_file.close()
+        
+        # Intentar copiar archivo temporal al destino con sudo
+        # Nota: Esto requiere que el usuario que ejecuta la app tenga permisos sudo sin contraseña
+        # O que se configure apropiadamente en el servidor
+        try:
+            result = subprocess.run(
+                ['sudo', 'cp', temp_file.name, service_file],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+        except subprocess.TimeoutExpired:
+            os.unlink(temp_file.name)
+            return jsonify({
+                'success': False,
+                'message': 'Timeout al ejecutar comando sudo. Verifica permisos del servidor.'
+            }), 500
+        except Exception as e:
+            os.unlink(temp_file.name)
+            return jsonify({
+                'success': False,
+                'message': f'Error al ejecutar sudo: {str(e)}. Verifica que la aplicación tenga permisos sudo configurados.'
+            }), 500
+        
+        # Limpiar archivo temporal
+        os.unlink(temp_file.name)
+        
+        if result.returncode != 0:
+            return jsonify({
+                'success': False,
+                'message': f'Error al escribir archivo: {result.stderr}. Verifica permisos sudo.'
+            }), 500
+        
+        # Recargar systemd
+        try:
+            reload_result = subprocess.run(
+                ['sudo', 'systemctl', 'daemon-reload'],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Error al recargar systemd: {str(e)}'
+            }), 500
+        
+        if reload_result.returncode != 0:
+            return jsonify({
+                'success': False,
+                'message': f'Error al recargar systemd: {reload_result.stderr}'
+            }), 500
+        
+        # Reiniciar servicio
+        try:
+            restart_result = subprocess.run(
+                ['sudo', 'systemctl', 'restart', 'stvaldivia.service'],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'message': f'Error al reiniciar servicio: {str(e)}'
+            }), 500
+        
+        if restart_result.returncode != 0:
+            return jsonify({
+                'success': False,
+                'message': f'Error al reiniciar servicio: {restart_result.stderr}'
+            }), 500
+        
+        current_app.logger.info(f"Variables de entorno actualizadas por {username}: {list(vars_to_add.keys())}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Variables actualizadas correctamente. Servicio reiniciado.',
+            'backup': backup_file
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Error al actualizar variables: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'message': f'Error: {str(e)}'
+        }), 500
 
 

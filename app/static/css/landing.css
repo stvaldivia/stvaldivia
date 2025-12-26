@@ -7,8 +7,6 @@
 .landing-page {
     width: 100%;
     min-height: 100vh;
-    max-height: 100vh;
-    overflow-y: auto;
     color: #f8fafc;
     overflow-x: hidden;
 }
@@ -19,7 +17,6 @@
     align-items: center;
     justify-content: center;
     min-height: 100vh;
-    max-height: 100vh;
     padding: 2rem;
     gap: 3rem;
     max-width: 1400px;

@@ -160,3 +160,5 @@ def verificar_productos_ecommerce():
 if __name__ == '__main__':
     verificar_productos_ecommerce()
 
+
+

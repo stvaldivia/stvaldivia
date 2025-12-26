@@ -63,187 +63,162 @@ class BotRuleEngine:
     
     @staticmethod
     def _respuesta_evento_hoy(evento_info: Optional[Dict[str, Any]]) -> str:
-        """Genera respuesta para consulta sobre evento de hoy"""
+        """Genera respuesta para consulta sobre evento de hoy (versión minimalista)"""
         if not evento_info:
-            return "Hoy no tenemos un evento cargado en la programación 💜. Revisa nuestras redes para más información."
+            return "Hoy no hay evento."
         
-        respuesta_partes = []
-        nombre_evento = evento_info.get('nombre_evento', 'Evento especial')
-        respuesta_partes.append(f"🎉 **{nombre_evento}**")
-        
+        # Versión minimalista: solo lo esencial
+        nombre_evento = evento_info.get('nombre_evento', 'Evento')
         horario = evento_info.get('horario', '')
-        if horario:
-            respuesta_partes.append(f"\n🕐 Horario: {horario}")
         
-        dj_principal = evento_info.get('dj_principal', '')
-        if dj_principal:
-            respuesta_partes.append(f"\n🎧 DJ Principal: {dj_principal}")
-        
-        otros_djs = evento_info.get('otros_djs', '')
-        if otros_djs:
-            respuesta_partes.append(f"\n🎵 También: {otros_djs}")
-        
-        descripcion_corta = evento_info.get('descripcion_corta', '')
-        if descripcion_corta:
-            respuesta_partes.append(f"\n📝 {descripcion_corta}")
-        
-        info_lista = evento_info.get('lista', '')
-        if info_lista:
-            respuesta_partes.append(f"\n📋 {info_lista}")
-        
+        # Obtener precio mínimo
+        precio_min = None
         precios = evento_info.get('precios', [])
-        if precios and isinstance(precios, list) and len(precios) > 0:
-            respuesta_partes.append("\n💰 Precios:")
+        if precios and isinstance(precios, list):
+            montos = []
             for precio in precios:
                 if isinstance(precio, dict):
-                    nombre_tier = precio.get('nombre', precio.get('tier', 'General'))
-                    monto = precio.get('monto', precio.get('precio', precio.get('valor', 0)))
-                    hora_limite = precio.get('hora_limite', precio.get('hasta', ''))
+                    monto = precio.get('monto') or precio.get('precio') or precio.get('valor', 0)
                     try:
-                        monto_int = int(float(monto))
+                        montos.append(float(monto))
                     except (ValueError, TypeError):
-                        monto_int = 0
-                    if monto_int > 0:
-                        if hora_limite:
-                            respuesta_partes.append(f"   • {nombre_tier}: ${monto_int:,} hasta {hora_limite}")
-                        else:
-                            respuesta_partes.append(f"   • {nombre_tier}: ${monto_int:,}")
+                        pass
+            if montos:
+                precio_min = min(montos)
         
-        respuesta_partes.append("\n\nNos vemos en la noche 💜✨")
-        return "\n".join(respuesta_partes)
+        # Respuesta corta: máximo 2 líneas, 12 palabras
+        respuesta = nombre_evento
+        if horario:
+            respuesta += f". {horario}"
+        if precio_min:
+            respuesta += f" Desde ${int(precio_min):,}."
+        
+        return respuesta
     
     @staticmethod
     def _respuesta_estado_noche(evento_info: Optional[Dict[str, Any]], 
                                operational: Optional[Dict[str, Any]]) -> str:
-        """Genera respuesta para consulta sobre estado de la noche"""
+        """Genera respuesta para consulta sobre estado de la noche (versión minimalista)"""
         if not evento_info:
-            return "Hoy no tenemos evento programado 💜. Revisa nuestras redes para ver qué viene."
+            return "Hoy está tranquilo."
         
-        # Usar contexto operativo para dar feeling
-        feeling = "La noche está empezando 💜"
+        # Usar contexto operativo para dar feeling (sin emojis, corto)
+        feeling = "Hoy está tranquilo."
         if operational:
             sales = operational.get('sales', {})
             total_sales = sales.get('total_sales', 0)
             
             if total_sales > 50:
-                feeling = "La noche está súper movida 💜✨"
+                feeling = "Hoy está movido."
             elif total_sales > 20:
-                feeling = "La noche está movida 💜"
+                feeling = "Hoy está bien."
             elif total_sales > 0:
-                feeling = "La noche está empezando bien 💜"
-            else:
-                feeling = "La noche está recién empezando 💜"
+                feeling = "Hoy está empezando."
         
-        nombre_evento = evento_info.get('nombre_evento', 'La noche')
-        return f"{feeling}. {nombre_evento} está en curso. ¡Ven a disfrutar! 💜✨"
+        return feeling
     
     @staticmethod
     def _respuesta_proximos_eventos() -> str:
-        """Genera respuesta para consulta sobre próximos eventos"""
+        """Genera respuesta para consulta sobre próximos eventos (versión minimalista)"""
         programacion_service = ProgramacionService()
-        eventos = programacion_service.get_upcoming_events(limit=5)
+        eventos = programacion_service.get_upcoming_events(limit=3)
         
         if not eventos or len(eventos) == 0:
-            return "No tenemos eventos próximos cargados aún 💜. Revisa nuestras redes para estar al día."
+            return "Aún no hay anuncio."
         
-        respuesta_partes = ["📅 **Próximos eventos:**\n"]
-        for evento in eventos[:5]:
+        # Versión corta: solo el próximo
+        if len(eventos) > 0:
+            evento = eventos[0]
             fecha = evento.get('fecha', '')
             nombre = evento.get('nombre_evento', 'Evento')
-            respuesta_partes.append(f"• {fecha}: {nombre}")
+            return f"{fecha}: {nombre}"
         
-        respuesta_partes.append("\n💜 ¡Te esperamos!")
-        return "\n".join(respuesta_partes)
+        return "Aún no hay anuncio."
     
     @staticmethod
     def _respuesta_precios(evento_info: Optional[Dict[str, Any]]) -> str:
-        """Genera respuesta para consulta sobre precios"""
+        """Genera respuesta para consulta sobre precios (versión minimalista)"""
         if not evento_info:
-            return "No hay evento programado para hoy 💜. Revisa nuestras redes para ver precios de próximos eventos."
+            return "Aún no está definido."
         
         precios = evento_info.get('precios', [])
         if not precios or (isinstance(precios, list) and len(precios) == 0):
-            return "No tenemos información de precios cargada para hoy 💜. Contacta directamente para más info."
+            return "Aún no está definido."
         
-        respuesta_partes = ["💰 **Precios de hoy:**\n"]
-        if isinstance(precios, list):
-            for precio in precios:
-                if isinstance(precio, dict):
-                    nombre_tier = precio.get('nombre', precio.get('tier', 'General'))
-                    monto = precio.get('monto', precio.get('precio', precio.get('valor', 0)))
-                    hora_limite = precio.get('hora_limite', precio.get('hasta', ''))
-                    try:
-                        monto_int = int(float(monto))
-                    except (ValueError, TypeError):
-                        monto_int = 0
-                    if monto_int > 0:
-                        if hora_limite:
-                            respuesta_partes.append(f"• {nombre_tier}: ${monto_int:,} hasta {hora_limite}")
-                        else:
-                            respuesta_partes.append(f"• {nombre_tier}: ${monto_int:,}")
+        # Obtener precio mínimo
+        montos = []
+        for precio in precios:
+            if isinstance(precio, dict):
+                monto = precio.get('monto') or precio.get('precio') or precio.get('valor', 0)
+                try:
+                    montos.append(float(monto))
+                except (ValueError, TypeError):
+                    pass
         
-        respuesta_partes.append("\n💜 ¡Nos vemos!")
-        return "\n".join(respuesta_partes)
+        if montos:
+            precio_min = min(montos)
+            return f"Entrada desde ${int(precio_min):,}."
+        
+        return "Aún no está definido."
     
     @staticmethod
     def _respuesta_horario(evento_info: Optional[Dict[str, Any]]) -> str:
-        """Genera respuesta para consulta sobre horario"""
+        """Genera respuesta para consulta sobre horario (versión minimalista)"""
         if not evento_info:
-            return "No hay evento programado para hoy 💜."
+            return "Abrimos a las 23:00."
         
         horario = evento_info.get('horario', '')
+        hora_apertura = evento_info.get('hora_apertura', '23:00')
+        
         if horario:
-            return f"🕐 **Horario de hoy:** {horario}\n\n💜 ¡Te esperamos!"
-        else:
-            return "No tenemos el horario cargado para hoy 💜. Revisa nuestras redes para más info."
+            # Extraer solo la hora de apertura si viene como "23:00 a 04:00"
+            if " a " in horario:
+                hora_apertura = horario.split(" a ")[0].strip()
+            else:
+                hora_apertura = horario
+        elif hora_apertura:
+            hora_apertura = hora_apertura
+        
+        return f"Abrimos a las {hora_apertura}."
     
     @staticmethod
     def _respuesta_lista(evento_info: Optional[Dict[str, Any]]) -> str:
-        """Genera respuesta para consulta sobre lista/reservas"""
+        """Genera respuesta para consulta sobre lista/reservas (versión minimalista)"""
         if not evento_info:
-            return "No hay evento programado para hoy 💜."
+            return "Se anuncia el mismo día."
         
         info_lista = evento_info.get('lista', '')
-        if info_lista:
-            return f"📋 {info_lista}\n\n💜 ¡Nos vemos!"
+        lista_hasta = evento_info.get('lista_hasta_hora', '')
+        
+        if lista_hasta:
+            return f"Lista hasta las {lista_hasta}."
+        elif info_lista:
+            return info_lista[:50]  # Máximo 50 caracteres
         else:
-            return "No tenemos información de lista para hoy 💜. Contacta directamente para reservas."
+            return "Se anuncia el mismo día."
     
     @staticmethod
     def _respuesta_djs(evento_info: Optional[Dict[str, Any]]) -> str:
-        """Genera respuesta para consulta sobre DJs"""
+        """Genera respuesta para consulta sobre DJs (versión minimalista)"""
         if not evento_info:
-            return "No hay evento programado para hoy 💜."
+            return "Se anuncia el mismo día."
         
-        respuesta_partes = []
         dj_principal = evento_info.get('dj_principal', '')
         otros_djs = evento_info.get('otros_djs', '')
         
         if dj_principal:
-            respuesta_partes.append(f"🎧 **DJ Principal:** {dj_principal}")
-        if otros_djs:
-            respuesta_partes.append(f"🎵 **También:** {otros_djs}")
+            if otros_djs:
+                return f"{dj_principal}, {otros_djs}"
+            return dj_principal
+        elif otros_djs:
+            return otros_djs
         
-        if not respuesta_partes:
-            return "No tenemos información de DJs cargada para hoy 💜."
-        
-        respuesta_partes.append("\n💜 ¡Ven a disfrutar la música!")
-        return "\n".join(respuesta_partes)
+        return "Se anuncia el mismo día."
     
     @staticmethod
     def _respuesta_como_funciona(evento_info: Optional[Dict[str, Any]] = None) -> str:
-        """Genera respuesta para preguntas sobre cómo funciona el sistema"""
-        return """En BIMBA, el sistema funciona así: 💜
-
-**🛒 Haces tu pedido** en el bar o la caja
-**💳 Pagas** (efectivo, débito o crédito)
-**🎫 Recibes un ticket** con código QR
-**📱 El bartender escanea** tu código QR
-**🍺 Te entrega** tu bebida o producto
-
-Es un sistema seguro y automatizado que asegura que recibas exactamente lo que pediste. Todo está diseñado para darte la mejor experiencia posible! ✨
-
-¿Tienes alguna pregunta específica sobre el proceso? 💜"""
+        """Genera respuesta para preguntas sobre cómo funciona el sistema (versión minimalista)"""
+        return "Llegas, entras, y listo."
     
     @staticmethod
     def _respuesta_saludo(evento_info: Optional[Dict[str, Any]]) -> str:

@@ -108,3 +108,5 @@ gcloud run services logs read bimba --region=southamerica-west1 --limit=50
 
 **Tiempo estimado:** 5-10 minutos
 
+
+

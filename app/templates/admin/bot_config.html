@@ -412,7 +412,15 @@
             <p><code>OPENAI_PROJECT_ID</code> - ID de proyecto (opcional, requerido para Admin Keys)</p>
             <p><code>BIMBA_INTERNAL_API_BASE_URL</code> - URL base de API operacional (opcional)</p>
             <p><code>BIMBA_INTERNAL_API_KEY</code> - Clave de API operacional (opcional)</p>
-            <p style="margin-top: 15px;"><strong>⚠️ Importante:</strong> Estas variables se configuran en el servidor (systemd service o variables de entorno del sistema). No se pueden modificar desde esta interfaz por seguridad.</p>
+            <p style="margin-top: 15px;">
+                <a href="{{ url_for('admin.bot_env_vars') }}" 
+                   style="display: inline-block; padding: 10px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; margin-top: 10px;">
+                    ⚙️ Gestionar Variables de Entorno
+                </a>
+            </p>
+            <p style="margin-top: 15px; color: #94a3b8; font-size: 0.9rem;">
+                💡 Puedes modificar las variables de entorno directamente desde la interfaz web. Se creará un backup automático antes de cualquier cambio.
+            </p>
         </div>
     </div>
     {% endif %}

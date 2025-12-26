@@ -246,3 +246,5 @@ Si necesitas ayuda configurando las bases de datos, consulta:
 - `INSTRUCCIONES_CONFIGURAR_MYSQL.md`
 - `DEPLOY_CLOUD_RUN_COMPLETO.md`
 
+
+

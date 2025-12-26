@@ -137,3 +137,5 @@ echo "   - Usar VPN o SSH tunnel para acceso remoto"
 echo "   - Reiniciar la aplicación después de cambios"
 echo ""
 
+
+

@@ -67,14 +67,15 @@ def bimba_chat():
         openai_client = OpenAIAPIClient()
         
         # Usar el método del cliente que ya maneja errores y timeouts
+        # Temperature reducida a 0.3 para respuestas más consistentes y cortas
         response = openai_client.generate_response(
             messages=[
                 {"role": "user", "content": user_message}
             ],
             system_prompt=system_prompt,
             model="gpt-4o-mini",
-            temperature=0.7,
-            max_tokens=400
+            temperature=0.3,  # Reducido de 0.7 a 0.3 para respuestas más cortas y consistentes
+            max_tokens=200  # Reducido de 400 a 200 para respuestas más cortas
         )
         
         if not response:

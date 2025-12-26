@@ -126,3 +126,5 @@ GETNET_DEMO_MODE=false
 - **Callbacks**: Los callbacks pueden tardar algunos segundos en llegar después del pago
 - **Logs**: Revisa siempre los logs para diagnosticar problemas de integración
 
+
+

@@ -115,3 +115,5 @@ El sistema está listo para:
 - ✅ Funcionar con múltiples desarrolladores
 - ✅ Mantener ambas bases de datos en el servidor VM
 
+
+
