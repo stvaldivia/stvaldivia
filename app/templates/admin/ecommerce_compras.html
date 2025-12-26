@@ -440,11 +440,12 @@
                         Filtrar
                     </button>
                     <a href="{{ url_for('admin_ecommerce.export_compras', evento=filtro_evento, estado=filtro_estado, search=filtro_search) }}" 
-                       style="background: #10b981; color: #fff; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; text-decoration: none; display: inline-block;">
+                       style="background: #10b981; color: #fff; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; text-decoration: none; display: inline-block; margin-left: 0.5rem;">
                         📥 Exportar CSV
                     </a>
                     <button id="btn-cambiar-todos-recibido" 
-                            style="background: #f59e0b; color: #fff; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                            type="button"
+                            style="background: #f59e0b; color: #fff; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 600; margin-left: 0.5rem; display: inline-block;">
                         🔄 Cambiar Todos a Recibido
                     </button>
                 </div>
