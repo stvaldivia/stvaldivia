@@ -118,7 +118,8 @@ def list_compras():
                          eventos_list=eventos_list,
                          filtro_evento=evento_nombre,
                          filtro_estado=estado_pago,
-                         filtro_search=search)
+                         filtro_search=search,
+                         hasattr=safe_hasattr)
 
 
 @admin_ecommerce_bp.route('/api/stats')
