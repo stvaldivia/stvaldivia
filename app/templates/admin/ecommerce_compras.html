@@ -362,9 +362,14 @@
                         <td>${{ "{:,.0f}".format(compra.precio_unitario) }}</td>
                         <td><strong>${{ "{:,.0f}".format(compra.cantidad * compra.precio_unitario) }}</strong></td>
                         <td>
-                            <span class="badge {% if compra.estado_pago == 'pagado' or compra.estado_pago == 'entregado' %}badge-success{% elif compra.estado_pago == 'recibido' %}badge-pending{% else %}badge-pending{% endif %}">
-                                {{ compra.estado_pago|title }}
-                            </span>
+                            <select class="estado-selector" 
+                                    data-entrada-id="{{ compra.id }}"
+                                    data-ticket-code="{{ compra.ticket_code }}"
+                                    style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; padding: 0.5rem; color: #fff; font-size: 0.85rem; cursor: pointer; min-width: 120px;">
+                                <option value="recibido" {% if compra.estado_pago == 'recibido' %}selected{% endif %}>Recibido</option>
+                                <option value="pagado" {% if compra.estado_pago == 'pagado' %}selected{% endif %}>Pagado</option>
+                                <option value="entregado" {% if compra.estado_pago == 'entregado' %}selected{% endif %}>Entregado</option>
+                            </select>
                         </td>
                         <td>{{ compra.paid_at.strftime('%d/%m/%Y %H:%M') if compra.paid_at else 'N/A' }}</td>
                         <td>
@@ -385,6 +390,77 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const estadoSelectors = document.querySelectorAll('.estado-selector');
+    
+    estadoSelectors.forEach(selector => {
+        selector.addEventListener('change', function() {
+            const entradaId = this.dataset.entradaId;
+            const ticketCode = this.dataset.ticketCode;
+            const nuevoEstado = this.value;
+            const estadoAnterior = this.dataset.estadoAnterior || this.querySelector(`option[value="${this.value}"]`).textContent;
+            
+            // Guardar el estado anterior antes de cambiar
+            const optionAnterior = Array.from(this.options).find(opt => opt.selected && opt.value !== nuevoEstado);
+            if (optionAnterior) {
+                this.dataset.estadoAnterior = optionAnterior.value;
+            }
+            
+            // Deshabilitar el selector mientras se procesa
+            this.disabled = true;
+            const estiloOriginal = this.style.opacity;
+            this.style.opacity = '0.6';
+            
+            // Hacer la petición AJAX
+            fetch(`/admin/ecommerce/compras/${entradaId}/cambiar-estado`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    estado: nuevoEstado
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Actualizar el selector con el nuevo estado
+                    this.dataset.estadoAnterior = nuevoEstado;
+                    
+                    // Mostrar mensaje de éxito (opcional, puedes usar un toast o notificación)
+                    console.log(`Estado del pedido ${ticketCode} cambiado a ${nuevoEstado}`);
+                    
+                    // Opcional: recargar la página después de un breve delay
+                    // setTimeout(() => location.reload(), 500);
+                } else {
+                    // Revertir al estado anterior si falla
+                    const estadoAnterior = this.dataset.estadoAnterior;
+                    if (estadoAnterior) {
+                        this.value = estadoAnterior;
+                    }
+                    alert('Error: ' + (data.error || 'No se pudo cambiar el estado'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                // Revertir al estado anterior
+                const estadoAnterior = this.dataset.estadoAnterior;
+                if (estadoAnterior) {
+                    this.value = estadoAnterior;
+                }
+                alert('Error al cambiar el estado. Por favor intenta nuevamente.');
+            })
+            .finally(() => {
+                // Rehabilitar el selector
+                this.disabled = false;
+                this.style.opacity = estiloOriginal || '1';
+            });
+        });
+    });
+});
+</script>
 {% endblock %}
 
 

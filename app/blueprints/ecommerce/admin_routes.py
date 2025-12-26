@@ -158,6 +158,58 @@ def api_stats():
     })
 
 
+@admin_ecommerce_bp.route('/compras/<int:entrada_id>/cambiar-estado', methods=['POST'])
+def cambiar_estado_pedido(entrada_id):
+    """API: Cambiar el estado de un pedido"""
+    auth_check = require_admin()
+    if auth_check:
+        return jsonify({'success': False, 'error': 'No autorizado'}), 401
+    
+    try:
+        data = request.get_json()
+        nuevo_estado = data.get('estado', '').lower()
+        
+        # Validar estado
+        estados_validos = ['recibido', 'pagado', 'entregado']
+        if nuevo_estado not in estados_validos:
+            return jsonify({
+                'success': False,
+                'error': f'Estado inválido. Debe ser uno de: {", ".join(estados_validos)}'
+            }), 400
+        
+        # Buscar la entrada
+        entrada = Entrada.query.get_or_404(entrada_id)
+        
+        # Guardar estado anterior
+        estado_anterior = entrada.estado_pago
+        
+        # Actualizar estado
+        entrada.estado_pago = nuevo_estado
+        
+        # Actualizar timestamps según el estado
+        if nuevo_estado == 'pagado' and not entrada.paid_at:
+            entrada.paid_at = datetime.utcnow()
+        elif nuevo_estado == 'entregado' and not entrada.paid_at:
+            # Si se marca como entregado sin estar pagado, también marcar como pagado
+            entrada.paid_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Estado cambiado de {estado_anterior} a {nuevo_estado}',
+            'nuevo_estado': nuevo_estado,
+            'estado_anterior': estado_anterior
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': f'Error al cambiar estado: {str(e)}'
+        }), 500
+
+
 @admin_ecommerce_bp.route('/compras/export')
 def export_compras():
     """Exporta las compras del ecommerce a CSV"""
