@@ -103,6 +103,24 @@ class SumUpClient:
             logger.info(f"Creando checkout SumUp: {url}")
             logger.debug(f"Payload: {payload}")
             
+            # Resolver DNS manualmente antes de conectar para evitar problemas con eventlet/greendns
+            # Esto es similar a la solución usada en email_ticket_helper.py
+            # Resolver DNS con socket estándar (no eventlet) para poblar el cache de DNS del sistema
+            import socket
+            from urllib.parse import urlparse
+            parsed_url = urlparse(url)
+            hostname = parsed_url.hostname
+            
+            try:
+                logger.debug(f"Resolviendo DNS para {hostname}...")
+                # Usar socket estándar (no eventlet) para resolver DNS
+                # Esto evita el timeout de greendns y puebla el cache de DNS del sistema
+                resolved_ip = socket.gethostbyname(hostname)
+                logger.debug(f"✅ DNS resuelto: {hostname} -> {resolved_ip}")
+            except Exception as dns_error:
+                logger.warning(f"⚠️ No se pudo resolver DNS manualmente: {dns_error}")
+                # Continuar de todas formas, requests podría resolverlo
+            
             # Intentar conexión con retry para manejar problemas de DNS intermitentes
             max_retries = 3
             last_error = None
@@ -110,6 +128,7 @@ class SumUpClient:
             for attempt in range(1, max_retries + 1):
                 try:
                     # Usar timeout más largo para conexión y lectura (conexión: 30s, lectura: 30s)
+                    # Usar URL original con hostname (no IP) para que el certificado SSL funcione
                     response = requests.post(
                         url,
                         json=payload,
