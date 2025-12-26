@@ -50,10 +50,23 @@ FLASK_ENV="production"
 FLASK_SECRET_KEY="pHcn36mrPP3nCWT8LfYr0UfKbGxVZ0WtV8qN3nU4lt8GVe1D3Jh_Vi_nYalWxFNc2dun8nzyJsMjr-qcS3Lm4Q"
 DATABASE_URL="postgresql://bimba_user:qbiqpVcv9zJPVB0aaA9YwfAJSzFIGroUBcwJHNhzsas=@/bimba?host=/cloudsql/pelagic-river-479014-a3:us-central1:bimba-db"
 
+# Variables de GetNet (para pagos online)
+# IMPORTANTE: Configurar estas variables según tu cuenta GetNet
+GETNET_API_BASE_URL="${GETNET_API_BASE_URL:-https://checkout.test.getnet.cl}"
+GETNET_LOGIN="${GETNET_LOGIN:-}"
+GETNET_TRANKEY="${GETNET_TRANKEY:-}"
+PUBLIC_BASE_URL="${PUBLIC_BASE_URL:-https://stvaldivia.cl}"
+GETNET_DEMO_MODE="${GETNET_DEMO_MODE:-false}"
+
 echo "📦 Variables de entorno configuradas:"
 echo "  FLASK_ENV=$FLASK_ENV"
 echo "  FLASK_SECRET_KEY=***"
 echo "  DATABASE_URL=***"
+echo "  GETNET_API_BASE_URL=$GETNET_API_BASE_URL"
+echo "  GETNET_LOGIN=${GETNET_LOGIN:+***configurado}"
+echo "  GETNET_TRANKEY=${GETNET_TRANKEY:+***configurado}"
+echo "  PUBLIC_BASE_URL=$PUBLIC_BASE_URL"
+echo "  GETNET_DEMO_MODE=$GETNET_DEMO_MODE"
 echo ""
 
 # Verificar que Dockerfile existe
@@ -70,12 +83,26 @@ echo "🚀 Iniciando deploy a Cloud Run..."
 echo "   Esto puede tardar 5-10 minutos..."
 echo ""
 
+# Construir lista de variables de entorno
+ENV_VARS="FLASK_ENV=$FLASK_ENV,FLASK_SECRET_KEY=$FLASK_SECRET_KEY,DATABASE_URL=$DATABASE_URL"
+ENV_VARS="$ENV_VARS,GETNET_API_BASE_URL=$GETNET_API_BASE_URL"
+ENV_VARS="$ENV_VARS,PUBLIC_BASE_URL=$PUBLIC_BASE_URL"
+ENV_VARS="$ENV_VARS,GETNET_DEMO_MODE=$GETNET_DEMO_MODE"
+
+# Agregar credenciales de GetNet si están configuradas
+if [ -n "$GETNET_LOGIN" ]; then
+    ENV_VARS="$ENV_VARS,GETNET_LOGIN=$GETNET_LOGIN"
+fi
+if [ -n "$GETNET_TRANKEY" ]; then
+    ENV_VARS="$ENV_VARS,GETNET_TRANKEY=$GETNET_TRANKEY"
+fi
+
 gcloud run deploy $SERVICE_NAME \
     --source . \
     --region=$REGION \
     --platform=managed \
     --allow-unauthenticated \
-    --set-env-vars="FLASK_ENV=$FLASK_ENV,FLASK_SECRET_KEY=$FLASK_SECRET_KEY,DATABASE_URL=$DATABASE_URL" \
+    --set-env-vars="$ENV_VARS" \
     --memory=512Mi \
     --cpu=1 \
     --timeout=300 \
