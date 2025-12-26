@@ -309,11 +309,15 @@
                         <option value="" {% if not filtro_estado %}selected{% endif %}>Todos</option>
                     </select>
                 </div>
-                <div class="filter-group" style="justify-content: flex-end;">
+                <div class="filter-group" style="justify-content: flex-end; flex-direction: row; gap: 0.5rem;">
                     <label>&nbsp;</label>
                     <button type="submit" style="background: #667eea; color: #fff; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer;">
                         Filtrar
                     </button>
+                    <a href="{{ url_for('admin_ecommerce.export_compras', evento=filtro_evento, estado=filtro_estado, search=filtro_search) }}" 
+                       style="background: #10b981; color: #fff; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; text-decoration: none; display: inline-block;">
+                        📥 Exportar CSV
+                    </a>
                 </div>
             </div>
         </form>
@@ -321,8 +325,12 @@
     
     <!-- Tabla de Compras -->
     <div class="compras-table">
-        <div class="table-header">
+        <div class="table-header" style="display: flex; justify-content: space-between; align-items: center;">
             <h2>Lista de Compradores</h2>
+            <a href="{{ url_for('admin_ecommerce.export_compras', evento=filtro_evento, estado=filtro_estado, search=filtro_search) }}" 
+               style="background: #10b981; color: #fff; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; text-decoration: none; font-size: 0.9rem;">
+                📥 Exportar CSV
+            </a>
         </div>
         <div class="table-container">
             {% if compras %}
@@ -376,4 +384,6 @@
     </div>
 </div>
 {% endblock %}
+
+
 
