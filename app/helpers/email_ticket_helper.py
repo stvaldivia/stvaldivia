@@ -193,7 +193,7 @@ def generate_resumen_compra_html(entrada: Entrada, preview: bool = False) -> tup
     """
     from app.helpers.qr_ticket_helper import generate_ticket_qr
     
-    email_subject = f"Resumen de tu compra - {entrada.evento_nombre} | BIMBA"
+    email_subject = f"Resumen de tu compra - {entrada.evento_nombre}"
     
     # Generar URL del ticket
     try:
@@ -264,6 +264,24 @@ def generate_resumen_compra_html(entrada: Entrada, preview: bool = False) -> tup
                 El código QR solo se activa cuando se recibe el pago.
             </p>
             
+            <!-- Link de Pago -->
+            {f'''
+            <div style="text-align: center; margin: 30px 0; padding: 30px; background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%); border-radius: 12px; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);">
+                <h2 style="color: white; margin-top: 0; font-size: 24px; margin-bottom: 15px;">💳 Link de Pago</h2>
+                <a href="https://pay.sumup.com/b2c/Q3XX3AP6" 
+                   target="_blank"
+                   style="background: white; color: #f59e0b; padding: 18px 40px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 700; font-size: 20px; margin: 15px 0; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                    💰 Pagar ${precio_total:,.0f}
+                </a>
+                <p style="color: rgba(255,255,255,0.95); font-size: 16px; margin: 20px 0 10px 0; font-weight: 500;">
+                    Haz clic aquí para realizar tu pago
+                </p>
+                <p style="color: rgba(255,255,255,0.85); font-size: 14px; margin: 10px 0 0 0;">
+                    <a href="https://pay.sumup.com/b2c/Q3XX3AP6" style="color: white; word-break: break-all; text-decoration: underline;">https://pay.sumup.com/b2c/Q3XX3AP6</a>
+                </p>
+            </div>
+            ''' if mostrar_link_pago else ''}
+            
             <!-- Código QR -->
             {f'''
             <div style="text-align: center; margin: 30px 0; padding: 20px; background: #f9f9f9; border-radius: 8px;">
@@ -276,21 +294,6 @@ def generate_resumen_compra_html(entrada: Entrada, preview: bool = False) -> tup
                 </p>
             </div>
             ''' if mostrar_qr and qr_code_base64 else ''}
-            
-            <!-- Link de Pago -->
-            {f'''
-            <div style="text-align: center; margin: 30px 0; padding: 20px; background: #fff3cd; border-radius: 8px;">
-                <h2 style="color: #856404; margin-top: 0; font-size: 18px;">Link de Pago</h2>
-                <a href="https://pay.sumup.com/b2c/Q3XX3AP6" 
-                   target="_blank"
-                   style="background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px; margin: 10px 0;">
-                    Pagar ${precio_total:,.0f}
-                </a>
-                <p style="color: #856404; font-size: 12px; margin: 10px 0 0 0;">
-                    <a href="https://pay.sumup.com/b2c/Q3XX3AP6" style="color: #856404; word-break: break-all;">https://pay.sumup.com/b2c/Q3XX3AP6</a>
-                </p>
-            </div>
-            ''' if mostrar_link_pago else ''}
             
             <!-- Información -->
             <div style="margin: 30px 0; padding: 20px; background: #f9f9f9; border-radius: 8px;">
@@ -360,7 +363,7 @@ def send_resumen_compra_email(entrada: Entrada) -> bool:
             logger.warning(f"⚠️ No hay email del comprador para entrada {entrada.ticket_code}")
             return False
         
-        email_subject = f"Resumen de tu compra - {entrada.evento_nombre} | BIMBA"
+        email_subject = f"Resumen de tu compra - {entrada.evento_nombre}"
         
         # Generar URL del ticket
         try:
