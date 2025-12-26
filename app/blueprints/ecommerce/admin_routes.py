@@ -28,8 +28,21 @@ def _build_compras_query():
     estado_pago = request.args.get('estado', '')
     search = request.args.get('search', '')
     
-    # Construir query base
-    query = Entrada.query
+    # Construir query base - usar solo columnas que existen
+    # Evitar columnas de email tracking si no existen aún
+    try:
+        from sqlalchemy import inspect
+        inspector = inspect(db.engine)
+        columns = [col['name'] for col in inspector.get_columns('entradas')]
+        has_email_tracking = 'email_resumen_enviado' in columns
+    except:
+        has_email_tracking = False
+    
+    if has_email_tracking:
+        query = Entrada.query
+    else:
+        # Si las columnas no existen, usar query sin ellas
+        query = db.session.query(Entrada)
     
     # Filtrar por estado de pago (recibido, pagado, entregado)
     if estado_pago:
