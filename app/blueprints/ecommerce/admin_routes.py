@@ -562,28 +562,6 @@ def cambiar_todos_a_recibido():
         }), 500
 
 
-
-                }
-            }), 500
-        except Exception as e:
-            return jsonify({
-                'success': False,
-                'error': f'Error inesperado: {str(e)}',
-                'config': {
-                    'server': smtp_server,
-                    'port': smtp_port,
-                    'user': smtp_user
-                }
-            }), 500
-            
-    except Exception as e:
-        logger.error(f"Error en test SMTP: {e}", exc_info=True)
-        return jsonify({
-            'success': False,
-            'error': f'Error al probar SMTP: {str(e)}'
-        }), 500
-
-
 @admin_ecommerce_bp.route('/compras/test-smtp', methods=['POST'])
 def test_smtp():
     """API: Probar conexión SMTP"""
