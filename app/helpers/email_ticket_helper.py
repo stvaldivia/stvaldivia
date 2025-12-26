@@ -344,7 +344,7 @@ def generate_resumen_compra_html(entrada: Entrada, preview: bool = False) -> tup
         </div>
         
         <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
-            <p style="margin: 5px 0;">BIMBA - Valdivia es BIMBA</p>
+            <p style="margin: 5px 0;">Club Bimba Valdivia</p>
             <p style="margin: 5px 0;">hola@valdiviaesbimba.cl</p>
         </div>
         
@@ -422,7 +422,8 @@ def send_resumen_compra_email(entrada: Entrada) -> bool:
             # Crear mensaje - ENVIAR AL COMPRADOR
             msg = MIMEMultipart('related')  # Cambiar a 'related' para permitir attachments inline
             msg['Subject'] = email_subject
-            msg['From'] = smtp_from
+            # Usar nombre del remitente más amigable
+            msg['From'] = f"Club Bimba Valdivia <{smtp_from}>"
             msg['To'] = entrada.comprador_email
             
             # Agregar cuerpo HTML
