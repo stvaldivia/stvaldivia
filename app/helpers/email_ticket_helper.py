@@ -256,9 +256,9 @@ def generate_resumen_compra_html(entrada: Entrada, preview: bool = False) -> tup
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
     </head>
-    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 0; background-color: #ffffff;">
         
-        <div style="background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <div style="background: white; padding: 30px; border-radius: 0; box-shadow: none; border: none;">
             
             <h1 style="color: #333; margin-top: 0; font-size: 24px;">¡Gracias por querer ser parte de nuestra fiesta! 🎉</h1>
             
