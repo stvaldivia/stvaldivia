@@ -2,14 +2,14 @@
 # Script para deploy automático en Cloud Run
 # Ejecutar después de: gcloud auth login
 
-set -e  # Salir si hay errores
+# No usar set -e para permitir continuar si algunas APIs ya están habilitadas
 
 echo "🚀 DEPLOY AUTOMÁTICO A CLOUD RUN"
 echo "=================================="
 echo ""
 
 # Configurar proyecto
-PROJECT_ID="stvaldiviacl"
+PROJECT_ID="stvaldivia"
 REGION="southamerica-west1"
 SERVICE_NAME="bimba"
 
