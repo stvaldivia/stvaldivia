@@ -139,26 +139,6 @@
             </div>
         </div>
         
-        {% if entrada.estado_pago == 'recibido' %}
-        <div class="payment-link-info">
-            <strong>💳 Link de Pago Incluido:</strong> Este email incluirá el botón de pago porque el estado es "Recibido". 
-            El link corresponde al monto de ${{ "{:,.0f}".format(precio_total) }}.
-        </div>
-        {% else %}
-        <div class="payment-link-info" style="background: #e0f2fe; border-color: #0ea5e9;">
-            <strong>ℹ️ Sin Link de Pago:</strong> Este email NO incluirá el botón de pago porque el estado es "{{ entrada.estado_pago|title }}". 
-            Solo se muestra el link de pago cuando el estado es "Recibido".
-        </div>
-        {% endif %}
-        
-        <div class="payment-link-info" style="background: #d1fae5; border-color: #10b981;">
-            <strong>✅ Código QR Incluido:</strong> Este email siempre incluirá el código QR. 
-            {% if entrada.estado_pago in ['pagado', 'entregado'] %}
-            El QR está <strong>activo</strong> porque el estado es "{{ entrada.estado_pago|title }}" (pago verificado).
-            {% else %}
-            El QR se mostrará pero con mensaje de que solo se <strong>activará</strong> cuando se reciba el pago (estado actual: "{{ entrada.estado_pago|title }}").
-            {% endif %}
-        </div>
     </div>
     
     <!-- Vista Previa del Email -->
