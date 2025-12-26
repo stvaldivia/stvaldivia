@@ -83,6 +83,9 @@ from .ticket_entrega_models import TicketEntrega, TicketEntregaItem, DeliveryLog
 # Importar modelos de tickets de guardarropía con QR
 from .guardarropia_ticket_models import GuardarropiaTicket, GuardarropiaTicketLog
 
+# Importar modelos de ecommerce (venta de entradas)
+from .ecommerce_models import Entrada, CheckoutSession
+
 
 __all__ = [
     'db', 
@@ -122,5 +125,7 @@ __all__ = [
     'TicketEntrega', 'TicketEntregaItem', 'DeliveryLog',
     # Modelos de tickets de guardarropía con QR
     'GuardarropiaTicket', 'GuardarropiaTicketLog',
+    # Modelos de ecommerce (venta de entradas)
+    'Entrada', 'CheckoutSession',
 ]
 

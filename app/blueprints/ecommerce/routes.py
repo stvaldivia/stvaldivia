@@ -72,6 +72,17 @@ def index():
                 if precios:
                     precio = min(precios)
             
+            # Contar cupos vendidos (entradas pagadas para este evento)
+            cupos_vendidos = 0
+            cupos_disponibles = None
+            if evento.aforo_objetivo:
+                from sqlalchemy import func
+                cupos_vendidos = db.session.query(func.sum(Entrada.cantidad)).filter(
+                    Entrada.evento_nombre == evento.nombre_evento,
+                    Entrada.estado_pago == 'pagado'
+                ).scalar() or 0
+                cupos_disponibles = max(0, evento.aforo_objetivo - cupos_vendidos)
+            
             # Combinar fecha y hora
             evento_fecha = None
             if evento.fecha:
@@ -92,6 +103,9 @@ def index():
                 'dj_principal': evento.dj_principal,
                 'tipo_noche': evento.tipo_noche,
                 'descripcion': evento.descripcion_corta or evento.copy_ig_corto or '',
+                'cupos_total': evento.aforo_objetivo,
+                'cupos_vendidos': int(cupos_vendidos),
+                'cupos_disponibles': int(cupos_disponibles) if cupos_disponibles is not None else None,
             })
         
         return render_template('ecommerce/index.html', eventos=eventos_data)
@@ -169,6 +183,31 @@ def checkout():
         if cantidad <= 0 or precio_total <= 0:
             flash('Cantidad y precio deben ser mayores a 0', 'error')
             return redirect(url_for('ecommerce.checkout'))
+        
+        # Validar cupos disponibles
+        from app.models.programacion_models import ProgramacionEvento
+        from sqlalchemy import func
+        evento_db = ProgramacionEvento.query.filter_by(
+            nombre_evento=evento_nombre,
+            eliminado_en=None
+        ).first()
+        
+        if evento_db and evento_db.aforo_objetivo:
+            cupos_vendidos = db.session.query(func.sum(Entrada.cantidad)).filter(
+                Entrada.evento_nombre == evento_nombre,
+                Entrada.estado_pago == 'pagado'
+            ).scalar() or 0
+            
+            cupos_disponibles = evento_db.aforo_objetivo - cupos_vendidos
+            
+            if cantidad > cupos_disponibles:
+                flash(f'No hay suficientes cupos disponibles. Quedan {cupos_disponibles} cupos.', 'error')
+                return redirect(url_for('ecommerce.checkout',
+                    evento=evento_nombre,
+                    fecha=evento_fecha_str,
+                    lugar=evento_lugar,
+                    cantidad=min(cantidad, cupos_disponibles) if cupos_disponibles > 0 else 1,
+                    precio=float(precio_unitario)))
         
         # Validar RUT si se proporcionó (validación desactivada, solo guardar tal cual)
         # if comprador_rut:
@@ -269,6 +308,26 @@ def process_payment(session_id):
         
         # URLs de callback (GetNet necesita URLs públicas accesibles desde internet)
         public_base_url = current_app.config.get('PUBLIC_BASE_URL')
+        
+        # En desarrollo local, usar la URL del request si no hay PUBLIC_BASE_URL configurado
+        if not public_base_url:
+            # Intentar obtener desde el request actual
+            if request and hasattr(request, 'url_root'):
+                # Extraer el base URL del request (ej: http://127.0.0.1:5001)
+                from urllib.parse import urlparse
+                parsed = urlparse(request.url_root)
+                public_base_url = f"{parsed.scheme}://{parsed.netloc}"
+                logger.info(f"Usando URL del request como PUBLIC_BASE_URL: {public_base_url}")
+            else:
+                # Fallback a _external=True
+                try:
+                    return_url_temp = url_for('ecommerce.payment_callback', session_id=session_id, _external=True)
+                    from urllib.parse import urlparse
+                    parsed = urlparse(return_url_temp)
+                    public_base_url = f"{parsed.scheme}://{parsed.netloc}"
+                except:
+                    public_base_url = None
+        
         if public_base_url:
             # Usar URL pública configurada
             return_url = f"{public_base_url.rstrip('/')}{url_for('ecommerce.payment_callback', session_id=session_id)}"
@@ -280,6 +339,7 @@ def process_payment(session_id):
         
         logger.info(f"Return URL: {return_url}")
         logger.info(f"Cancel URL: {cancel_url}")
+        logger.info(f"Public Base URL usado: {public_base_url}")
         
         # Metadata adicional
         metadata = {
@@ -353,14 +413,19 @@ def process_payment(session_id):
             logger.error(f"Config GetNet: api_base_url={config.get('api_base_url')}, login={bool(config.get('login'))}, trankey={bool(config.get('trankey'))}")
             logger.error(f"Headers obtenidos: {bool(headers)}")
             
-            # Mensaje de error más descriptivo
+            # Mensaje de error más descriptivo según el contexto
+            public_url = current_app.config.get('PUBLIC_BASE_URL')
+            is_demo = config.get('demo_mode', False)
+            
             error_msg = 'Error al conectar con el sistema de pagos. '
             if not config.get('login') or not config.get('trankey'):
-                error_msg += 'Credenciales de GetNet no configuradas. '
+                error_msg += 'Credenciales de GetNet no configuradas. Contacta al administrador.'
+            elif not public_url and not is_demo:
+                error_msg += 'Se requiere PUBLIC_BASE_URL configurado para pagos online. Contacta al administrador.'
             elif not headers:
-                error_msg += 'No se pudieron obtener headers de autenticación. '
+                error_msg += 'No se pudieron obtener headers de autenticación. Verifica las credenciales.'
             else:
-                error_msg += 'Por favor intenta más tarde. '
+                error_msg += 'Por favor intenta más tarde.'
             
             if current_app.config.get('DEBUG', False):
                 error_msg += f' (Debug: {error_details})'
@@ -463,9 +528,21 @@ def payment_callback(session_id):
     """
     Callback desde GetNet después del pago
     """
+    logger.info(f"Callback recibido: session_id={session_id}")
+    logger.info(f"Request args: {dict(request.args)}")
+    logger.info(f"Request form: {dict(request.form)}")
+    
     checkout_session = CheckoutSession.query.filter_by(session_id=session_id).first()
     
     if not checkout_session:
+        logger.error(f"Sesión no encontrada: session_id={session_id}")
+        # Intentar buscar sesiones recientes para debug
+        from datetime import datetime, timedelta
+        desde = datetime.utcnow() - timedelta(minutes=30)
+        sesiones_recientes = CheckoutSession.query.filter(
+            CheckoutSession.created_at >= desde
+        ).order_by(CheckoutSession.created_at.desc()).limit(5).all()
+        logger.error(f"Sesiones recientes encontradas: {[s.session_id for s in sesiones_recientes]}")
         flash('Sesión no encontrada', 'error')
         return redirect(url_for('ecommerce.index'))
     
@@ -482,7 +559,24 @@ def payment_callback(session_id):
         flash('Error: No se recibió información del pago', 'error')
         return redirect(url_for('ecommerce.index'))
     
-    # Verificar estado del pago con GetNet
+    # En modo demo, si el payment_id empieza con DEMO-, simular pago aprobado
+    if payment_id and payment_id.startswith('DEMO-'):
+        logger.info(f"Modo demo detectado: payment_id={payment_id}")
+        # Simular payment_status aprobado para modo demo
+        # Estructura compatible con extract_payment_info
+        payment_status = {
+            'status': 'APPROVED',
+            'payment_id': payment_id,
+            'requestId': payment_id,
+            'transaction_id': f'DEMO-TXN-{payment_id}',
+            'auth_code': 'DEMO-AUTH',
+            'message': 'Pago simulado en modo demo'
+        }
+        # Procesar pago aprobado directamente
+        logger.info(f"Pago aprobado (demo): payment_id={payment_id}, session_id={session_id}")
+        return _process_approved_payment(checkout_session, payment_status)
+    
+    # Verificar estado del pago con GetNet (solo si no es demo)
     payment_status = get_getnet_payment_status(payment_id)
     
     if not payment_status:

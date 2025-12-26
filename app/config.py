@@ -61,6 +61,7 @@ class Config:
     GETNET_CLIENT_SECRET: Optional[str] = os.environ.get('GETNET_CLIENT_SECRET')  # Legacy/OAuth2
     GETNET_MERCHANT_ID: Optional[str] = os.environ.get('GETNET_MERCHANT_ID')
     GETNET_SANDBOX: bool = os.environ.get('GETNET_SANDBOX', 'true').lower() in ('1', 'true', 'yes')
+    GETNET_DEMO_MODE: bool = os.environ.get('GETNET_DEMO_MODE', 'false').lower() in ('1', 'true', 'yes')  # Modo demo para desarrollo
     
     # URL pública para callbacks de GetNet (requerida porque GetNet necesita acceder desde internet)
     # En producción: https://stvaldivia.cl
@@ -143,6 +144,7 @@ def init_app_config(app: Flask):
     app.config['GETNET_CLIENT_SECRET'] = Config.GETNET_CLIENT_SECRET  # Legacy/OAuth2
     app.config['GETNET_MERCHANT_ID'] = Config.GETNET_MERCHANT_ID
     app.config['GETNET_SANDBOX'] = Config.GETNET_SANDBOX
+    app.config['GETNET_DEMO_MODE'] = Config.GETNET_DEMO_MODE
     
     # URL pública para callbacks (GetNet necesita URLs accesibles desde internet)
     app.config['PUBLIC_BASE_URL'] = Config.PUBLIC_BASE_URL

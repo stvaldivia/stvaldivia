@@ -29,6 +29,7 @@ def get_getnet_config() -> Dict[str, Any]:
         'client_secret': current_app.config.get('GETNET_CLIENT_SECRET'),  # Legacy/OAuth2
         'merchant_id': current_app.config.get('GETNET_MERCHANT_ID'),
         'sandbox': current_app.config.get('GETNET_SANDBOX', True),
+        'demo_mode': current_app.config.get('GETNET_DEMO_MODE', False),  # Modo demo para desarrollo
     }
 
 
@@ -198,6 +199,48 @@ def create_getnet_payment(
         Dict con payment_id y checkout_url, o None si hay error
     """
     config = get_getnet_config()
+    
+    # Determinar si usar modo demo
+    # Modo demo se activa si:
+    # 1. GETNET_DEMO_MODE está explícitamente en 'true'
+    # 2. O si no hay PUBLIC_BASE_URL configurado (desarrollo local sin tunneling)
+    use_demo_mode = config.get('demo_mode', False)
+    
+    # Verificar si hay URL pública configurada (necesaria para callbacks reales)
+    from urllib.parse import urlparse
+    parsed_return = urlparse(return_url)
+    is_localhost = parsed_return.netloc in ('127.0.0.1', 'localhost', '0.0.0.0') or parsed_return.netloc.startswith('127.0.0.1:') or parsed_return.netloc.startswith('localhost:')
+    
+    # Si no hay PUBLIC_BASE_URL y es localhost, forzar modo demo
+    public_base_url = current_app.config.get('PUBLIC_BASE_URL') if current_app else None
+    if not public_base_url and is_localhost:
+        use_demo_mode = True
+        logger.info(f"🔧 MODO DEMO activado automáticamente: URL localhost detectada sin PUBLIC_BASE_URL")
+    
+    # Modo demo: simular respuesta exitosa para desarrollo
+    if use_demo_mode:
+        logger.info(f"🔧 MODO DEMO: Simulando pago GetNet para order_id={order_id}")
+        # En modo demo, redirigir directamente al callback con payment_id
+        # return_url ya incluye el session_id en la ruta: /ecommerce/payment/callback/{session_id}
+        # Solo agregamos los parámetros de query
+        from urllib.parse import urlunparse, parse_qs, urlencode
+        query_params = parse_qs(parsed_return.query)
+        query_params['payment_id'] = [f'DEMO-{order_id}']
+        query_params['status'] = ['approved']
+        new_query = urlencode(query_params, doseq=True)
+        demo_checkout_url = urlunparse((
+            parsed_return.scheme, parsed_return.netloc, parsed_return.path,
+            parsed_return.params, new_query, parsed_return.fragment
+        ))
+        return {
+            'payment_id': f'DEMO-{order_id}',
+            'checkout_url': demo_checkout_url,
+            'payment_data': {
+                'status': 'demo',
+                'message': 'Modo demo activado'
+            }
+        }
+    
     headers = get_getnet_auth_headers()
     
     if not headers:
@@ -259,6 +302,17 @@ def create_getnet_payment(
         logger.info(f"Payment data keys: {list(payment_data.keys())}")
         logger.debug(f"Payment data completo: {payment_data}")
         
+        # Validar que los datos requeridos estén presentes
+        if not payment_data.get('auth'):
+            logger.error("Falta objeto 'auth' en payment_data")
+            return None
+        if not payment_data.get('payment'):
+            logger.error("Falta objeto 'payment' en payment_data")
+            return None
+        if not payment_data.get('returnUrl'):
+            logger.error("Falta 'returnUrl' en payment_data")
+            return None
+        
         try:
             response = requests.post(
                 payment_url,
@@ -279,6 +333,14 @@ def create_getnet_payment(
         logger.info(f"Respuesta GetNet: status={response.status_code}")
         logger.info(f"Response headers: {dict(response.headers)}")
         logger.info(f"Response text (primeros 1000 chars): {response.text[:1000]}")
+        
+        # Log detallado del contenido de la respuesta
+        if response.text:
+            try:
+                response_json = response.json()
+                logger.info(f"Response JSON keys: {list(response_json.keys()) if isinstance(response_json, dict) else 'No es dict'}")
+            except:
+                pass
         
         if response.status_code in [200, 201]:
             try:
@@ -358,6 +420,19 @@ def get_getnet_payment_status(payment_id: str) -> Optional[Dict[str, Any]]:
         Dict con información del pago o None si hay error
     """
     config = get_getnet_config()
+    
+    # En modo demo, si el payment_id empieza con DEMO-, retornar estado simulado
+    if config.get('demo_mode') and payment_id and payment_id.startswith('DEMO-'):
+        logger.info(f"Modo demo: simulando estado de pago para {payment_id}")
+        return {
+            'status': 'APPROVED',
+            'payment_id': payment_id,
+            'requestId': payment_id,
+            'transaction_id': f'DEMO-TXN-{payment_id}',
+            'auth_code': 'DEMO-AUTH',
+            'message': 'Pago simulado en modo demo'
+        }
+    
     headers = get_getnet_auth_headers()
     
     if not headers:

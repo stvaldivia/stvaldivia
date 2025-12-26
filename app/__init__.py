@@ -281,6 +281,9 @@ def create_app():
     # GETNET Serial Integration (Windows COM ports)
     app.config['ENABLE_GETNET_SERIAL'] = os.environ.get('ENABLE_GETNET_SERIAL', '0').lower() in ('1', 'true', 'yes')
     
+    # GetNet Web Checkout - Configuración adicional
+    app.config['GETNET_DEMO_MODE'] = os.environ.get('GETNET_DEMO_MODE', 'false').lower() in ('1', 'true', 'yes')
+    
     # Payment Agent API Key
     app.config['AGENT_API_KEY'] = os.environ.get('AGENT_API_KEY')
     

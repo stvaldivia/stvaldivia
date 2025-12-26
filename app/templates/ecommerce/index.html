@@ -40,12 +40,27 @@
                         <p style="margin: 1rem 0 0 0; font-size: 1.3rem; font-weight: bold; color: #4caf50;">
                             ${{ "{:,.0f}".format(evento.precio) }}
                         </p>
+                        {% if evento.cupos_disponibles is not none %}
+                        <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; color: {% if evento.cupos_disponibles > 0 %}#4caf50{% else %}#f44336{% endif %};">
+                            {% if evento.cupos_disponibles > 0 %}
+                                ✅ {{ evento.cupos_disponibles }} cupos disponibles ({{ evento.cupos_vendidos }}/{{ evento.cupos_total }} vendidos)
+                            {% else %}
+                                ❌ Agotado ({{ evento.cupos_vendidos }}/{{ evento.cupos_total }} vendidos)
+                            {% endif %}
+                        </p>
+                        {% endif %}
                     </div>
                     <div style="display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;">
+                        {% if evento.cupos_disponibles is none or evento.cupos_disponibles > 0 %}
                         <a href="{{ url_for('ecommerce.checkout', evento=evento.nombre, fecha=evento.fecha.isoformat() if evento.fecha else '', lugar=evento.lugar, cantidad=1, precio=evento.precio) }}" 
                            class="btn-checkout">
                             Comprar Entradas
                         </a>
+                        {% else %}
+                        <button class="btn-checkout" disabled style="opacity: 0.5; cursor: not-allowed;">
+                            Agotado
+                        </button>
+                        {% endif %}
                     </div>
                 </div>
             </div>
