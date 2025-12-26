@@ -7,11 +7,9 @@
     <h1 style="text-align: center; margin-bottom: 2rem;">🎫 Checkout Express</h1>
     
     <div class="card" style="padding: 2rem;">
-        <h2 style="margin-bottom: 1rem;">{{ evento_nombre }}</h2>
-        <p><strong>Fecha:</strong> {{ evento_fecha.strftime('%d/%m/%Y %H:%M') if evento_fecha else 'N/A' }}</p>
-        {% if evento_lugar %}
-        <p><strong>Lugar:</strong> {{ evento_lugar }}</p>
-        {% endif %}
+        <h2 style="margin-bottom: 1rem;">{{ producto_nombre }}</h2>
+        <p><strong>Tipo de entrada:</strong> {{ producto_nombre }}</p>
+        <p><strong>Lugar:</strong> BIMBA</p>
         <p><strong>Cantidad:</strong> {{ cantidad }} entrada(s)</p>
         <p><strong>Precio unitario:</strong> ${{ "{:,.0f}".format(precio_unitario) }}</p>
         <p style="font-size: 1.5rem; font-weight: bold; margin-top: 1rem;">
@@ -22,9 +20,7 @@
         
         <form method="POST" action="{{ url_for('ecommerce.checkout') }}">
             {% if csrf_token() %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>{% endif %}
-            <input type="hidden" name="evento_nombre" value="{{ evento_nombre }}">
-            <input type="hidden" name="evento_fecha" value="{{ evento_fecha.isoformat() if evento_fecha else '' }}">
-            <input type="hidden" name="evento_lugar" value="{{ evento_lugar or '' }}">
+            <input type="hidden" name="producto_id" value="{{ producto_id }}">
             <input type="hidden" name="cantidad" value="{{ cantidad }}">
             <input type="hidden" name="precio_unitario" value="{{ precio_unitario }}">
             <input type="hidden" name="precio_total" value="{{ precio_total }}">

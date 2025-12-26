@@ -86,6 +86,9 @@ from .guardarropia_ticket_models import GuardarropiaTicket, GuardarropiaTicketLo
 # Importar modelos de ecommerce (venta de entradas)
 from .ecommerce_models import Entrada, CheckoutSession
 
+# Importar modelos de configuración del sistema
+from .system_config_models import SystemConfig
+
 
 __all__ = [
     'db', 
@@ -127,5 +130,7 @@ __all__ = [
     'GuardarropiaTicket', 'GuardarropiaTicketLog',
     # Modelos de ecommerce (venta de entradas)
     'Entrada', 'CheckoutSession',
+    # Modelos de configuración del sistema
+    'SystemConfig',
 ]
 

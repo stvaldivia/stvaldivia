@@ -159,6 +159,49 @@
                 Tiempo real
             </span>
         </div>
+
+        <!-- Toggle Base de Datos (Solo Superadmin) -->
+        {% if is_superadmin %}
+        <div class="info-card" style="border-color: rgba(255, 193, 7, 0.5); background: linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 152, 0, 0.1) 100%);">
+            <span class="icon">🗄️</span>
+            <h3>Base de Datos</h3>
+            <p style="font-size: 0.9rem; color: #aaa; margin: 10px 0;">
+                Cambiar entre base de datos de desarrollo y producción<br>
+                <span style="font-size: 0.75rem; color: #888;">Ambas bases de datos están en el servidor VM</span>
+            </p>
+            
+            <div style="margin-top: 15px;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                    <span style="color: #e8e8e8; font-size: 0.85rem;">Modo actual:</span>
+                    <span id="db-mode-display" style="color: #ffc107; font-weight: bold; font-size: 0.9rem; text-transform: uppercase;">
+                        {{ db_info.mode|default('PROD') }}
+                    </span>
+                </div>
+                
+                <div style="display: flex; gap: 10px;">
+                    <button id="db-switch-dev" 
+                            class="btn-config" 
+                            style="flex: 1; {% if db_info.mode == 'dev' %}background: rgba(76, 175, 80, 0.3); border-color: rgba(76, 175, 80, 0.5); color: #4caf50;{% endif %}"
+                            onclick="switchDatabase('dev')">
+                        🧪 Desarrollo
+                    </button>
+                    <button id="db-switch-prod" 
+                            class="btn-config" 
+                            style="flex: 1; {% if db_info.mode == 'prod' %}background: rgba(244, 67, 54, 0.3); border-color: rgba(244, 67, 54, 0.5); color: #f44336;{% endif %}"
+                            onclick="switchDatabase('prod')">
+                        🚀 Producción
+                    </button>
+                </div>
+                
+                <p id="db-status" style="font-size: 0.75rem; color: #aaa; margin-top: 10px; min-height: 20px;"></p>
+            </div>
+            
+            <span class="badge" style="background: rgba(255, 193, 7, 0.3); color: #ffc107;">
+                {% if db_info.mode == 'dev' %}Modo Desarrollo{% else %}Modo Producción{% endif %}
+            </span>
+        </div>
+        {% endif %}
+
         <!-- EQUIPO -->
         <div class="info-card" style="border-color: rgba(102, 126, 234, 0.5);">
             <span class="icon">👥</span>
@@ -2006,6 +2049,109 @@
                                 style="display: none; margin-top: 10px; padding: 10px; border-radius: 6px; font-size: 0.85rem;">
                             </div>
                         </div>
+
+    <!-- Script para toggle de base de datos -->
+    <script>
+        function switchDatabase(mode) {
+            const statusEl = document.getElementById('db-status');
+            const devBtn = document.getElementById('db-switch-dev');
+            const prodBtn = document.getElementById('db-switch-prod');
+            const modeDisplay = document.getElementById('db-mode-display');
+            
+            // Confirmar cambio
+            const currentMode = '{{ db_info.mode|default("prod") }}';
+            if (mode === currentMode) {
+                statusEl.textContent = 'Ya estás en modo ' + mode.toUpperCase();
+                statusEl.style.color = '#aaa';
+                return;
+            }
+            
+            const confirmMsg = mode === 'prod' 
+                ? '⚠️ ADVERTENCIA: Cambiarás a PRODUCCIÓN. ¿Estás seguro?'
+                : 'Cambiar a modo DESARROLLO. ¿Continuar?';
+            
+            if (!confirm(confirmMsg)) {
+                return;
+            }
+            
+            // Deshabilitar botones durante la operación
+            devBtn.disabled = true;
+            prodBtn.disabled = true;
+            statusEl.textContent = 'Cambiando...';
+            statusEl.style.color = '#ffc107';
+            
+            // Hacer petición
+            fetch('{{ url_for("routes.admin_api_database_switch") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ mode: mode })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    statusEl.textContent = '✅ ' + data.message;
+                    statusEl.style.color = '#4caf50';
+                    
+                    // Actualizar UI
+                    modeDisplay.textContent = mode.toUpperCase();
+                    
+                    // Actualizar estilos de botones
+                    if (mode === 'dev') {
+                        devBtn.style.background = 'rgba(76, 175, 80, 0.3)';
+                        devBtn.style.borderColor = 'rgba(76, 175, 80, 0.5)';
+                        devBtn.style.color = '#4caf50';
+                        prodBtn.style.background = 'rgba(102, 126, 234, 0.3)';
+                        prodBtn.style.borderColor = 'rgba(102, 126, 234, 0.5)';
+                        prodBtn.style.color = '#667eea';
+                    } else {
+                        prodBtn.style.background = 'rgba(244, 67, 54, 0.3)';
+                        prodBtn.style.borderColor = 'rgba(244, 67, 54, 0.5)';
+                        prodBtn.style.color = '#f44336';
+                        devBtn.style.background = 'rgba(102, 126, 234, 0.3)';
+                        devBtn.style.borderColor = 'rgba(102, 126, 234, 0.5)';
+                        devBtn.style.color = '#667eea';
+                    }
+                    
+                    // Mostrar mensaje de reinicio requerido
+                    statusEl.textContent = '✅ ' + data.message + ' ⚠️ Se requiere reiniciar la aplicación para aplicar el cambio.';
+                    statusEl.style.color = '#ffc107';
+                    
+                    // No recargar automáticamente - el usuario debe reiniciar manualmente
+                    // setTimeout(() => {
+                    //     window.location.reload();
+                    // }, 2000);
+                } else {
+                    statusEl.textContent = '❌ Error: ' + (data.error || 'Error desconocido');
+                    statusEl.style.color = '#f44336';
+                    devBtn.disabled = false;
+                    prodBtn.disabled = false;
+                }
+            })
+            .catch(error => {
+                statusEl.textContent = '❌ Error de conexión: ' + error.message;
+                statusEl.style.color = '#f44336';
+                devBtn.disabled = false;
+                prodBtn.disabled = false;
+            });
+        }
+        
+        // Actualizar estado cada 30 segundos
+        setInterval(() => {
+            fetch('{{ url_for("routes.admin_api_database_info") }}')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.mode) {
+                        const modeDisplay = document.getElementById('db-mode-display');
+                        if (modeDisplay) {
+                            modeDisplay.textContent = data.mode.toUpperCase();
+                        }
+                    }
+                })
+                .catch(err => console.error('Error al actualizar estado BD:', err));
+        }, 30000);
+    </script>
     
     <!-- Log General de Auditoría (Solo Superadmin) -->
     {% if is_superadmin %}

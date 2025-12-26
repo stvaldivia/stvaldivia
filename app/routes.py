@@ -236,11 +236,20 @@ def admin_panel_control():
             audit_logs = []
             audit_alerts_count = 0
     
+    # Obtener información de base de datos actual
+    try:
+        from app.helpers.database_config_helper import get_current_database_info
+        db_info = get_current_database_info()
+    except Exception as e:
+        current_app.logger.error(f"Error al obtener info de BD: {e}", exc_info=True)
+        db_info = {'mode': 'prod', 'url': 'No disponible'}
+    
     return render_template('admin/panel_control.html', 
                          system_info=system_info,
                          is_superadmin=is_superadmin,
                          audit_logs=audit_logs,
-                         audit_alerts_count=audit_alerts_count)
+                         audit_alerts_count=audit_alerts_count,
+                         db_info=db_info)
 
 
 @bp.route('/admin/panel_control/logs')
@@ -354,6 +363,92 @@ def admin_db_monitor():
         current_app.logger.error(f"Error al cargar monitor de DB: {e}", exc_info=True)
         flash(f'Error al cargar monitor de DB: {str(e)}', 'error')
         return redirect(url_for('routes.admin_panel_control'))
+
+
+@bp.route('/admin/api/database/switch', methods=['POST'])
+def admin_api_database_switch():
+    """API para cambiar entre base de datos de desarrollo y producción"""
+    if not session.get('admin_logged_in'):
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    # Solo superadmin puede cambiar base de datos
+    username = session.get('admin_username', '').lower()
+    is_superadmin = (username == 'sebagatica')
+    
+    if not is_superadmin:
+        return jsonify({'error': 'Solo superadmin puede cambiar la base de datos'}), 403
+    
+    try:
+        data = request.get_json()
+        mode = data.get('mode')  # 'dev' o 'prod'
+        
+        if mode not in ['dev', 'prod']:
+            return jsonify({'error': 'Modo inválido. Debe ser "dev" o "prod"'}), 400
+        
+        from app.helpers.database_config_helper import (
+            set_database_mode, 
+            get_current_database_info,
+            get_database_url_for_mode
+        )
+        import os
+        
+        # Cambiar modo
+        success = set_database_mode(mode, updated_by=username)
+        
+        if not success:
+            return jsonify({'error': 'Error al guardar configuración'}), 500
+        
+        # Obtener URL para el modo seleccionado
+        # Primero intentar desde configuración guardada, luego desde variables de entorno
+        if mode == 'dev':
+            db_url = get_database_url_for_mode('dev') or os.environ.get('DATABASE_DEV_URL') or os.environ.get('DATABASE_URL')
+        else:
+            db_url = get_database_url_for_mode('prod') or os.environ.get('DATABASE_PROD_URL') or os.environ.get('DATABASE_URL')
+        
+        # Obtener información actualizada
+        db_info = get_current_database_info()
+        db_info['url'] = db_url  # Agregar URL real (se ocultará password en el frontend)
+        
+        # Registrar en logs de auditoría
+        try:
+            from app.models.audit_log_models import AuditLog
+            audit = AuditLog(
+                action='change_database_mode',
+                entity_type='system_config',
+                username=username,
+                success=True,
+                new_value=f"database_mode={mode}",
+                ip_address=request.remote_addr
+            )
+            db.session.add(audit)
+            db.session.commit()
+        except Exception as e:
+            current_app.logger.warning(f"Error al registrar auditoría: {e}")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Base de datos cambiada a {mode.upper()}',
+            'db_info': db_info
+        })
+        
+    except Exception as e:
+        current_app.logger.error(f"Error al cambiar base de datos: {e}", exc_info=True)
+        return jsonify({'error': f'Error: {str(e)}'}), 500
+
+
+@bp.route('/admin/api/database/info', methods=['GET'])
+def admin_api_database_info():
+    """API para obtener información de la base de datos actual"""
+    if not session.get('admin_logged_in'):
+        return jsonify({'error': 'No autorizado'}), 401
+    
+    try:
+        from app.helpers.database_config_helper import get_current_database_info
+        db_info = get_current_database_info()
+        return jsonify(db_info)
+    except Exception as e:
+        current_app.logger.error(f"Error al obtener info de BD: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
 
 
 @bp.route('/admin/panel_control/monitoreo')

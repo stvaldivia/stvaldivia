@@ -326,9 +326,29 @@ def create_app():
 
     # Configuración de base de datos para BIMBA System
     # Migrado a MySQL - soporta MySQL, PostgreSQL (legacy) y SQLite (desarrollo)
-    database_url = os.environ.get('DATABASE_URL')
     is_cloud_run = bool(os.environ.get('K_SERVICE') or os.environ.get('GAE_ENV') or os.environ.get('CLOUD_RUN_SERVICE'))
     is_production = os.environ.get('FLASK_ENV', '').lower() == 'production' or is_cloud_run
+    
+    # Leer modo de base de datos desde variable de entorno
+    # Las URLs de dev y prod deben estar en variables de entorno:
+    # DATABASE_DEV_URL y DATABASE_PROD_URL
+    # Ambas apuntan a bases de datos en el servidor VM
+    db_mode = os.environ.get('DATABASE_MODE', 'prod')  # Por defecto producción
+    
+    # Obtener URL según el modo
+    # IMPORTANTE: Ambas bases de datos están en el servidor VM, no localmente
+    if db_mode == 'dev':
+        database_url = os.environ.get('DATABASE_DEV_URL') or os.environ.get('DATABASE_URL')
+        if database_url:
+            app.logger.info(f"📁 Modo DESARROLLO: usando base de datos de desarrollo (servidor VM)")
+    else:
+        database_url = os.environ.get('DATABASE_PROD_URL') or os.environ.get('DATABASE_URL')
+        if database_url:
+            app.logger.info(f"📁 Modo PRODUCCIÓN: usando base de datos de producción (servidor VM)")
+    
+    # Si no hay URL específica, usar DATABASE_URL genérico
+    if not database_url:
+        database_url = os.environ.get('DATABASE_URL')
     
     # Mejorar detección DB_TYPE: reconocer mysql:// y mysql+* (cualquier mysql+*)
     db_type = None
@@ -421,6 +441,46 @@ def create_app():
     # Inicializar SQLAlchemy
     from .models import db
     db.init_app(app)
+    
+    # Después de inicializar la BD, intentar leer configuración guardada
+    # Esto permite cambiar la BD dinámicamente (requiere reinicio de app)
+    with app.app_context():
+        try:
+            from app.helpers.database_config_helper import get_database_mode, get_database_url_for_mode, set_database_urls
+            
+            # Leer modo guardado (si existe)
+            saved_mode = get_database_mode()
+            
+            # Si hay URLs guardadas, usarlas
+            saved_dev_url = None
+            saved_prod_url = None
+            try:
+                from app.models.system_config_models import SystemConfig
+                saved_dev_url = SystemConfig.get('database_dev_url')
+                saved_prod_url = SystemConfig.get('database_prod_url')
+            except:
+                pass
+            
+            # Si hay URLs en variables de entorno, guardarlas en la BD
+            env_dev_url = os.environ.get('DATABASE_DEV_URL')
+            env_prod_url = os.environ.get('DATABASE_PROD_URL')
+            
+            if env_dev_url or env_prod_url:
+                set_database_urls(
+                    dev_url=env_dev_url,
+                    prod_url=env_prod_url,
+                    updated_by='system_init'
+                )
+            
+            # Si el modo guardado es diferente al actual, loguear advertencia
+            if saved_mode != db_mode:
+                app.logger.warning(
+                    f"⚠️ Modo de BD guardado ({saved_mode}) diferente al de variables de entorno ({db_mode}). "
+                    f"Usando modo de variables de entorno. Para cambiar, usa el panel de control."
+                )
+        except Exception as e:
+            # Si falla (primera vez, BD no disponible, etc.), continuar con configuración actual
+            app.logger.debug(f"No se pudo leer configuración de BD guardada: {e}")
 
     # Logging de configuración cargada (después de crear la app)
     if not is_production:

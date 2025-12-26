@@ -45,116 +45,108 @@ except ImportError:
 
 @ecommerce_bp.route('/')
 def index():
-    """Página principal de venta de entradas - Muestra eventos disponibles"""
+    """Página principal de venta de entradas - Muestra productos de categoría ENTRADAS con stock disponible"""
     try:
-        from app.models.programacion_models import ProgramacionEvento
-        from datetime import date, datetime, timedelta
+        from app.models.product_models import Product
+        from sqlalchemy import func
         
-        # Obtener eventos públicos y futuros
-        hoy = date.today()
+        # Obtener productos activos de categoría ENTRADAS con stock disponible
+        # Para ENTRADAS, consideramos disponible si:
+        # - is_active = True
+        # - stock_quantity > 0 (o stock_quantity es NULL, lo que significa stock ilimitado)
+        # Usamos comparación case-insensitive para la categoría
+        productos = Product.query.filter(
+            func.upper(Product.category) == 'ENTRADAS',
+            Product.is_active == True
+        ).filter(
+            # Stock disponible: mayor a 0 o NULL (ilimitado)
+            db.or_(
+                Product.stock_quantity > 0,
+                Product.stock_quantity.is_(None)
+            )
+        ).order_by(Product.price.asc(), Product.name.asc()).all()
         
-        # Buscar eventos publicados y futuros
-        eventos = ProgramacionEvento.query.filter(
-            ProgramacionEvento.estado_publico == 'publicado',
-            ProgramacionEvento.fecha >= hoy,
-            ProgramacionEvento.eliminado_en.is_(None)
-        ).order_by(ProgramacionEvento.fecha.asc()).limit(20).all()
-        
-        # Preparar datos de eventos para el template
-        eventos_data = []
-        for evento in eventos:
-            # Obtener precio (usar el primer tier o precio por defecto)
-            tiers = evento.get_tiers_precios()
-            precio = 10000  # Precio por defecto
-            if tiers and len(tiers) > 0:
-                # Usar el precio del primer tier o el más bajo
-                precios = [t.get('precio', 10000) for t in tiers if t.get('precio')]
-                if precios:
-                    precio = min(precios)
+        # Preparar datos de productos para el template
+        productos_data = []
+        for producto in productos:
+            stock_qty = producto.stock_quantity if producto.stock_quantity is not None else None
+            disponible = stock_qty is None or stock_qty > 0
             
-            # Contar cupos vendidos (entradas pagadas para este evento)
-            cupos_vendidos = 0
-            cupos_disponibles = None
-            if evento.aforo_objetivo:
-                from sqlalchemy import func
-                cupos_vendidos = db.session.query(func.sum(Entrada.cantidad)).filter(
-                    Entrada.evento_nombre == evento.nombre_evento,
-                    Entrada.estado_pago == 'pagado'
-                ).scalar() or 0
-                cupos_disponibles = max(0, evento.aforo_objetivo - cupos_vendidos)
-            
-            # Combinar fecha y hora
-            evento_fecha = None
-            if evento.fecha:
-                if evento.horario_apertura_publico:
-                    evento_fecha = datetime.combine(evento.fecha, evento.horario_apertura_publico)
-                else:
-                    evento_fecha = datetime.combine(evento.fecha, datetime.min.time())
-            
-            eventos_data.append({
-                'id': evento.id,
-                'nombre': evento.nombre_evento,
-                'fecha': evento_fecha,
-                'fecha_str': evento.fecha.strftime('%Y-%m-%d') if evento.fecha else '',
-                'fecha_display': evento.fecha.strftime('%d/%m/%Y') if evento.fecha else 'Fecha por confirmar',
-                'hora': evento.horario_apertura_publico.strftime('%H:%M') if evento.horario_apertura_publico else '20:00',
-                'lugar': 'BIMBA' if not evento.descripcion_corta else evento.descripcion_corta[:50],
-                'precio': precio,
-                'dj_principal': evento.dj_principal,
-                'tipo_noche': evento.tipo_noche,
-                'descripcion': evento.descripcion_corta or evento.copy_ig_corto or '',
-                'cupos_total': evento.aforo_objetivo,
-                'cupos_vendidos': int(cupos_vendidos),
-                'cupos_disponibles': int(cupos_disponibles) if cupos_disponibles is not None else None,
+            productos_data.append({
+                'id': producto.id,
+                'nombre': producto.name,
+                'precio': producto.price,
+                'categoria': producto.category,
+                'stock_quantity': stock_qty,
+                'disponible': disponible,
+                'stock_ilimitado': stock_qty is None
             })
         
-        return render_template('ecommerce/index.html', eventos=eventos_data)
+        return render_template('ecommerce/index.html', productos=productos_data)
         
     except Exception as e:
-        logger.error(f"Error al cargar eventos: {e}", exc_info=True)
-        # Si hay error, mostrar página sin eventos
-        return render_template('ecommerce/index.html', eventos=[])
+        logger.error(f"Error al cargar productos: {e}", exc_info=True)
+        # Si hay error, mostrar página sin productos
+        return render_template('ecommerce/index.html', productos=[])
 
 
 @ecommerce_bp.route('/checkout', methods=['GET', 'POST'])
 @exempt_from_csrf
 def checkout():
     """
-    Checkout express para venta de entradas
+    Checkout express para venta de entradas (productos)
     
     GET: Muestra formulario de checkout
     POST: Procesa datos y crea sesión de checkout
     """
     if request.method == 'GET':
-        # Obtener parámetros de la URL (evento, cantidad, precio)
-        evento_nombre = request.args.get('evento', 'Evento')
-        evento_fecha_str = request.args.get('fecha')
-        evento_lugar = request.args.get('lugar', '')
+        from app.models.product_models import Product
+        
+        # Obtener parámetros de la URL (product_id, cantidad)
+        product_id = request.args.get('product_id', type=int)
         cantidad = int(request.args.get('cantidad', 1))
-        precio_unitario = float(request.args.get('precio', 0))
         
-        # Parsear fecha
-        evento_fecha = None
-        if evento_fecha_str:
-            try:
-                evento_fecha = datetime.fromisoformat(evento_fecha_str.replace('Z', '+00:00'))
-            except:
-                evento_fecha = datetime.now() + timedelta(days=7)
-        else:
-            evento_fecha = datetime.now() + timedelta(days=7)
+        # Validar producto
+        if not product_id:
+            flash('Producto no especificado', 'error')
+            return redirect(url_for('ecommerce.index'))
         
+        producto = Product.query.get(product_id)
+        
+        # Debug logging
+        if not producto:
+            logger.warning(f"[GET] Producto no encontrado: product_id={product_id}")
+            flash('Producto no encontrado', 'error')
+            return redirect(url_for('ecommerce.index'))
+        
+        # Verificar categoría case-insensitive
+        categoria_ok = producto.category and producto.category.upper() == 'ENTRADAS'
+        if not categoria_ok:
+            logger.warning(f"[GET] Producto categoría incorrecta: product_id={product_id}, categoria='{producto.category}', is_active={producto.is_active}")
+            flash('Producto no disponible: categoría incorrecta', 'error')
+            return redirect(url_for('ecommerce.index'))
+        
+        if not producto.is_active:
+            logger.warning(f"[GET] Producto inactivo: product_id={product_id}, categoria='{producto.category}', is_active={producto.is_active}")
+            flash('Producto no disponible: producto inactivo', 'error')
+            return redirect(url_for('ecommerce.index'))
+        
+        logger.info(f"[GET] Producto validado correctamente: product_id={product_id}, nombre='{producto.name}', categoria='{producto.category}'")
+        
+        precio_unitario = float(producto.price) if producto.price else 0.0
         precio_total = cantidad * precio_unitario
         
         return render_template('ecommerce/checkout.html',
-                             evento_nombre=evento_nombre,
-                             evento_fecha=evento_fecha,
-                             evento_lugar=evento_lugar,
+                             producto_id=producto.id,
+                             producto_nombre=producto.name,
                              cantidad=cantidad,
                              precio_unitario=precio_unitario,
                              precio_total=precio_total)
     
     # POST: Procesar datos del formulario
     try:
+        from app.models.product_models import Product
+        
         data = request.form
         
         # Validar datos requeridos
@@ -162,17 +154,47 @@ def checkout():
         comprador_email = data.get('email', '').strip()
         comprador_rut = data.get('rut', '').strip()
         comprador_telefono = data.get('telefono', '').strip()
-        evento_nombre = data.get('evento_nombre', '').strip()
-        evento_fecha_str = data.get('evento_fecha')
-        evento_lugar = data.get('evento_lugar', '').strip()
+        product_id = data.get('producto_id', type=int)
         cantidad = int(data.get('cantidad', 1))
         precio_unitario = Decimal(data.get('precio_unitario', 0))
         precio_total = Decimal(data.get('precio_total', 0))
         
-        # Validaciones básicas (desactivadas temporalmente)
-        # if not comprador_nombre or not comprador_email:
-        #     flash('Nombre y email son requeridos', 'error')
-        #     return redirect(url_for('ecommerce.checkout'))
+        # Validar producto
+        if not product_id:
+            flash('Producto no especificado', 'error')
+            return redirect(url_for('ecommerce.index'))
+        
+        producto = Product.query.get(product_id)
+        
+        # Debug logging
+        if not producto:
+            logger.warning(f"[POST] Producto no encontrado: product_id={product_id}")
+            flash('Producto no encontrado', 'error')
+            return redirect(url_for('ecommerce.index'))
+        
+        # Verificar categoría case-insensitive
+        categoria_ok = producto.category and producto.category.upper() == 'ENTRADAS'
+        if not categoria_ok:
+            logger.warning(f"[POST] Producto categoría incorrecta: product_id={product_id}, categoria='{producto.category}', is_active={producto.is_active}")
+            flash('Producto no disponible: categoría incorrecta', 'error')
+            return redirect(url_for('ecommerce.index'))
+        
+        if not producto.is_active:
+            logger.warning(f"[POST] Producto inactivo: product_id={product_id}, categoria='{producto.category}', is_active={producto.is_active}")
+            flash('Producto no disponible: producto inactivo', 'error')
+            return redirect(url_for('ecommerce.index'))
+        
+        logger.info(f"[POST] Producto validado correctamente: product_id={product_id}, nombre='{producto.name}', categoria='{producto.category}'")
+        
+        # Validar stock disponible
+        stock_disponible = producto.stock_quantity
+        if stock_disponible is not None:  # Si tiene stock limitado
+            if stock_disponible <= 0:
+                flash('Este producto está agotado', 'error')
+                return redirect(url_for('ecommerce.index'))
+            if cantidad > stock_disponible:
+                flash(f'Solo hay {stock_disponible} unidad(es) disponible(s)', 'error')
+                return redirect(url_for('ecommerce.checkout', product_id=product_id, cantidad=min(cantidad, stock_disponible)))
         
         # Valores por defecto si están vacíos
         if not comprador_nombre:
@@ -182,54 +204,18 @@ def checkout():
         
         if cantidad <= 0 or precio_total <= 0:
             flash('Cantidad y precio deben ser mayores a 0', 'error')
-            return redirect(url_for('ecommerce.checkout'))
+            return redirect(url_for('ecommerce.checkout', product_id=product_id, cantidad=cantidad))
         
-        # Validar cupos disponibles
-        from app.models.programacion_models import ProgramacionEvento
-        from sqlalchemy import func
-        evento_db = ProgramacionEvento.query.filter_by(
-            nombre_evento=evento_nombre,
-            eliminado_en=None
-        ).first()
-        
-        if evento_db and evento_db.aforo_objetivo:
-            cupos_vendidos = db.session.query(func.sum(Entrada.cantidad)).filter(
-                Entrada.evento_nombre == evento_nombre,
-                Entrada.estado_pago == 'pagado'
-            ).scalar() or 0
-            
-            cupos_disponibles = evento_db.aforo_objetivo - cupos_vendidos
-            
-            if cantidad > cupos_disponibles:
-                flash(f'No hay suficientes cupos disponibles. Quedan {cupos_disponibles} cupos.', 'error')
-                return redirect(url_for('ecommerce.checkout',
-                    evento=evento_nombre,
-                    fecha=evento_fecha_str,
-                    lugar=evento_lugar,
-                    cantidad=min(cantidad, cupos_disponibles) if cupos_disponibles > 0 else 1,
-                    precio=float(precio_unitario)))
-        
-        # Validar RUT si se proporcionó (validación desactivada, solo guardar tal cual)
-        # if comprador_rut:
-        #     rut_valido, rut_error = validate_rut(comprador_rut)
-        #     if not rut_valido:
-        #         flash(f'RUT inválido: {rut_error}', 'error')
-        #         return redirect(url_for('ecommerce.checkout'))
-        # Formatear RUT (desactivado - guardar tal cual se ingresa)
-        # comprador_rut = format_rut(clean_rut(comprador_rut))
-        
-        # Parsear fecha
-        try:
-            evento_fecha = datetime.fromisoformat(evento_fecha_str.replace('Z', '+00:00'))
-        except:
-            evento_fecha = datetime.now() + timedelta(days=7)
+        # Usar evento_nombre para almacenar el nombre del producto
+        # evento_fecha será la fecha actual (para compatibilidad con el modelo)
+        # evento_lugar será "BIMBA" por defecto
         
         # Crear sesión de checkout
         checkout_session = CheckoutSession(
             session_id=CheckoutSession.generate_session_id(),
-            evento_nombre=evento_nombre,
-            evento_fecha=evento_fecha,
-            evento_lugar=evento_lugar,
+            evento_nombre=producto.name,  # Usar nombre del producto
+            evento_fecha=datetime.utcnow(),  # Fecha actual
+            evento_lugar='BIMBA',  # Lugar por defecto
             comprador_nombre=comprador_nombre,
             comprador_email=comprador_email,
             comprador_rut=comprador_rut,
@@ -254,7 +240,7 @@ def checkout():
         db.session.rollback()
         logger.error(f"Error en checkout: {e}", exc_info=True)
         flash('Error al procesar el checkout. Por favor intenta nuevamente.', 'error')
-        return redirect(url_for('ecommerce.checkout'))
+        return redirect(url_for('ecommerce.index'))
 
 
 @ecommerce_bp.route('/payment/<session_id>', methods=['GET', 'POST'])
@@ -384,12 +370,7 @@ def process_payment(session_id):
             except Exception as e:
                 logger.error(f"Excepción al crear pago en GetNet: {e}", exc_info=True)
                 flash('Error al conectar con el sistema de pagos. Por favor intenta más tarde.', 'error')
-                return redirect(url_for('ecommerce.checkout',
-                    evento=checkout_session.evento_nombre,
-                    fecha=checkout_session.evento_fecha.isoformat() if checkout_session.evento_fecha else '',
-                    lugar=checkout_session.evento_lugar or '',
-                    cantidad=checkout_session.cantidad,
-                    precio=float(checkout_session.precio_unitario)))
+                return redirect(url_for('ecommerce.index'))
         
         if not payment_result:
             # Obtener información de configuración para debug
@@ -432,13 +413,8 @@ def process_payment(session_id):
             
             flash(error_msg, 'error')
             
-            # Redirigir de vuelta al checkout con los datos
-            return redirect(url_for('ecommerce.checkout',
-                evento=checkout_session.evento_nombre,
-                fecha=checkout_session.evento_fecha.isoformat() if checkout_session.evento_fecha else '',
-                lugar=checkout_session.evento_lugar or '',
-                cantidad=checkout_session.cantidad,
-                precio=float(checkout_session.precio_unitario)))
+            # Redirigir de vuelta al index (no podemos reconstruir product_id desde checkout_session)
+            return redirect(url_for('ecommerce.index'))
         
         # Guardar payment_intent_id
         checkout_session.payment_intent_id = payment_result.get('payment_id')
@@ -474,7 +450,24 @@ def _process_approved_payment(checkout_session: CheckoutSession, payment_status:
         Redirect a confirmación
     """
     try:
+        from app.models.product_models import Product
+        
         payment_info = extract_payment_info(payment_status)
+        
+        # Buscar el producto por nombre (evento_nombre contiene el nombre del producto)
+        # Usar comparación case-insensitive para la categoría
+        producto = Product.query.filter(
+            Product.name == checkout_session.evento_nombre,
+            func.upper(Product.category) == 'ENTRADAS',
+            Product.is_active == True
+        ).first()
+        
+        # Validar stock antes de procesar (doble verificación)
+        if producto and producto.stock_quantity is not None:
+            if producto.stock_quantity < checkout_session.cantidad:
+                logger.error(f"Stock insuficiente para producto {producto.name}. Stock: {producto.stock_quantity}, Solicitado: {checkout_session.cantidad}")
+                flash('Stock insuficiente. El producto ya no está disponible.', 'error')
+                return redirect(url_for('ecommerce.index'))
         
         # Crear entrada
         entrada = Entrada(
@@ -499,6 +492,14 @@ def _process_approved_payment(checkout_session: CheckoutSession, payment_status:
         
         db.session.add(entrada)
         db.session.flush()
+        
+        # Actualizar stock del inventario si el producto tiene stock limitado
+        if producto and producto.stock_quantity is not None:
+            producto.stock_quantity -= checkout_session.cantidad
+            if producto.stock_quantity < 0:
+                producto.stock_quantity = 0  # No permitir stock negativo
+            producto.updated_at = datetime.utcnow()
+            logger.info(f"Stock actualizado para {producto.name}: {producto.stock_quantity + checkout_session.cantidad} -> {producto.stock_quantity}")
         
         # Actualizar checkout session
         checkout_session.estado = 'completado'

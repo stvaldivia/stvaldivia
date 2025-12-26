@@ -25,50 +25,39 @@
     </div>
     
     <div class="card ecommerce-card">
-        <h2>Eventos Disponibles</h2>
+        <h2>Entradas Disponibles</h2>
         
-        {% if eventos %}
-            {% for evento in eventos %}
+        {% if productos %}
+            {% for producto in productos %}
             <div class="event-card">
                 <div class="event-card-content">
                     <div class="event-info">
-                        <h3>{{ evento.nombre }}</h3>
-                        {% if evento.tipo_noche %}
-                        <span class="event-badge">{{ evento.tipo_noche }}</span>
-                        {% endif %}
+                        <h3>{{ producto.nombre }}</h3>
+                        <span class="event-badge">{{ producto.categoria }}</span>
                         <div class="event-details">
                             <p class="event-detail-item">
-                                <span class="event-icon">📅</span>
-                                <strong>Fecha:</strong> {{ evento.fecha_display }} - {{ evento.hora }}
+                                <span class="event-icon">🎫</span>
+                                <strong>Tipo:</strong> {{ producto.nombre }}
                             </p>
-                            {% if evento.dj_principal %}
-                            <p class="event-detail-item">
-                                <span class="event-icon">🎵</span>
-                                <strong>DJ:</strong> {{ evento.dj_principal }}
-                            </p>
-                            {% endif %}
-                            {% if evento.descripcion %}
-                            <p class="event-description">{{ evento.descripcion[:100] }}{% if evento.descripcion|length > 100 %}...{% endif %}</p>
-                            {% endif %}
                         </div>
                         <div class="event-pricing">
-                            <p class="event-price">${{ "{:,.0f}".format(evento.precio) }}</p>
-                            {% if evento.cupos_disponibles is not none %}
-                            <p class="event-availability {% if evento.cupos_disponibles > 0 %}available{% else %}sold-out{% endif %}">
-                                {% if evento.cupos_disponibles > 0 %}
-                                    ✅ {{ evento.cupos_disponibles }} cupos disponibles ({{ evento.cupos_vendidos }}/{{ evento.cupos_total }} vendidos)
+                            <p class="event-price">${{ "{:,.0f}".format(producto.precio) }}</p>
+                            <p class="event-availability {% if producto.disponible %}available{% else %}sold-out{% endif %}">
+                                {% if producto.stock_ilimitado %}
+                                    ✅ Disponible
+                                {% elif producto.stock_quantity and producto.stock_quantity > 0 %}
+                                    ✅ {{ producto.stock_quantity }} disponible(s)
                                 {% else %}
-                                    ❌ Agotado ({{ evento.cupos_vendidos }}/{{ evento.cupos_total }} vendidos)
+                                    ❌ Agotado
                                 {% endif %}
                             </p>
-                            {% endif %}
                         </div>
                     </div>
                     <div class="event-action">
-                        {% if evento.cupos_disponibles is none or evento.cupos_disponibles > 0 %}
-                        <a href="{{ url_for('ecommerce.checkout', evento=evento.nombre, fecha=evento.fecha.isoformat() if evento.fecha else '', lugar=evento.lugar, cantidad=1, precio=evento.precio) }}" 
+                        {% if producto.disponible %}
+                        <a href="{{ url_for('ecommerce.checkout', product_id=producto.id, cantidad=1) }}" 
                            class="btn-checkout">
-                            Comprar Entradas
+                            Comprar Entrada
                         </a>
                         {% else %}
                         <button class="btn-checkout" disabled style="opacity: 0.5; cursor: not-allowed; background: #ccc;">
@@ -82,22 +71,12 @@
         {% else %}
             <div class="event-card empty-state">
                 <span class="icon-large">🎫</span>
-                <h3>No hay eventos disponibles</h3>
-                <p>Los eventos se mostrarán aquí cuando estén publicados.</p>
+                <h3>No hay entradas disponibles</h3>
+                <p>Las entradas se mostrarán aquí cuando estén configuradas.</p>
+                <p style="margin-top: 1rem; font-size: 0.9rem; color: #666;">
+                    💡 Para agregar entradas, ve a <code>/admin/products</code> y crea productos con categoría "ENTRADAS"
+                </p>
             </div>
-        {% endif %}
-        
-        {% if not eventos %}
-        <div class="event-card test-event" style="margin-top: 1.5rem;">
-            <h3>💡 Evento de Prueba</h3>
-            <p>Puedes probar el sistema con este evento de ejemplo:</p>
-            <div style="margin-top: 1rem;">
-                <a href="{{ url_for('ecommerce.checkout', evento='Evento de Prueba', fecha='2025-12-31T20:00:00', lugar='BIMBA', cantidad=1, precio=10000) }}" 
-                   class="btn-checkout">
-                    Probar Checkout
-                </a>
-            </div>
-        </div>
         {% endif %}
     </div>
     
