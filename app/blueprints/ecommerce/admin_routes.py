@@ -392,6 +392,7 @@ def enviar_resumen_compra(entrada_id):
         smtp_password = current_app.config.get('SMTP_PASSWORD') or os.environ.get('SMTP_PASSWORD')
         
         if not all([smtp_server, smtp_user, smtp_password]):
+            logger.warning(f"SMTP config missing: server={bool(smtp_server)}, user={bool(smtp_user)}, password={bool(smtp_password)}")
             return jsonify({
                 'success': False,
                 'error': 'Configuración SMTP incompleta. Verifica SMTP_SERVER, SMTP_USER y SMTP_PASSWORD en las variables de entorno.'
