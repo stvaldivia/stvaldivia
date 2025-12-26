@@ -4,8 +4,9 @@ Sistema de gestión propio - ventas locales + sincronización con PHP POS
 """
 from datetime import datetime
 from . import db
-from sqlalchemy import Numeric, Text, Index
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Numeric, Text, Index, String
+# UUID: Migrado de PostgreSQL UUID a String(36) para compatibilidad MySQL
+# from sqlalchemy.dialects.postgresql import UUID  # Legacy PostgreSQL
 import json
 import uuid
 
@@ -289,7 +290,8 @@ class PaymentIntent(db.Model):
     STATUS_ERROR = 'ERROR'
     STATUS_CANCELLED = 'CANCELLED'
 
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # UUID migrado a String(36) para compatibilidad MySQL
+    id = db.Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     # Contexto
     register_id = db.Column(db.String(50), nullable=False, index=True)
@@ -697,7 +699,8 @@ class PaymentAgent(db.Model):
     """
     __tablename__ = 'payment_agents'
 
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # UUID migrado a String(36) para compatibilidad MySQL
+    id = db.Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     
     # Identificación del agente
     register_id = db.Column(db.String(50), nullable=False, index=True)

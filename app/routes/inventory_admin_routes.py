@@ -155,7 +155,9 @@ def products_view():
             query = query.filter_by(category=categoria)
         
         if search:
-            query = query.filter(Product.name.ilike(f'%{search}%'))
+            # Búsqueda case-insensitive (compatible MySQL)
+            from sqlalchemy import func
+            query = query.filter(func.lower(Product.name).like(func.lower(f'%{search}%')))
         
         if stock_filter == 'low':
             query = query.filter(

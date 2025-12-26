@@ -252,10 +252,20 @@ def create_app():
             raise
 
     # Configuración de base de datos para BIMBA System
-    # En producción (Cloud Run) SIEMPRE usar PostgreSQL, nunca SQLite
+    # Migrado a MySQL - soporta MySQL, PostgreSQL (legacy) y SQLite (desarrollo)
     database_url = os.environ.get('DATABASE_URL')
     is_cloud_run = bool(os.environ.get('K_SERVICE') or os.environ.get('GAE_ENV') or os.environ.get('CLOUD_RUN_SERVICE'))
     is_production = os.environ.get('FLASK_ENV', '').lower() == 'production' or is_cloud_run
+    
+    # Detectar tipo de base de datos desde DATABASE_URL
+    db_type = None
+    if database_url:
+        if database_url.startswith('mysql'):
+            db_type = 'mysql'
+        elif database_url.startswith('postgresql'):
+            db_type = 'postgresql'
+        elif database_url.startswith('sqlite'):
+            db_type = 'sqlite'
     
     if not database_url:
         if is_production:
@@ -280,24 +290,52 @@ def create_app():
             
             db_abs_path = os.path.abspath(db_path)
             database_url = f'sqlite:///{db_abs_path}'
+            db_type = 'sqlite'
             app.logger.info(f"📁 Base de datos SQLite configurada en: {db_abs_path} (solo desarrollo local)")
     else:
-        # DATABASE_URL está configurado (producción o desarrollo con PostgreSQL)
-        if is_production:
-            app.logger.info(f"✅ Base de datos PostgreSQL configurada para producción")
+        # DATABASE_URL está configurado
+        if db_type == 'mysql':
+            if is_production:
+                app.logger.info(f"✅ Base de datos MySQL configurada para producción")
+            else:
+                app.logger.info(f"📁 Base de datos MySQL configurada desde DATABASE_URL (desarrollo)")
+        elif db_type == 'postgresql':
+            if is_production:
+                app.logger.info(f"✅ Base de datos PostgreSQL configurada para producción (legacy)")
+            else:
+                app.logger.info(f"📁 Base de datos PostgreSQL configurada desde DATABASE_URL (desarrollo)")
         else:
-            app.logger.info(f"📁 Base de datos configurada desde DATABASE_URL (desarrollo)")
+            app.logger.info(f"📁 Base de datos configurada desde DATABASE_URL")
     
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-    # Optimizaciones de conexión para evitar timeouts largos
-    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-        'pool_pre_ping': True,  # Verificar conexiones antes de usarlas
-        'pool_recycle': 3600,   # Reciclar conexiones cada hora
-        'connect_args': {
-            'connect_timeout': 5,  # Timeout de conexión de 5 segundos (en lugar de 30+)
-            'options': '-c statement_timeout=10000'  # Timeout de queries de 10 segundos
+    app.config['DB_TYPE'] = db_type  # Guardar tipo de BD para uso posterior
+    
+    # Optimizaciones de conexión según tipo de BD
+    if db_type == 'mysql':
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+            'pool_pre_ping': True,  # Verificar conexiones antes de usarlas
+            'pool_recycle': 3600,   # Reciclar conexiones cada hora
+            'connect_args': {
+                'charset': 'utf8mb4',
+                'collation': 'utf8mb4_unicode_ci',
+                'autocommit': False,
+            }
         }
-    }
+    elif db_type == 'postgresql':
+        # Configuración legacy para PostgreSQL
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+            'pool_pre_ping': True,
+            'pool_recycle': 3600,
+            'connect_args': {
+                'connect_timeout': 5,
+                'options': '-c statement_timeout=10000'
+            }
+        }
+    else:
+        # SQLite - sin opciones especiales
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+            'pool_pre_ping': True,
+        }
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
     # Inicializar SQLAlchemy

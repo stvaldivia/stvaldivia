@@ -270,24 +270,30 @@ def admin_panel_control_logs():
         
         # Aplicar filtros en la base de datos
         if search:
+            from sqlalchemy import func
             search_pattern = f"%{search}%"
+            # Búsqueda case-insensitive (compatible MySQL)
             query = query.filter(
                 or_(
-                    Delivery.sale_id.ilike(search_pattern),
-                    Delivery.item_name.ilike(search_pattern),
-                    Delivery.bartender.ilike(search_pattern),
-                    Delivery.barra.ilike(search_pattern)
+                    func.lower(Delivery.sale_id).like(func.lower(search_pattern)),
+                    func.lower(Delivery.item_name).like(func.lower(search_pattern)),
+                    func.lower(Delivery.bartender).like(func.lower(search_pattern)),
+                    func.lower(Delivery.barra).like(func.lower(search_pattern))
                 )
             )
         
         if bartender_filter:
-            query = query.filter(Delivery.bartender.ilike(f"%{bartender_filter}%"))
+            from sqlalchemy import func
+            # Búsqueda case-insensitive (compatible MySQL)
+            query = query.filter(func.lower(Delivery.bartender).like(func.lower(f"%{bartender_filter}%")))
         
         if barra_filter:
-            query = query.filter(Delivery.barra.ilike(f"%{barra_filter}%"))
+            # Búsqueda case-insensitive (compatible MySQL)
+            query = query.filter(func.lower(Delivery.barra).like(func.lower(f"%{barra_filter}%")))
         
         if sale_id_filter:
-            query = query.filter(Delivery.sale_id.ilike(f"%{sale_id_filter}%"))
+            # Búsqueda case-insensitive (compatible MySQL)
+            query = query.filter(func.lower(Delivery.sale_id).like(func.lower(f"%{sale_id_filter}%")))
         
         # Contar total (antes de paginar)
         total_logs = query.count()

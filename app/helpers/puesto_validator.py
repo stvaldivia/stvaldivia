@@ -3,7 +3,7 @@ Helper para validar acceso de empleados a puestos de trabajo según su cargo y a
 """
 from flask import current_app
 from app.models.jornada_models import Jornada, PlanillaTrabajador
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from app.models.pos_models import Employee
 from datetime import datetime
 from app.helpers.timezone_utils import CHILE_TZ
@@ -112,37 +112,37 @@ def obtener_empleados_habilitados_para_puesto(tipo_puesto, jornada_id=None):
         
         # Obtener trabajadores de la planilla según tipo de puesto
         if tipo_puesto_lower == 'caja':
-            # Filtrar cajeros
+            # Filtrar cajeros (búsqueda case-insensitive compatible MySQL)
             planilla_workers = PlanillaTrabajador.query.filter_by(
                 jornada_id=jornada.id
             ).filter(
                 or_(
-                    PlanillaTrabajador.rol.ilike('%cajero%'),
-                    PlanillaTrabajador.rol.ilike('%caja%'),
-                    PlanillaTrabajador.area.ilike('%caja%')
+                    func.lower(PlanillaTrabajador.rol).like(func.lower('%cajero%')),
+                    func.lower(PlanillaTrabajador.rol).like(func.lower('%caja%')),
+                    func.lower(PlanillaTrabajador.area).like(func.lower('%caja%'))
                 )
             ).all()
         elif tipo_puesto_lower == 'barra':
-            # Filtrar bartenders
+            # Filtrar bartenders (búsqueda case-insensitive compatible MySQL)
             planilla_workers = PlanillaTrabajador.query.filter_by(
                 jornada_id=jornada.id
             ).filter(
                 or_(
-                    PlanillaTrabajador.rol.ilike('%bartender%'),
-                    PlanillaTrabajador.rol.ilike('%barra%'),
-                    PlanillaTrabajador.rol.ilike('%bar%'),
-                    PlanillaTrabajador.area.ilike('%barra%'),
-                    PlanillaTrabajador.area.ilike('%bar%')
+                    func.lower(PlanillaTrabajador.rol).like(func.lower('%bartender%')),
+                    func.lower(PlanillaTrabajador.rol).like(func.lower('%barra%')),
+                    func.lower(PlanillaTrabajador.rol).like(func.lower('%bar%')),
+                    func.lower(PlanillaTrabajador.area).like(func.lower('%barra%')),
+                    func.lower(PlanillaTrabajador.area).like(func.lower('%bar%'))
                 )
             ).all()
         elif tipo_puesto_lower in ['guardarropia', 'guardarropía']:
-            # Filtrar trabajadores de guardarropía
+            # Filtrar trabajadores de guardarropía (búsqueda case-insensitive compatible MySQL)
             planilla_workers = PlanillaTrabajador.query.filter_by(
                 jornada_id=jornada.id
             ).filter(
                 or_(
-                    PlanillaTrabajador.rol.ilike('%guardarrop%'),
-                    PlanillaTrabajador.area.ilike('%guardarrop%')
+                    func.lower(PlanillaTrabajador.rol).like(func.lower('%guardarrop%')),
+                    func.lower(PlanillaTrabajador.area).like(func.lower('%guardarrop%'))
                 )
             ).all()
         else:

@@ -2,6 +2,7 @@
 Rutas para gestión de productos
 """
 from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, session, current_app
+from sqlalchemy import func
 from app.models import db
 from app.models.product_models import Product
 
@@ -28,7 +29,8 @@ def list_products():
             query = query.filter_by(category=categoria)
         
         if search:
-            query = query.filter(Product.name.ilike(f'%{search}%'))
+            # Búsqueda case-insensitive (compatible MySQL)
+            query = query.filter(func.lower(Product.name).like(func.lower(f'%{search}%')))
         
         # Ordenar por categoría y nombre
         query = query.order_by(Product.category, Product.name)
@@ -278,7 +280,8 @@ def api_search():
             query = query.filter_by(category=categoria)
         
         if search:
-            query = query.filter(Product.name.ilike(f'%{search}%'))
+            # Búsqueda case-insensitive (compatible MySQL)
+            query = query.filter(func.lower(Product.name).like(func.lower(f'%{search}%')))
         
         products = query.limit(limit).all()
         

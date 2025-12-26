@@ -5,6 +5,7 @@ Gestiona ventas usando la API de PHP Point of Sale
 import logging
 from typing import Dict, List, Optional, Any
 from flask import current_app, session
+from sqlalchemy import func
 from app.infrastructure.external.phppos_kiosk_client import PHPPosKioskClient
 from app.helpers.cache import cached
 
@@ -27,8 +28,8 @@ class PosService:
             query = Product.query.filter_by(is_active=True)
             
             if category:
-                # Búsqueda case-insensitive parcial
-                query = query.filter(Product.category.ilike(f"%{category}%"))
+                # Búsqueda case-insensitive parcial (compatible MySQL)
+                query = query.filter(func.lower(Product.category).like(func.lower(f"%{category}%")))
             
             products_db = query.limit(limit).all()
             

@@ -21,7 +21,12 @@ pytest-cov==4.1.0
 
 
 
-psycopg2-binary
+# PostgreSQL driver (comentado - migrando a MySQL)
+# psycopg2-binary
+
+# MySQL driver
+mysql-connector-python>=8.0.33
+
 pandas==2.1.0
 openpyxl==3.1.2
 gunicorn==21.2.0

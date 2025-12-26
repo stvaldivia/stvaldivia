@@ -9,7 +9,7 @@ from flask import current_app
 
 # Versión base de la aplicación (se actualiza automáticamente)
 APP_VERSION_BASE = "2.1"
-APP_VERSION_PATCH = "35"  # Versión específica v2.1.35
+APP_VERSION_PATCH = None  # None = usar git o fecha automáticamente. "35" = fijar en v2.1.35
 APP_NAME = "BIMBA POS"
 
 

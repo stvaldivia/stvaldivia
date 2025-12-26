@@ -333,8 +333,9 @@ def ficha_personal(employee_id):
         # ===== ESTADÍSTICAS BASADAS EN TICKETS Y ENCUESTAS =====
         # Obtener entregas (tragos) del empleado por nombre
         employee_name = employee.name
+        # Búsqueda case-insensitive (compatible MySQL)
         deliveries = Delivery.query.filter(
-            Delivery.bartender.ilike(f'%{employee_name}%')
+            func.lower(Delivery.bartender).like(func.lower(f'%{employee_name}%'))
         ).all()
         
         # Calcular estadísticas de entregas
@@ -386,9 +387,9 @@ def ficha_personal(employee_id):
             }
         
         # Obtener encuestas relacionadas con el empleado
-        # Buscar por nombre de bartender en encuestas
+        # Buscar por nombre de bartender en encuestas (compatible MySQL)
         survey_responses = SurveyResponse.query.filter(
-            SurveyResponse.bartender_nombre.ilike(f'%{employee_name}%')
+            func.lower(SurveyResponse.bartender_nombre).like(func.lower(f'%{employee_name}%'))
         ).all()
         
         # También buscar por barra si el empleado trabajó en alguna barra

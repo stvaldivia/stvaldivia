@@ -131,41 +131,62 @@ def get_table_sizes(limit: int = 20) -> List[Dict[str, Any]]:
 
 
 def get_database_info() -> Dict[str, Any]:
-    """Obtiene información general de la base de datos"""
+    """Obtiene información general de la base de datos (compatible MySQL y PostgreSQL)"""
     try:
-        # Versión de PostgreSQL
-        version_query = text("SELECT version()")
+        from flask import current_app
+        db_type = current_app.config.get('DB_TYPE', 'unknown')
+        
+        # Versión de la base de datos (compatible MySQL y PostgreSQL)
+        version_query = text("SELECT VERSION()")
         version_result = db.session.execute(version_query).fetchone()
         version = version_result[0] if version_result else 'N/A'
         
-        # Extraer número de versión
+        # Extraer número de versión según tipo de BD
         import re
-        version_match = re.search(r'PostgreSQL (\d+\.\d+)', version)
-        version_number = version_match.group(1) if version_match else 'N/A'
+        if db_type == 'mysql':
+            version_match = re.search(r'(\d+\.\d+\.\d+)', version)
+            version_number = version_match.group(1) if version_match else 'N/A'
+        else:
+            # PostgreSQL o desconocido
+            version_match = re.search(r'PostgreSQL (\d+\.\d+)', version)
+            version_number = version_match.group(1) if version_match else 'N/A'
         
         # Nombre de la base de datos
-        db_name_query = text("SELECT current_database()")
+        if db_type == 'mysql':
+            db_name_query = text("SELECT DATABASE()")
+        else:
+            db_name_query = text("SELECT current_database()")
         db_name_result = db.session.execute(db_name_query).fetchone()
         db_name = db_name_result[0] if db_name_result else 'N/A'
         
-        # Fecha de creación (aproximada)
-        created_query = text("""
-            SELECT pg_stat_file('base/' || oid || '/PG_VERSION').modification
-            FROM pg_database
-            WHERE datname = current_database()
-        """)
-        try:
-            created_result = db.session.execute(created_query).fetchone()
-            created_date = created_result[0] if created_result else None
-        except:
-            created_date = None
+        # Fecha de creación (solo PostgreSQL tiene pg_stat_file)
+        created_date = None
+        if db_type == 'postgresql':
+            try:
+                created_query = text("""
+                    SELECT pg_stat_file('base/' || oid || '/PG_VERSION').modification
+                    FROM pg_database
+                    WHERE datname = current_database()
+                """)
+                created_result = db.session.execute(created_query).fetchone()
+                created_date = created_result[0] if created_result else None
+            except:
+                created_date = None
+        # MySQL no tiene equivalente directo, usar información del schema
         
         # Número de tablas
-        tables_count_query = text("""
-            SELECT count(*) 
-            FROM information_schema.tables 
-            WHERE table_schema = 'public'
-        """)
+        if db_type == 'mysql':
+            tables_count_query = text("""
+                SELECT count(*) 
+                FROM information_schema.tables 
+                WHERE table_schema = DATABASE()
+            """)
+        else:
+            tables_count_query = text("""
+                SELECT count(*) 
+                FROM information_schema.tables 
+                WHERE table_schema = 'public'
+            """)
         tables_count_result = db.session.execute(tables_count_query).fetchone()
         tables_count = tables_count_result[0] if tables_count_result else 0
         
@@ -173,6 +194,7 @@ def get_database_info() -> Dict[str, Any]:
             'version': version,
             'version_number': version_number,
             'database_name': db_name,
+            'database_type': db_type,
             'created_date': created_date.isoformat() if created_date else None,
             'tables_count': tables_count
         }
