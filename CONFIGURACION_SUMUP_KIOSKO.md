@@ -14,13 +14,13 @@ Agregar las siguientes variables de entorno:
 
 ```bash
 # API Key de SumUp (obligatorio)
-# Formatos válidos según documentación:
-# - sup_sk_xxxxx (formato estándar)
-# - sk_test_xxxxx (test mode)
-# - sk_live_xxxxx (live mode)
-SUMUP_API_KEY=sup_sk_xxxxx  # Reemplazar con tu API key
-# O para sandbox: sk_test_xxxxx
-# O para producción: sk_live_xxxxx
+# Según documentación oficial: https://developer.sumup.com/api/authentication
+# - Test mode: prefijo sk_test_ (para sandbox)
+# - Live mode: prefijo sk_live_ (para producción)
+# También disponibles: restricted API keys para permisos granulares
+# Obtener desde: https://me.sumup.com/developers/api-keys
+SUMUP_API_KEY=sk_test_xxxxx  # Para sandbox/testing
+# SUMUP_API_KEY=sk_live_xxxxx  # Para producción
 
 # Código del comerciante SumUp (opcional, pero recomendado)
 SUMUP_MERCHANT_CODE=MH4H92C7

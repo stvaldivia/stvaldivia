@@ -6,11 +6,13 @@ Basado en la documentación oficial: https://developer.sumup.com/api
 
 ### Formato de API Keys
 
-Según la documentación, las API keys pueden tener diferentes formatos:
+Según la [documentación oficial de autenticación](https://developer.sumup.com/api/authentication):
 
-- **Formato estándar:** `sup_sk_xxxxx` (como se muestra en los ejemplos)
-- **Test mode:** `sk_test_xxxxx` 
-- **Live mode:** `sk_live_xxxxx`
+- **Test mode:** `sk_test_xxxxx` - Para sandbox/testing
+- **Live mode:** `sk_live_xxxxx` - Para producción
+- **Restricted API keys:** También disponibles para permisos granulares
+
+**Obtener API keys:** [SumUp Dashboard - API Keys](https://me.sumup.com/developers/api-keys)
 
 ### Autenticación en Requests
 
@@ -18,7 +20,13 @@ Según la documentación, las API keys pueden tener diferentes formatos:
 Authorization: Bearer {API_KEY}
 ```
 
-Todos los requests deben incluir el header `Authorization: Bearer {api_key}`.
+**Requisitos:**
+- Todos los requests deben incluir el header `Authorization: Bearer {api_key}`
+- Todos los requests deben ser **HTTPS** (no HTTP)
+- Las API keys deben mantenerse secretas y no exponerse en código cliente
+- No compartir API keys públicamente (GitHub, etc.)
+
+**Referencia:** [SumUp Authentication Documentation](https://developer.sumup.com/api/authentication)
 
 ## 🌐 Base URL
 
