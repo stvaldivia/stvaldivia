@@ -853,10 +853,14 @@ document.addEventListener('DOMContentLoaded', function() {
             const textoOriginal = this.textContent;
             this.textContent = 'Enviando...';
             
+            // Obtener token CSRF si existe
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            
             fetch(`/admin/ecommerce/compras/${entradaId}/enviar-resumen`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    ...(csrfToken && { 'X-CSRFToken': csrfToken })
                 }
             })
             .then(response => response.json())
