@@ -555,6 +555,13 @@
                                    style="background: #10b981; color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; text-decoration: none; display: inline-block;">
                                     👁️ Ver/Enviar Resumen
                                 </a>
+                                <button class="btn-enviar-email" 
+                                        data-entrada-id="{{ compra.id }}"
+                                        data-email="{{ compra.comprador_email }}"
+                                        style="background: #667eea; color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600;"
+                                        title="Enviar email de resumen a {{ compra.comprador_email }}">
+                                    📧 Enviar Mail
+                                </button>
                             </div>
                         </td>
                     </tr>
