@@ -205,13 +205,47 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    cantidadInput.addEventListener('input', updateTotal);
-    cantidadInput.addEventListener('change', function() {
-        const value = parseInt(this.value) || 1;
+    // Actualizar cuando el usuario escribe directamente
+    cantidadInput.addEventListener('input', function() {
+        let value = parseInt(this.value) || 1;
         const max = parseInt(this.getAttribute('max')) || Infinity;
-        if (value < 1) this.value = 1;
-        if (value > max) this.value = max;
+        const min = parseInt(this.getAttribute('min')) || 1;
+        
+        // Validar y corregir el valor
+        if (isNaN(value) || value < min) {
+            value = min;
+            this.value = min;
+        } else if (value > max) {
+            value = max;
+            this.value = max;
+        }
+        
         updateTotal();
+    });
+    
+    // Actualizar cuando el input pierde el foco
+    cantidadInput.addEventListener('change', function() {
+        let value = parseInt(this.value) || 1;
+        const max = parseInt(this.getAttribute('max')) || Infinity;
+        const min = parseInt(this.getAttribute('min')) || 1;
+        
+        // Validar y corregir el valor
+        if (isNaN(value) || value < min) {
+            value = min;
+            this.value = min;
+        } else if (value > max) {
+            value = max;
+            this.value = max;
+        }
+        
+        updateTotal();
+    });
+    
+    // Actualizar cuando se usan las flechas del input number
+    cantidadInput.addEventListener('keyup', function(e) {
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+            updateTotal();
+        }
     });
 });
 </script>
