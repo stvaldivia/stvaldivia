@@ -233,8 +233,8 @@ def generate_resumen_compra_html(entrada: Entrada, preview: bool = False) -> tup
     }
     metodo_display = metodos_pago.get(entrada.metodo_pago, entrada.metodo_pago or 'No especificado')
     
-    # Determinar si mostrar link de pago (solo si el estado es "recibido")
-    mostrar_link_pago = entrada.estado_pago.lower() == 'recibido'
+    # Determinar si mostrar link de pago (siempre mostrar si el estado es "recibido" o si el método es "manual")
+    mostrar_link_pago = entrada.estado_pago.lower() == 'recibido' or entrada.metodo_pago == 'manual'
     
     # Generar QR siempre (se incluye en todos los emails)
     # El QR se mostrará pero con mensaje indicando que solo se activa cuando se recibe el pago
