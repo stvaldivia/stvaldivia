@@ -240,6 +240,84 @@
         font-size: 1.1rem;
         margin: 0;
     }
+    
+    /* Estilos para selector de estado */
+    .estado-selector {
+        background: rgba(15, 23, 42, 0.8);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 6px;
+        padding: 0.5rem;
+        color: #fff;
+        font-size: 0.85rem;
+        cursor: pointer;
+        min-width: 120px;
+        transition: all 0.3s ease;
+        font-weight: 600;
+    }
+    
+    .estado-selector:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    /* Color para estado Recibido (amarillo/naranja) */
+    .estado-selector.estado-recibido {
+        background: rgba(255, 193, 7, 0.2);
+        border-color: rgba(255, 193, 7, 0.4);
+        color: #ffc107;
+    }
+    
+    .estado-selector.estado-recibido:hover {
+        background: rgba(255, 193, 7, 0.3);
+        border-color: rgba(255, 193, 7, 0.6);
+    }
+    
+    /* Color para estado Pagado (azul) */
+    .estado-selector.estado-pagado {
+        background: rgba(33, 150, 243, 0.2);
+        border-color: rgba(33, 150, 243, 0.4);
+        color: #2196f3;
+    }
+    
+    .estado-selector.estado-pagado:hover {
+        background: rgba(33, 150, 243, 0.3);
+        border-color: rgba(33, 150, 243, 0.6);
+    }
+    
+    /* Color para estado Entregado (verde) */
+    .estado-selector.estado-entregado {
+        background: rgba(76, 175, 80, 0.2);
+        border-color: rgba(76, 175, 80, 0.4);
+        color: #4caf50;
+    }
+    
+    .estado-selector.estado-entregado:hover {
+        background: rgba(76, 175, 80, 0.3);
+        border-color: rgba(76, 175, 80, 0.6);
+    }
+    
+    /* Estilos para las opciones del selector */
+    .estado-selector option {
+        background: #1e293b;
+        color: #fff;
+        padding: 0.5rem;
+    }
+    
+    .estado-selector option[value="recibido"] {
+        background: rgba(255, 193, 7, 0.1);
+        color: #ffc107;
+    }
+    
+    .estado-selector option[value="pagado"] {
+        background: rgba(33, 150, 243, 0.1);
+        color: #2196f3;
+    }
+    
+    .estado-selector option[value="entregado"] {
+        background: rgba(76, 175, 80, 0.1);
+        color: #4caf50;
+    }
 </style>
 
 <div class="compras-container">
@@ -362,10 +440,10 @@
                         <td>${{ "{:,.0f}".format(compra.precio_unitario) }}</td>
                         <td><strong>${{ "{:,.0f}".format(compra.cantidad * compra.precio_unitario) }}</strong></td>
                         <td>
-                            <select class="estado-selector" 
+                            <select class="estado-selector estado-{{ compra.estado_pago }}" 
                                     data-entrada-id="{{ compra.id }}"
                                     data-ticket-code="{{ compra.ticket_code }}"
-                                    style="background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 6px; padding: 0.5rem; color: #fff; font-size: 0.85rem; cursor: pointer; min-width: 120px;">
+                                    data-estado-actual="{{ compra.estado_pago }}">
                                 <option value="recibido" {% if compra.estado_pago == 'recibido' %}selected{% endif %}>Recibido</option>
                                 <option value="pagado" {% if compra.estado_pago == 'pagado' %}selected{% endif %}>Pagado</option>
                                 <option value="entregado" {% if compra.estado_pago == 'entregado' %}selected{% endif %}>Entregado</option>
@@ -395,23 +473,34 @@
 document.addEventListener('DOMContentLoaded', function() {
     const estadoSelectors = document.querySelectorAll('.estado-selector');
     
+    // Función para actualizar el color del selector según el estado
+    function actualizarColorSelector(selector, estado) {
+        // Remover todas las clases de estado
+        selector.classList.remove('estado-recibido', 'estado-pagado', 'estado-entregado');
+        // Agregar la clase correspondiente al nuevo estado
+        selector.classList.add('estado-' + estado);
+        // Actualizar el atributo data-estado-actual
+        selector.dataset.estadoActual = estado;
+    }
+    
     estadoSelectors.forEach(selector => {
+        // Inicializar el color según el estado actual
+        const estadoActual = selector.dataset.estadoActual || selector.value;
+        actualizarColorSelector(selector, estadoActual);
+        
         selector.addEventListener('change', function() {
             const entradaId = this.dataset.entradaId;
             const ticketCode = this.dataset.ticketCode;
             const nuevoEstado = this.value;
-            const estadoAnterior = this.dataset.estadoAnterior || this.querySelector(`option[value="${this.value}"]`).textContent;
+            const estadoAnterior = this.dataset.estadoActual || this.value;
             
-            // Guardar el estado anterior antes de cambiar
-            const optionAnterior = Array.from(this.options).find(opt => opt.selected && opt.value !== nuevoEstado);
-            if (optionAnterior) {
-                this.dataset.estadoAnterior = optionAnterior.value;
-            }
+            // Actualizar el color inmediatamente para feedback visual
+            actualizarColorSelector(this, nuevoEstado);
             
             // Deshabilitar el selector mientras se procesa
             this.disabled = true;
             const estiloOriginal = this.style.opacity;
-            this.style.opacity = '0.6';
+            this.style.opacity = '0.7';
             
             // Hacer la petición AJAX
             fetch(`/admin/ecommerce/compras/${entradaId}/cambiar-estado`, {
@@ -426,8 +515,8 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // Actualizar el selector con el nuevo estado
-                    this.dataset.estadoAnterior = nuevoEstado;
+                    // Actualizar el estado actual
+                    this.dataset.estadoActual = nuevoEstado;
                     
                     // Mostrar mensaje de éxito (opcional, puedes usar un toast o notificación)
                     console.log(`Estado del pedido ${ticketCode} cambiado a ${nuevoEstado}`);
@@ -436,20 +525,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     // setTimeout(() => location.reload(), 500);
                 } else {
                     // Revertir al estado anterior si falla
-                    const estadoAnterior = this.dataset.estadoAnterior;
-                    if (estadoAnterior) {
-                        this.value = estadoAnterior;
-                    }
+                    this.value = estadoAnterior;
+                    actualizarColorSelector(this, estadoAnterior);
                     alert('Error: ' + (data.error || 'No se pudo cambiar el estado'));
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
                 // Revertir al estado anterior
-                const estadoAnterior = this.dataset.estadoAnterior;
-                if (estadoAnterior) {
-                    this.value = estadoAnterior;
-                }
+                this.value = estadoAnterior;
+                actualizarColorSelector(this, estadoAnterior);
                 alert('Error al cambiar el estado. Por favor intenta nuevamente.');
             })
             .finally(() => {
