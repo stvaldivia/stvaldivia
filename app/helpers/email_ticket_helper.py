@@ -242,7 +242,8 @@ def generate_resumen_compra_html(entrada: Entrada, preview: bool = False) -> tup
     mostrar_qr = qr_code_base64 is not None
     
     # Determinar si el pago está realizado (para mostrar mensaje diferente en el QR)
-    pago_realizado = entrada.estado_pago.lower() in ['pagado', 'entregado']
+    # No mostrar "pago verificado" si el método de pago es manual
+    pago_realizado = entrada.estado_pago.lower() in ['pagado', 'entregado'] and entrada.metodo_pago != 'manual'
     
     email_body = f"""
     <!DOCTYPE html>
