@@ -217,7 +217,7 @@ def generate_resumen_compra_html(entrada: Entrada, preview: bool = False) -> tup
     # Calcular precio total
     precio_total = float(entrada.cantidad) * float(entrada.precio_unitario) if entrada.precio_unitario else float(entrada.precio_total or 0)
     
-    # Obtener link de pago según el monto
+    # Obtener link de pago según el monto (usar el link correcto según el monto)
     payment_link = get_payment_link_by_amount(precio_total)
     
     # Estado en español
@@ -274,16 +274,16 @@ def generate_resumen_compra_html(entrada: Entrada, preview: bool = False) -> tup
             {f'''
             <div style="text-align: center; margin: 30px 0; padding: 30px; background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%); border-radius: 12px; box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);">
                 <h2 style="color: white; margin-top: 0; font-size: 24px; margin-bottom: 15px;">💳 Link de Pago</h2>
-                <a href="https://pay.sumup.com/b2c/Q3XX3AP6" 
+                <a href="{payment_link}" 
                    target="_blank"
                    style="background: white; color: #f59e0b; padding: 18px 40px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 700; font-size: 20px; margin: 15px 0; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
                     💰 Pagar ${precio_total:,.0f}
                 </a>
                 <p style="color: rgba(255,255,255,0.95); font-size: 16px; margin: 20px 0 10px 0; font-weight: 500;">
-                    <a href="https://pay.sumup.com/b2c/Q3XX3AP6" target="_blank" style="color: white; text-decoration: underline;">Haz clic aquí para realizar tu pago</a>
+                    <a href="{payment_link}" target="_blank" style="color: white; text-decoration: underline;">Haz clic aquí para realizar tu pago</a>
                 </p>
                 <p style="color: rgba(255,255,255,0.85); font-size: 14px; margin: 10px 0 0 0;">
-                    <a href="https://pay.sumup.com/b2c/Q3XX3AP6" target="_blank" style="color: white; word-break: break-all; text-decoration: underline;">https://pay.sumup.com/b2c/Q3XX3AP6</a>
+                    <a href="{payment_link}" target="_blank" style="color: white; word-break: break-all; text-decoration: underline;">{payment_link}</a>
                 </p>
             </div>
             ''' if mostrar_link_pago else ''}
