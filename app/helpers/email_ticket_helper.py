@@ -218,7 +218,7 @@ def generate_resumen_compra_html(entrada: Entrada, preview: bool = False) -> tup
     
     # Estado en español
     estados = {
-        'recibido': 'Recibido',
+        'recibido': 'Pendiente de pago',
         'pagado': 'Pagado',
         'entregado': 'Entregado'
     }
