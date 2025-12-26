@@ -398,8 +398,15 @@ def enviar_resumen_compra(entrada_id):
                 'error': 'Configuración SMTP incompleta. Verifica SMTP_SERVER, SMTP_USER y SMTP_PASSWORD en las variables de entorno.'
             }), 500
         
-        # Enviar email
-        enviado = send_resumen_compra_email(entrada)
+        # Enviar email con captura de excepciones para mejor diagnóstico
+        try:
+            enviado = send_resumen_compra_email(entrada)
+        except Exception as send_error:
+            logger.error(f"Error al llamar send_resumen_compra_email: {send_error}", exc_info=True)
+            return jsonify({
+                'success': False,
+                'error': f'Error al enviar email: {str(send_error)}'
+            }), 500
         
         # Recargar la entrada para obtener los campos actualizados
         db.session.refresh(entrada)
@@ -420,9 +427,11 @@ def enviar_resumen_compra(entrada_id):
                 'email_enviado': email_enviado
             })
         else:
+            # Obtener último error de logs si es posible
+            error_msg = 'No se pudo enviar el email. Verifica la configuración SMTP (SMTP_SERVER, SMTP_USER, SMTP_PASSWORD) y los logs del servidor.'
             return jsonify({
                 'success': False,
-                'error': 'No se pudo enviar el email. Verifica la configuración SMTP y los logs del servidor.',
+                'error': error_msg,
                 'email_enviado': entrada.email_resumen_enviado if hasattr(entrada, 'email_resumen_enviado') else False
             }), 500
         

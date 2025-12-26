@@ -438,6 +438,12 @@ def send_resumen_compra_email(entrada: Entrada) -> bool:
             logger.info(f"✅ Email de resumen enviado exitosamente a {entrada.comprador_email} (Ticket: {entrada.ticket_code})")
             return True
             
+        except smtplib.SMTPAuthenticationError as e:
+            logger.error(f"❌ Error de autenticación SMTP: {e}")
+            return False
+        except smtplib.SMTPException as e:
+            logger.error(f"❌ Error SMTP: {e}")
+            return False
         except Exception as email_error:
             logger.error(f"❌ Error al enviar email de resumen a {entrada.comprador_email}: {email_error}", exc_info=True)
             return False
