@@ -797,6 +797,14 @@ def create_app():
                 app.register_blueprint(kiosk_bp, url_prefix=combined_prefix)
             else:
                 app.register_blueprint(kiosk_bp)
+            
+            # Eximir blueprint de kiosko de CSRF si está habilitado (APIs públicas)
+            if csrf:
+                try:
+                    csrf.exempt(kiosk_bp)
+                    app.logger.info("✅ Blueprint de kiosko exento de CSRF")
+                except Exception as exempt_error:
+                    app.logger.debug(f"No se pudo eximir blueprint de kiosko de CSRF: {exempt_error}")
         except ImportError as e:
             app.logger.warning(f"⚠️  No se pudo registrar el blueprint del kiosko: {e}")
         except Exception as e:
