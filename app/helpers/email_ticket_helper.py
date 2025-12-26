@@ -398,6 +398,7 @@ def send_resumen_compra_email(entrada: Entrada) -> bool:
         # Obtener configuración de email
         # Priorizar variables de entorno del sistema (desde systemd)
         smtp_server = os.environ.get('SMTP_SERVER') or current_app.config.get('SMTP_SERVER')
+        # Por defecto usar puerto 587 (TLS) en lugar de 465 (SSL)
         smtp_port = int(os.environ.get('SMTP_PORT') or current_app.config.get('SMTP_PORT') or '587')
         smtp_user = os.environ.get('SMTP_USER') or current_app.config.get('SMTP_USER')
         smtp_password = os.environ.get('SMTP_PASSWORD') or current_app.config.get('SMTP_PASSWORD')
@@ -405,11 +406,15 @@ def send_resumen_compra_email(entrada: Entrada) -> bool:
         
         # Log de configuración (sin mostrar contraseña completa)
         logger.info(f"📧 Configuración SMTP: servidor={smtp_server}, puerto={smtp_port}, usuario={smtp_user}")
-        logger.debug(f"   Variables desde os.environ: SMTP_SERVER={bool(os.environ.get('SMTP_SERVER'))}, SMTP_USER={bool(os.environ.get('SMTP_USER'))}, SMTP_PASSWORD={bool(os.environ.get('SMTP_PASSWORD'))}")
+        logger.info(f"   Variables desde os.environ: SMTP_SERVER={bool(os.environ.get('SMTP_SERVER'))}, SMTP_USER={bool(os.environ.get('SMTP_USER'))}, SMTP_PASSWORD={bool(os.environ.get('SMTP_PASSWORD'))}")
+        logger.info(f"   Variables desde current_app.config: SMTP_SERVER={bool(current_app.config.get('SMTP_SERVER'))}, SMTP_USER={bool(current_app.config.get('SMTP_USER'))}, SMTP_PASSWORD={bool(current_app.config.get('SMTP_PASSWORD'))}")
         
         if not smtp_server or not smtp_user or not smtp_password:
-            logger.warning("⚠️ Configuración de SMTP incompleta. Email no enviado.")
-            logger.warning(f"   SMTP_SERVER: {bool(smtp_server)}, SMTP_USER: {bool(smtp_user)}, SMTP_PASSWORD: {bool(smtp_password)}")
+            logger.error("❌ Configuración de SMTP incompleta. Email no enviado.")
+            logger.error(f"   SMTP_SERVER: {smtp_server} (tipo: {type(smtp_server)})")
+            logger.error(f"   SMTP_USER: {smtp_user} (tipo: {type(smtp_user)})")
+            logger.error(f"   SMTP_PASSWORD: {'***' if smtp_password else 'None'} (tipo: {type(smtp_password)})")
+            logger.error(f"   Variables de entorno disponibles: {[k for k in os.environ.keys() if 'SMTP' in k]}")
             logger.info(f"📧 Email de resumen preparado para {entrada.comprador_email} (no enviado)")
             return False
         
