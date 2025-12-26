@@ -80,6 +80,16 @@ else
     echo "⚠️  Script de migración no encontrado"
 fi
 
+# Ejecutar migración de email tracking
+echo "🔄 Ejecutando migración de email tracking..."
+if [ -f migrate_add_email_tracking.py ]; then
+    python3 migrate_add_email_tracking.py || {
+        echo "⚠️  Error en migración de email tracking (continuando...)"
+    }
+else
+    echo "⚠️  Script de migración de email tracking no encontrado"
+fi
+
 # Reiniciar servicio
 echo "🔄 Reiniciando servicio..."
 if sudo systemctl is-active --quiet gunicorn.service; then
