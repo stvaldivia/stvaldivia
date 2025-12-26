@@ -90,6 +90,10 @@ def migrate_sumup_fields():
             print(f"📝 Campos a agregar: {list(campos_faltantes.keys())}")
             print()
             
+            # Detectar tipo de base de datos
+            db_type = db.engine.dialect.name
+            supports_comments = db_type == 'mysql'
+            
             # Agregar cada campo faltante
             for campo, config in campos_faltantes.items():
                 try:
@@ -99,7 +103,7 @@ def migrate_sumup_fields():
                     else:
                         sql += " NULL"
                     
-                    if config.get('comment'):
+                    if config.get('comment') and supports_comments:
                         sql += f" COMMENT '{config['comment']}'"
                     
                     db.session.execute(text(sql))
