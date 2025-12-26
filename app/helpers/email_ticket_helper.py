@@ -435,6 +435,7 @@ def send_resumen_compra_email(entrada: Entrada) -> bool:
             try:
                 logger.info(f"🔍 Resolviendo DNS para {smtp_server}...")
                 # Usar socket estándar (no eventlet) para resolver DNS
+                # Esto evita el timeout de greendns
                 smtp_ip = socket.gethostbyname(smtp_server)
                 logger.info(f"   ✅ DNS resuelto: {smtp_server} -> {smtp_ip}")
                 # Usar IP directamente para evitar problemas con greendns
@@ -445,10 +446,6 @@ def send_resumen_compra_email(entrada: Entrada) -> bool:
             
             logger.info(f"🔌 Conectando a SMTP: {smtp_host}:{smtp_port}")
             logger.info(f"   Usuario: {smtp_user}")
-            
-            # Deshabilitar greendns temporalmente para smtplib usando socket estándar
-            import eventlet
-            original_patcher = eventlet.patcher.original('socket')
             
             try:
                 if smtp_port == 465:
