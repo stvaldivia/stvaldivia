@@ -103,11 +103,12 @@ class SumUpClient:
             logger.info(f"Creando checkout SumUp: {url}")
             logger.debug(f"Payload: {payload}")
             
+            # Usar timeout más largo para conexión y lectura (conexión: 30s, lectura: 30s)
             response = requests.post(
                 url,
                 json=payload,
                 headers=self._get_headers(),
-                timeout=15
+                timeout=(30, 30)  # (connect timeout, read timeout)
             )
             
             # Verificar Content-Type
@@ -193,10 +194,11 @@ class SumUpClient:
         try:
             url = f"{self.BASE_URL}/v0.1/checkouts/{checkout_id}"
             
+            # Usar timeout más largo para conexión y lectura
             response = requests.get(
                 url,
                 headers=self._get_headers(),
-                timeout=10
+                timeout=(30, 30)  # (connect timeout, read timeout)
             )
             
             response.raise_for_status()
@@ -257,11 +259,12 @@ class SumUpClient:
             
             payload = payment_data or {}
             
+            # Usar timeout más largo para conexión y lectura
             response = requests.post(
                 url,
                 json=payload,
                 headers=self._get_headers(),
-                timeout=15
+                timeout=(30, 30)  # (connect timeout, read timeout)
             )
             
             response.raise_for_status()
