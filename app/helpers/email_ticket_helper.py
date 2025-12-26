@@ -402,8 +402,12 @@ def send_resumen_compra_email(entrada: Entrada) -> bool:
         smtp_password = current_app.config.get('SMTP_PASSWORD') or os.environ.get('SMTP_PASSWORD')
         smtp_from = current_app.config.get('SMTP_FROM') or os.environ.get('SMTP_FROM') or smtp_user
         
+        # Log de configuración (sin mostrar contraseña completa)
+        logger.info(f"📧 Configuración SMTP: servidor={smtp_server}, puerto={smtp_port}, usuario={smtp_user}")
+        
         if not smtp_server or not smtp_user or not smtp_password:
             logger.warning("⚠️ Configuración de SMTP incompleta. Email no enviado.")
+            logger.warning(f"   SMTP_SERVER: {bool(smtp_server)}, SMTP_USER: {bool(smtp_user)}, SMTP_PASSWORD: {bool(smtp_password)}")
             logger.info(f"📧 Email de resumen preparado para {entrada.comprador_email} (no enviado)")
             return False
         
