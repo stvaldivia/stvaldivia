@@ -188,7 +188,7 @@
   .table-responsive tbody td button,
   .table-responsive tbody td a.btn {
     width: 100%;
-    min-height: 44px;
+    min-height: 2.75rem;
     margin: 0;
     justify-content: center;
   }
@@ -205,7 +205,8 @@
   
   /* Solo aplicar min-width si la tabla realmente lo necesita */
   .table-responsive.has-min-width {
-    min-width: 600px;
+    min-width: clamp(37.5rem, 75vw, 50rem);
+    max-width: 100%;
   }
   
   /* Mantener estructura de tabla pero con scroll */

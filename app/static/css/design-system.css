@@ -490,7 +490,7 @@ small {
 
 /* Admin Page Container */
 .admin-page {
-  max-width: 1400px;
+  max-width: min(87.5rem, 95vw);
   margin: 0 auto;
   padding: var(--space-6);
 }
@@ -655,7 +655,7 @@ small {
 /* Large devices (desktops, 992px and up) */
 @media (min-width: 992px) {
   .container {
-    max-width: 1200px;
+    max-width: min(75rem, 90vw);
     padding: var(--space-5);
   }
   
@@ -667,7 +667,7 @@ small {
 /* Extra Large devices (large desktops, 1200px and up) */
 @media (min-width: 1200px) {
   .container {
-    max-width: 1400px;
+    max-width: min(87.5rem, 90vw);
   }
 }
 
@@ -718,7 +718,8 @@ small {
   }
   
   .table {
-    min-width: 600px; /* Ancho mínimo para scroll horizontal */
+    min-width: clamp(37.5rem, 75vw, 50rem); /* Ancho mínimo para scroll horizontal */
+    max-width: 100%;
     font-size: var(--text-sm);
   }
   
@@ -750,6 +751,7 @@ small {
     width: 100%;
     padding: var(--space-4);
     font-size: var(--text-base);
+    min-height: 2.75rem;
   }
   
   /* Grids de formularios se apilan */
@@ -877,13 +879,13 @@ small {
   }
 }
 
-/* --- TOUCH FRIENDLY --- */
+/* --- RESPONSIVE TOUCH FRIENDLY --- */
 @media (max-width: 767px) {
   /* Áreas táctiles más grandes en móvil */
   .btn,
   .admin-nav-btn,
   a {
-    min-height: 44px; /* Tamaño mínimo recomendado para touch */
+    min-height: 2.75rem; /* Tamaño mínimo recomendado para touch */
     display: inline-flex;
     align-items: center;
     justify-content: center;
