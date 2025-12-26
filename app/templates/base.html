@@ -126,12 +126,17 @@
                             aria-label="Kioskos">
                             🛒 Kioskos {% if tpv_status.kioskos.activos > 0 %}●{% else %}○{% endif %}
                         </a>
-                        <a href="/ecommerce"
-                            class="nav-dropdown-item {% if request.path.startswith('/ecommerce') or (request.endpoint and 'ecommerce' in request.endpoint) %}active{% endif %}"
-                            aria-label="Ecommerce">
-                            🌐 Ecommerce {% if tpv_status.ecommerce.activo %}●{% else %}○{% endif %}
-                        </a>
-                        <div class="nav-dropdown-divider"></div>
+                <a href="/ecommerce"
+                    class="nav-dropdown-item {% if request.path.startswith('/ecommerce') or (request.endpoint and 'ecommerce' in request.endpoint) %}active{% endif %}"
+                    aria-label="Ecommerce">
+                    🌐 Ecommerce {% if tpv_status.ecommerce.activo %}●{% else %}○{% endif %}
+                </a>
+                <a href="{{ url_for('ecommerce.landing') }}"
+                    class="nav-dropdown-item {% if request.path == '/ecommerce/landing' or (request.endpoint == 'ecommerce.landing') %}active{% endif %}"
+                    aria-label="Landing Page">
+                    🎯 Landing Page
+                </a>
+                <div class="nav-dropdown-divider"></div>
                         <a href="{{ url_for('routes.admin_scanner') }}"
                             class="nav-dropdown-item {% if request.endpoint == 'scanner.scanner' or request.endpoint == 'routes.admin_scanner' %}active{% endif %}"
                             aria-label="Escaneo de Tickets">
@@ -239,6 +244,11 @@
                     class="nav-dropdown-item {% if request.path.startswith('/ecommerce') or (request.endpoint and 'ecommerce' in request.endpoint) %}active{% endif %}"
                     aria-label="Ecommerce">
                     🌐 Ecommerce {% if tpv_status.ecommerce.activo %}●{% else %}○{% endif %}
+                </a>
+                <a href="{{ url_for('ecommerce.landing') }}"
+                    class="nav-dropdown-item {% if request.path == '/ecommerce/landing' or (request.endpoint == 'ecommerce.landing') %}active{% endif %}"
+                    aria-label="Landing Page">
+                    🎯 Landing Page
                 </a>
                 <div class="nav-dropdown-divider"></div>
                 <a href="{{ url_for('routes.admin_scanner') }}"

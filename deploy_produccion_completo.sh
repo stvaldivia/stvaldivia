@@ -30,7 +30,10 @@ git clone --depth 1 --branch main "$REPO_URL" "\$TMP_DIR" || {
 echo "📋 Copiando archivos actualizados..."
 PROJECT_DIR="$PROJECT_DIR"
 sudo mkdir -p "\$PROJECT_DIR"
+sudo mkdir -p "\$PROJECT_DIR/logs"
 sudo chown -R deploy:deploy "\$PROJECT_DIR"
+sudo chmod -R 755 "\$PROJECT_DIR"
+sudo chmod -R 775 "\$PROJECT_DIR/logs"
 
 # Copiar archivos (preservando estructura)
 sudo -u deploy rsync -av --delete \
@@ -47,6 +50,10 @@ echo "✅ Código actualizado"
 # Activar entorno virtual
 cd "\$PROJECT_DIR"
 if [ -d venv ]; then
+    # Asegurar permisos del venv
+    sudo chown -R deploy:deploy venv/
+    sudo chmod -R 755 venv/
+    
     source venv/bin/activate
     echo "✅ Entorno virtual activado"
     
@@ -62,6 +69,10 @@ fi
 # Ejecutar migración de system_config
 echo "🔄 Ejecutando migración de system_config..."
 if [ -f migrate_system_config.py ]; then
+    # Asegurar permisos de logs antes de ejecutar migración
+    sudo chown -R deploy:deploy logs/ 2>/dev/null || true
+    sudo chmod -R 775 logs/ 2>/dev/null || true
+    
     python3 migrate_system_config.py || {
         echo "⚠️  Error en migración (continuando...)"
     }
@@ -160,4 +171,5 @@ echo "💡 Próximos pasos:"
 echo "   1. Verificar que el sitio funciona: http://$VM_IP"
 echo "   2. Acceder al panel de control: http://$VM_IP/admin/panel_control"
 echo "   3. Verificar que el toggle de base de datos aparece (solo superadmin)"
+
 

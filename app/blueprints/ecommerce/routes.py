@@ -43,6 +43,197 @@ except ImportError:
     pass
 
 
+@ecommerce_bp.route('/landing', methods=['GET', 'POST'])
+@exempt_from_csrf
+def landing():
+    """Landing page moderna para el producto principal del ecommerce con formulario de compra"""
+    if request.method == 'POST':
+        # Procesar formulario de compra (misma lógica que checkout POST)
+        try:
+            from app.models.product_models import Product
+            
+            data = request.form
+            
+            # Validar datos requeridos
+            comprador_nombre = data.get('nombre', '').strip()
+            comprador_email = data.get('email', '').strip()
+            comprador_rut = data.get('rut', '').strip()
+            comprador_telefono = data.get('telefono', '').strip()
+            product_id = data.get('producto_id', type=int)
+            cantidad = int(data.get('cantidad', 1))
+            precio_unitario = Decimal(data.get('precio_unitario', 0))
+            precio_total = Decimal(data.get('precio_total', 0))
+            
+            # Validar producto
+            if not product_id:
+                flash('Producto no especificado', 'error')
+                return redirect(url_for('ecommerce.landing'))
+            
+            producto = Product.query.get(product_id)
+            
+            if not producto:
+                logger.warning(f"[POST Landing] Producto no encontrado: product_id={product_id}")
+                flash('Producto no encontrado', 'error')
+                return redirect(url_for('ecommerce.landing'))
+            
+            # Verificar categoría case-insensitive (acepta ENTRADAS, Entradas, entrada, etc.)
+            categoria_ok = producto.category and producto.category.upper() in ['ENTRADAS', 'ENTRADA']
+            if not categoria_ok:
+                logger.warning(f"[POST Landing] Producto categoría incorrecta: product_id={product_id}, categoria='{producto.category}'")
+                flash('Producto no disponible: categoría incorrecta', 'error')
+                return redirect(url_for('ecommerce.landing'))
+            
+            if not producto.is_active:
+                logger.warning(f"[POST Landing] Producto inactivo: product_id={product_id}")
+                flash('Producto no disponible: producto inactivo', 'error')
+                return redirect(url_for('ecommerce.landing'))
+            
+            # Validar stock disponible
+            stock_disponible = producto.stock_quantity
+            if stock_disponible is not None:
+                if stock_disponible <= 0:
+                    flash('Este producto está agotado', 'error')
+                    return redirect(url_for('ecommerce.landing'))
+                if cantidad > stock_disponible:
+                    flash(f'Solo hay {stock_disponible} unidad(es) disponible(s)', 'error')
+                    return redirect(url_for('ecommerce.landing'))
+            
+            # Valores por defecto si están vacíos
+            if not comprador_nombre:
+                comprador_nombre = 'Cliente'
+            if not comprador_email:
+                comprador_email = 'cliente@ejemplo.com'
+            
+            if cantidad <= 0 or precio_total <= 0:
+                flash('Cantidad y precio deben ser mayores a 0', 'error')
+                return redirect(url_for('ecommerce.landing'))
+            
+            # Crear sesión de checkout
+            checkout_session = CheckoutSession(
+                session_id=CheckoutSession.generate_session_id(),
+                evento_nombre=producto.name,
+                evento_fecha=datetime.utcnow(),
+                evento_lugar='BIMBA',
+                comprador_nombre=comprador_nombre,
+                comprador_email=comprador_email,
+                comprador_rut=comprador_rut,
+                comprador_telefono=comprador_telefono,
+                cantidad=cantidad,
+                precio_unitario=precio_unitario,
+                precio_total=precio_total,
+                estado='iniciado',
+                expires_at=datetime.utcnow() + timedelta(minutes=30)
+            )
+            
+            db.session.add(checkout_session)
+            db.session.flush()
+            
+            # Procesar pago directamente (sin GetNet)
+            # Simular pago aprobado para crear la entrada inmediatamente
+            from app.models.ecommerce_models import Entrada
+            
+            # Validar stock antes de procesar (doble verificación)
+            if producto.stock_quantity is not None:
+                if producto.stock_quantity < cantidad:
+                    db.session.rollback()
+                    flash(f'Solo hay {producto.stock_quantity} unidad(es) disponible(s)', 'error')
+                    return redirect(url_for('ecommerce.landing'))
+            
+            # Crear entrada directamente
+            entrada = Entrada(
+                ticket_code=Entrada.generate_ticket_code(),
+                evento_nombre=producto.name,
+                evento_fecha=datetime.utcnow(),
+                evento_lugar='BIMBA',
+                comprador_nombre=comprador_nombre,
+                comprador_email=comprador_email,
+                comprador_rut=comprador_rut,
+                comprador_telefono=comprador_telefono,
+                cantidad=cantidad,
+                precio_unitario=precio_unitario,
+                precio_total=precio_total,
+                estado_pago='pagado',
+                metodo_pago='manual',  # Cambiado de 'getnet_web' a 'manual'
+                paid_at=datetime.utcnow()
+            )
+            
+            db.session.add(entrada)
+            db.session.flush()
+            
+            # Actualizar stock del inventario si el producto tiene stock limitado
+            if producto.stock_quantity is not None:
+                producto.stock_quantity -= cantidad
+                if producto.stock_quantity < 0:
+                    producto.stock_quantity = 0  # No permitir stock negativo
+                producto.updated_at = datetime.utcnow()
+                logger.info(f"Stock actualizado para {producto.name}: {producto.stock_quantity + cantidad} -> {producto.stock_quantity}")
+            
+            # Actualizar checkout session
+            checkout_session.estado = 'completado'
+            checkout_session.completed_at = datetime.utcnow()
+            checkout_session.entrada_id = entrada.id
+            db.session.commit()
+            
+            # Enviar email con ticket
+            try:
+                send_ticket_email(entrada)
+                logger.info(f"Email de ticket enviado a {comprador_email}")
+            except Exception as email_error:
+                logger.warning(f"No se pudo enviar email de ticket: {email_error}")
+                # No fallar si el email no se puede enviar, el ticket ya está creado
+            
+            # Redirigir a confirmación
+            return redirect(url_for('ecommerce.confirmation', ticket_code=entrada.ticket_code))
+            
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error en landing POST: {e}", exc_info=True)
+            flash('Error al procesar el checkout. Por favor intenta nuevamente.', 'error')
+            return redirect(url_for('ecommerce.landing'))
+    
+    # GET: Mostrar landing page
+    try:
+        from app.models.product_models import Product
+        from sqlalchemy import func
+        
+        # Obtener el primer producto activo de categoría ENTRADAS/Entradas con stock disponible
+        # Buscar con comparación case-insensitive (acepta "Entradas", "ENTRADAS", "entradas", etc.)
+        producto = Product.query.filter(
+            func.upper(Product.category) == 'ENTRADAS',
+            Product.is_active == True
+        ).filter(
+            # Stock disponible: mayor a 0 o NULL (ilimitado)
+            db.or_(
+                Product.stock_quantity > 0,
+                Product.stock_quantity.is_(None)
+            )
+        ).order_by(Product.price.asc(), Product.name.asc()).first()
+        
+        if producto:
+            stock_qty = producto.stock_quantity if producto.stock_quantity is not None else None
+            precio_unitario = float(producto.price) if producto.price else 0.0
+            producto_data = {
+                'id': producto.id,
+                'nombre': producto.name,
+                'precio': producto.price,
+                'precio_unitario': precio_unitario,
+                'categoria': producto.category,
+                'stock_quantity': stock_qty,
+                'disponible': stock_qty is None or stock_qty > 0,
+                'stock_ilimitado': stock_qty is None
+            }
+            logger.info(f"Producto encontrado para landing: {producto_data['nombre']}, precio: {producto_data['precio']}")
+        else:
+            producto_data = None
+            logger.warning("No se encontró producto para landing page")
+        
+        return render_template('ecommerce/landing.html', producto=producto_data)
+        
+    except Exception as e:
+        logger.error(f"Error al cargar producto para landing: {e}", exc_info=True)
+        return render_template('ecommerce/landing.html', producto=None)
+
+
 @ecommerce_bp.route('/')
 def index():
     """Página principal de venta de entradas - Muestra productos de categoría ENTRADAS con stock disponible"""
@@ -50,11 +241,11 @@ def index():
         from app.models.product_models import Product
         from sqlalchemy import func
         
-        # Obtener productos activos de categoría ENTRADAS con stock disponible
+        # Obtener productos activos de categoría ENTRADAS/Entradas con stock disponible
         # Para ENTRADAS, consideramos disponible si:
         # - is_active = True
         # - stock_quantity > 0 (o stock_quantity es NULL, lo que significa stock ilimitado)
-        # Usamos comparación case-insensitive para la categoría
+        # Usamos comparación case-insensitive para la categoría (acepta "Entradas", "ENTRADAS", etc.)
         productos = Product.query.filter(
             func.upper(Product.category) == 'ENTRADAS',
             Product.is_active == True
