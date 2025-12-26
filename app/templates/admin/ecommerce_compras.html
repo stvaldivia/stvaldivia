@@ -1,0 +1,379 @@
+{% extends "base.html" %}
+
+{% block title %}Compras Ecommerce - Panel de Control{% endblock %}
+
+{% block content %}
+<style>
+    .compras-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+    
+    .page-header {
+        margin-bottom: 2rem;
+    }
+    
+    .page-header h1 {
+        color: #fff;
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        padding: 1.5rem;
+    }
+    
+    .stat-card h3 {
+        color: #aaa;
+        font-size: 0.9rem;
+        margin: 0 0 0.5rem 0;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .stat-card .value {
+        color: #fff;
+        font-size: 2rem;
+        font-weight: bold;
+        margin: 0;
+    }
+    
+    .filters-section {
+        background: rgba(30, 41, 59, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .filters-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+    
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .filter-group label {
+        color: #aaa;
+        font-size: 0.85rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .filter-group input,
+    .filter-group select {
+        background: rgba(15, 23, 42, 0.8);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        padding: 0.75rem;
+        color: #fff;
+        font-size: 0.9rem;
+    }
+    
+    .filter-group input:focus,
+    .filter-group select:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+    
+    .eventos-stats {
+        background: rgba(30, 41, 59, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .eventos-stats h2 {
+        color: #fff;
+        font-size: 1.3rem;
+        margin-bottom: 1rem;
+    }
+    
+    .evento-stat-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        background: rgba(15, 23, 42, 0.5);
+        border-radius: 8px;
+        margin-bottom: 0.75rem;
+    }
+    
+    .evento-stat-item:last-child {
+        margin-bottom: 0;
+    }
+    
+    .evento-name {
+        color: #fff;
+        font-weight: 600;
+        flex: 1;
+    }
+    
+    .evento-cupos {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    
+    .cupos-bar {
+        width: 200px;
+        height: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    
+    .cupos-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        transition: width 0.3s ease;
+    }
+    
+    .cupos-text {
+        color: #aaa;
+        font-size: 0.9rem;
+        white-space: nowrap;
+    }
+    
+    .compras-table {
+        background: rgba(30, 41, 59, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    
+    .table-header {
+        background: rgba(15, 23, 42, 0.8);
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .table-header h2 {
+        color: #fff;
+        font-size: 1.3rem;
+        margin: 0;
+    }
+    
+    .table-container {
+        overflow-x: auto;
+    }
+    
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    thead {
+        background: rgba(15, 23, 42, 0.5);
+    }
+    
+    th {
+        color: #aaa;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 1rem;
+        text-align: left;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    td {
+        color: #fff;
+        padding: 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    tr:hover {
+        background: rgba(102, 126, 234, 0.1);
+    }
+    
+    .badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    
+    .badge-success {
+        background: rgba(76, 175, 80, 0.2);
+        color: #4caf50;
+    }
+    
+    .badge-pending {
+        background: rgba(255, 193, 7, 0.2);
+        color: #ffc107;
+    }
+    
+    .btn-link {
+        color: #667eea;
+        text-decoration: none;
+        font-size: 0.9rem;
+    }
+    
+    .btn-link:hover {
+        text-decoration: underline;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+        color: #aaa;
+    }
+    
+    .empty-state p {
+        font-size: 1.1rem;
+        margin: 0;
+    }
+</style>
+
+<div class="compras-container">
+    <div class="page-header">
+        <h1>🛒 Compras Ecommerce</h1>
+        <p style="color: #aaa;">Gestión de compradores y ventas online</p>
+    </div>
+    
+    <!-- Estadísticas Generales -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3>Total Compras</h3>
+            <p class="value">{{ total_compras }}</p>
+        </div>
+        <div class="stat-card">
+            <h3>Total Recaudado</h3>
+            <p class="value">${{ "{:,.0f}".format(total_recaudado) }}</p>
+        </div>
+    </div>
+    
+    <!-- Estadísticas de Cupos por Evento -->
+    {% if eventos_stats %}
+    <div class="eventos-stats">
+        <h2>📊 Estado de Cupos por Evento</h2>
+        {% for evento_nombre, stats in eventos_stats.items() %}
+        <div class="evento-stat-item">
+            <div class="evento-name">{{ evento_nombre }}</div>
+            <div class="evento-cupos">
+                <div class="cupos-bar">
+                    <div class="cupos-bar-fill" style="width: {{ stats.porcentaje }}%"></div>
+                </div>
+                <div class="cupos-text">
+                    <strong>{{ stats.vendidos }}</strong> / {{ stats.total }} vendidos
+                    ({{ stats.disponibles }} disponibles)
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <!-- Filtros -->
+    <div class="filters-section">
+        <form method="GET" action="{{ url_for('admin_ecommerce.list_compras') }}">
+            <div class="filters-grid">
+                <div class="filter-group">
+                    <label>Buscar</label>
+                    <input type="text" name="search" value="{{ filtro_search }}" placeholder="Nombre, email o ticket">
+                </div>
+                <div class="filter-group">
+                    <label>Evento</label>
+                    <select name="evento">
+                        <option value="">Todos los eventos</option>
+                        {% for evento in eventos_list %}
+                        <option value="{{ evento }}" {% if filtro_evento == evento %}selected{% endif %}>
+                            {{ evento }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Estado</label>
+                    <select name="estado">
+                        <option value="pagado" {% if filtro_estado == 'pagado' %}selected{% endif %}>Pagado</option>
+                        <option value="pendiente" {% if filtro_estado == 'pendiente' %}selected{% endif %}>Pendiente</option>
+                        <option value="cancelado" {% if filtro_estado == 'cancelado' %}selected{% endif %}>Cancelado</option>
+                        <option value="" {% if not filtro_estado %}selected{% endif %}>Todos</option>
+                    </select>
+                </div>
+                <div class="filter-group" style="justify-content: flex-end;">
+                    <label>&nbsp;</label>
+                    <button type="submit" style="background: #667eea; color: #fff; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer;">
+                        Filtrar
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Tabla de Compras -->
+    <div class="compras-table">
+        <div class="table-header">
+            <h2>Lista de Compradores</h2>
+        </div>
+        <div class="table-container">
+            {% if compras %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Ticket</th>
+                        <th>Comprador</th>
+                        <th>Email</th>
+                        <th>Evento</th>
+                        <th>Fecha Evento</th>
+                        <th>Cantidad</th>
+                        <th>Total</th>
+                        <th>Estado</th>
+                        <th>Fecha Pago</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for compra in compras %}
+                    <tr>
+                        <td><code style="color: #667eea;">{{ compra.ticket_code }}</code></td>
+                        <td>{{ compra.comprador_nombre }}</td>
+                        <td>{{ compra.comprador_email }}</td>
+                        <td>{{ compra.evento_nombre }}</td>
+                        <td>{{ compra.evento_fecha.strftime('%d/%m/%Y %H:%M') if compra.evento_fecha else 'N/A' }}</td>
+                        <td>{{ compra.cantidad }}</td>
+                        <td><strong>${{ "{:,.0f}".format(compra.precio_total) }}</strong></td>
+                        <td>
+                            <span class="badge {% if compra.estado_pago == 'pagado' %}badge-success{% else %}badge-pending{% endif %}">
+                                {{ compra.estado_pago }}
+                            </span>
+                        </td>
+                        <td>{{ compra.paid_at.strftime('%d/%m/%Y %H:%M') if compra.paid_at else 'N/A' }}</td>
+                        <td>
+                            <a href="{{ url_for('ecommerce.view_ticket', ticket_code=compra.ticket_code) }}" 
+                               class="btn-link" target="_blank">
+                                Ver Ticket
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">
+                <p>No se encontraron compras con los filtros seleccionados</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+

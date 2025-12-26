@@ -8,7 +8,17 @@
 {% endblock %}
 
 {% block content %}
-<div class="container ecommerce-container">
+<style>
+    /* Forzar fondo oscuro para ecommerce */
+    body {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+    }
+    
+    .container {
+        background: transparent !important;
+    }
+</style>
+<div class="ecommerce-container">
     <div class="ecommerce-hero">
         <h1>🎫 Venta de Entradas Express</h1>
         <p>Compra tus entradas de forma rápida y segura</p>
@@ -20,44 +30,48 @@
         {% if eventos %}
             {% for evento in eventos %}
             <div class="event-card">
-                <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: 1rem;">
-                    <div style="flex: 1; min-width: 250px;">
-                        <h3 style="margin-top: 0; color: #667eea;">{{ evento.nombre }}</h3>
+                <div class="event-card-content">
+                    <div class="event-info">
+                        <h3>{{ evento.nombre }}</h3>
                         {% if evento.tipo_noche %}
-                        <p style="margin: 0.5rem 0; color: #666; font-size: 0.9rem;">
-                            <span style="background: #667eea; color: white; padding: 0.25rem 0.75rem; border-radius: 12px; font-size: 0.85rem;">
-                                {{ evento.tipo_noche }}
-                            </span>
-                        </p>
+                        <span class="event-badge">{{ evento.tipo_noche }}</span>
                         {% endif %}
-                        <p style="margin: 0.5rem 0;"><strong>📅 Fecha:</strong> {{ evento.fecha_display }} - {{ evento.hora }}</p>
-                        {% if evento.dj_principal %}
-                        <p style="margin: 0.5rem 0;"><strong>🎵 DJ:</strong> {{ evento.dj_principal }}</p>
-                        {% endif %}
-                        {% if evento.descripcion %}
-                        <p style="margin: 0.5rem 0; color: #666; font-size: 0.9rem;">{{ evento.descripcion[:100] }}{% if evento.descripcion|length > 100 %}...{% endif %}</p>
-                        {% endif %}
-                        <p style="margin: 1rem 0 0 0; font-size: 1.3rem; font-weight: bold; color: #4caf50;">
-                            ${{ "{:,.0f}".format(evento.precio) }}
-                        </p>
-                        {% if evento.cupos_disponibles is not none %}
-                        <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; color: {% if evento.cupos_disponibles > 0 %}#4caf50{% else %}#f44336{% endif %};">
-                            {% if evento.cupos_disponibles > 0 %}
-                                ✅ {{ evento.cupos_disponibles }} cupos disponibles ({{ evento.cupos_vendidos }}/{{ evento.cupos_total }} vendidos)
-                            {% else %}
-                                ❌ Agotado ({{ evento.cupos_vendidos }}/{{ evento.cupos_total }} vendidos)
+                        <div class="event-details">
+                            <p class="event-detail-item">
+                                <span class="event-icon">📅</span>
+                                <strong>Fecha:</strong> {{ evento.fecha_display }} - {{ evento.hora }}
+                            </p>
+                            {% if evento.dj_principal %}
+                            <p class="event-detail-item">
+                                <span class="event-icon">🎵</span>
+                                <strong>DJ:</strong> {{ evento.dj_principal }}
+                            </p>
                             {% endif %}
-                        </p>
-                        {% endif %}
+                            {% if evento.descripcion %}
+                            <p class="event-description">{{ evento.descripcion[:100] }}{% if evento.descripcion|length > 100 %}...{% endif %}</p>
+                            {% endif %}
+                        </div>
+                        <div class="event-pricing">
+                            <p class="event-price">${{ "{:,.0f}".format(evento.precio) }}</p>
+                            {% if evento.cupos_disponibles is not none %}
+                            <p class="event-availability {% if evento.cupos_disponibles > 0 %}available{% else %}sold-out{% endif %}">
+                                {% if evento.cupos_disponibles > 0 %}
+                                    ✅ {{ evento.cupos_disponibles }} cupos disponibles ({{ evento.cupos_vendidos }}/{{ evento.cupos_total }} vendidos)
+                                {% else %}
+                                    ❌ Agotado ({{ evento.cupos_vendidos }}/{{ evento.cupos_total }} vendidos)
+                                {% endif %}
+                            </p>
+                            {% endif %}
+                        </div>
                     </div>
-                    <div style="display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;">
+                    <div class="event-action">
                         {% if evento.cupos_disponibles is none or evento.cupos_disponibles > 0 %}
                         <a href="{{ url_for('ecommerce.checkout', evento=evento.nombre, fecha=evento.fecha.isoformat() if evento.fecha else '', lugar=evento.lugar, cantidad=1, precio=evento.precio) }}" 
                            class="btn-checkout">
                             Comprar Entradas
                         </a>
                         {% else %}
-                        <button class="btn-checkout" disabled style="opacity: 0.5; cursor: not-allowed;">
+                        <button class="btn-checkout" disabled style="opacity: 0.5; cursor: not-allowed; background: #ccc;">
                             Agotado
                         </button>
                         {% endif %}

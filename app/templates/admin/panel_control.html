@@ -177,6 +177,24 @@
             </span>
         </div>
 
+        <!-- Ecommerce -->
+        <div class="info-card" style="border-color: rgba(102, 126, 234, 0.5);">
+            <span class="icon">🛒</span>
+            <h3>Ecommerce</h3>
+            <p style="font-size: 0.9rem; color: #aaa; margin: 10px 0;">
+                Gestión de compras y compradores online
+            </p>
+            <div style="margin-top: 15px;">
+                <a href="{{ url_for('admin_ecommerce.list_compras') }}" class="btn-config"
+                    style="text-decoration: none; display: block; text-align: center;">
+                    🛒 Ver Compras
+                </a>
+            </div>
+            <span class="badge" style="background: rgba(102, 126, 234, 0.3); color: #667eea;">
+                Ventas Online
+            </span>
+        </div>
+
         <!-- Dashboard de TPV -->
         <div class="info-card" style="border-color: rgba(102, 126, 234, 0.5);">
             <span class="icon">🏪</span>
@@ -258,8 +276,8 @@
                 Despliega los últimos cambios a producción (stvaldivia.cl). Esto actualiza el sitio en vivo.
             </p>
             <div style="margin-top: 15px;">
-                <button onclick="deployToProduction()" id="deploy-btn" class="btn-config"
-                    style="text-decoration: none; display: block; text-align: center; background: rgba(76, 175, 80, 0.3); border-color: rgba(76, 175, 80, 0.5); color: #4caf50;">
+                <button onclick="deployToProduction(); return false;" id="deploy-btn" class="btn-config"
+                    style="text-decoration: none; display: block; text-align: center; background: rgba(76, 175, 80, 0.3); border-color: rgba(76, 175, 80, 0.5); color: #4caf50; cursor: pointer;">
                     🚀 Actualizar Sitio
                 </button>
             </div>
@@ -1494,10 +1512,17 @@
                             }
 
                             function deployToProduction() {
+                                console.log('🚀 deployToProduction() llamada');
                                 const btn = document.getElementById('deploy-btn');
                                 const statusDiv = document.getElementById('deploy-status');
 
-                                if (!btn || !statusDiv) return;
+                                if (!btn || !statusDiv) {
+                                    console.error('❌ No se encontraron los elementos del botón de deployment', { btn, statusDiv });
+                                    alert('Error: No se pudo encontrar el botón de deployment. Por favor, recarga la página.');
+                                    return;
+                                }
+
+                                console.log('✅ Elementos encontrados, procediendo con deployment');
 
                                 // Confirmar
                                 if (!confirm('¿Estás seguro de que quieres actualizar el sitio en producción?\n\nEsto desplegará los últimos cambios a stvaldivia.cl')) {
@@ -1517,18 +1542,40 @@
                                 statusDiv.style.color = '#667eea';
                                 statusDiv.innerHTML = '⏳ Iniciando deployment...';
 
+                                // Obtener token CSRF del meta tag
+                                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+                                // Preparar headers
+                                const headers = {
+                                    'Content-Type': 'application/json'
+                                };
+
+                                // Agregar token CSRF si está disponible
+                                if (csrfToken) {
+                                    headers['X-CSRFToken'] = csrfToken;
+                                }
+
                                 // Llamar al endpoint
                                 fetch('/admin/api/deploy', {
                                     method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json'
-                                    },
+                                    headers: headers,
                                     credentials: 'same-origin'
                                 })
                                 .then(response => {
+                                    // Verificar si la respuesta es JSON
+                                    const contentType = response.headers.get('content-type');
+                                    if (!contentType || !contentType.includes('application/json')) {
+                                        return response.text().then(text => {
+                                            console.error('❌ Respuesta no es JSON. Status:', response.status, 'Content:', text.substring(0, 200));
+                                            throw new Error(`El servidor respondió con un error (Status: ${response.status}). Por favor, verifica los logs del servidor.`);
+                                        });
+                                    }
+
                                     if (!response.ok) {
                                         return response.json().then(err => {
                                             throw new Error(err.error || `Error HTTP ${response.status}`);
+                                        }).catch(() => {
+                                            throw new Error(`Error HTTP ${response.status}`);
                                         });
                                     }
                                     return response.json();
@@ -1553,11 +1600,11 @@
                                     }
                                 })
                                 .catch(error => {
-                                    console.error('Error en deployment:', error);
+                                    console.error('❌ Error en deployment:', error);
                                     statusDiv.style.background = 'rgba(244, 67, 54, 0.2)';
                                     statusDiv.style.border = '1px solid rgba(244, 67, 54, 0.5)';
                                     statusDiv.style.color = '#f44336';
-                                    statusDiv.innerHTML = '❌ Error de conexión: ' + (error.message || 'No se pudo conectar con el servidor');
+                                    statusDiv.innerHTML = '❌ Error: ' + (error.message || 'No se pudo conectar con el servidor. Verifica la consola del navegador para más detalles.');
                                     btn.disabled = false;
                                     btn.innerHTML = originalText;
                                     btn.style.opacity = '1';

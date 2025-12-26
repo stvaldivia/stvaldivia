@@ -807,6 +807,16 @@ def create_app():
                 app.logger.error(f"❌ No se pudo eximir blueprint de CSRF: {exempt_error}", exc_info=True)
         
         app.logger.info("✅ Blueprint de Ecommerce registrado")
+        
+        # Registrar blueprint de admin ecommerce
+        try:
+            from .blueprints.ecommerce.admin_routes import admin_ecommerce_bp
+            app.register_blueprint(admin_ecommerce_bp)
+            app.logger.info("✅ Blueprint de Admin Ecommerce registrado")
+        except ImportError as e:
+            app.logger.warning(f"⚠️  No se pudo registrar el blueprint de admin ecommerce: {e}")
+        except Exception as e:
+            app.logger.error(f"❌ Error al registrar blueprint de admin ecommerce: {e}")
     except ImportError as e:
         app.logger.warning(f"⚠️  No se pudo registrar el blueprint de ecommerce: {e}")
     except Exception as e:
