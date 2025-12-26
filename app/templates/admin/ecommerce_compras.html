@@ -443,6 +443,10 @@
                        style="background: #10b981; color: #fff; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; text-decoration: none; display: inline-block;">
                         📥 Exportar CSV
                     </a>
+                    <button id="btn-cambiar-todos-recibido" 
+                            style="background: #f59e0b; color: #fff; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        🔄 Cambiar Todos a Recibido
+                    </button>
                 </div>
             </div>
         </form>
@@ -779,6 +783,45 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     });
+    
+    // Botón para cambiar todos a recibido
+    const btnCambiarTodos = document.getElementById('btn-cambiar-todos-recibido');
+    if (btnCambiarTodos) {
+        btnCambiarTodos.addEventListener('click', function() {
+            if (!confirm('¿Estás seguro de cambiar TODAS las compras a estado "Recibido"?\n\nEsto afectará a todas las compras en la base de datos.')) {
+                return;
+            }
+            
+            this.disabled = true;
+            const textoOriginal = this.textContent;
+            this.textContent = 'Procesando...';
+            
+            fetch('/admin/ecommerce/compras/cambiar-todos-a-recibido', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`✅ ${data.message}\n\nTotal: ${data.total} compras\nActualizadas: ${data.actualizados}`);
+                    // Recargar la página para ver los cambios
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + (data.error || 'No se pudieron cambiar los estados'));
+                    this.disabled = false;
+                    this.textContent = textoOriginal;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al cambiar estados. Por favor intenta nuevamente.');
+                this.disabled = false;
+                this.textContent = textoOriginal;
+            });
+        });
+    }
 });
 </script>
 {% endblock %}
