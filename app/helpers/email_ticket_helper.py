@@ -236,11 +236,13 @@ def generate_resumen_compra_html(entrada: Entrada, preview: bool = False) -> tup
     # Determinar si mostrar link de pago (solo si el estado es "recibido")
     mostrar_link_pago = entrada.estado_pago.lower() == 'recibido'
     
-    # Generar QR solo si el pago está realizado (pagado o entregado)
-    mostrar_qr = entrada.estado_pago.lower() in ['pagado', 'entregado']
-    qr_code_base64 = None
-    if mostrar_qr:
-        qr_code_base64 = generate_ticket_qr(entrada.ticket_code, size=250)
+    # Generar QR siempre (se incluye en todos los emails)
+    # El QR se mostrará pero con mensaje indicando que solo se activa cuando se recibe el pago
+    qr_code_base64 = generate_ticket_qr(entrada.ticket_code, size=250)
+    mostrar_qr = qr_code_base64 is not None
+    
+    # Determinar si el pago está realizado (para mostrar mensaje diferente en el QR)
+    pago_realizado = entrada.estado_pago.lower() in ['pagado', 'entregado']
     
     email_body = f"""
     <!DOCTYPE html>
@@ -262,7 +264,10 @@ def generate_resumen_compra_html(entrada: Entrada, preview: bool = False) -> tup
             
             <p style="font-size: 16px; margin-bottom: 20px;">Hola <strong>{entrada.comprador_nombre}</strong>,</p>
             
-            <p style="font-size: 16px; color: #666;">Gracias por tu compra. Aquí está el resumen completo de tu pedido:</p>
+            <p style="font-size: 16px; color: #666; line-height: 1.8;">
+                ¡Gracias por querer ser parte de nuestra fiesta! 🎉<br><br>
+                Estamos muy emocionados de tenerte con nosotros. A continuación encontrarás toda la información importante para completar tu compra y acceder al evento.
+            </p>
             
             <!-- Código de Ticket -->
             <div style="background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%); padding: 25px; border-radius: 8px; margin: 25px 0; text-align: center; border: 2px dashed #667eea;">
@@ -272,20 +277,20 @@ def generate_resumen_compra_html(entrada: Entrada, preview: bool = False) -> tup
                 </p>
             </div>
             
-            {'<!-- Código QR (solo válido si el pago está realizado) -->' if mostrar_qr and qr_code_base64 else ''}
+            {'<!-- Código QR (siempre incluido, pero con mensaje según estado de pago) -->' if mostrar_qr and qr_code_base64 else ''}
             {f'''
-            <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px; border-radius: 8px; margin: 25px 0; text-align: center;">
-                <h2 style="color: white; margin-top: 0; font-size: 22px; margin-bottom: 15px;">✅ Código QR de Acceso</h2>
+            <div style="background: linear-gradient(135deg, {'#10b981 0%, #059669 100%' if pago_realizado else '#f59e0b 0%, #f97316 100%'}); padding: 30px; border-radius: 8px; margin: 25px 0; text-align: center;">
+                <h2 style="color: white; margin-top: 0; font-size: 22px; margin-bottom: 15px;">{'✅' if pago_realizado else '⏳'} Código QR de Acceso</h2>
                 <p style="color: rgba(255,255,255,0.95); margin: 0 0 20px 0; font-size: 16px; font-weight: 500;">
-                    Presenta este código QR en la entrada del evento
+                    {'Presenta este código QR junto con tu cédula de identidad el día del evento' if pago_realizado else 'Este código QR se activará automáticamente cuando recibamos tu pago'}
                 </p>
                 <div style="background: white; padding: 20px; border-radius: 12px; display: inline-block; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
                     <img src="{qr_code_base64}" 
                          alt="Código QR - Ticket {entrada.ticket_code}" 
-                         style="width: 250px; height: 250px; display: block; margin: 0 auto;" />
+                         style="width: 250px; height: 250px; display: block; margin: 0 auto; {'opacity: 0.7;' if not pago_realizado else ''}" />
                 </div>
                 <p style="color: rgba(255,255,255,0.9); margin: 20px 0 0 0; font-size: 14px;">
-                    <strong>✓ Pago Verificado</strong> - Este código QR es válido para ingresar al evento
+                    {'<strong>✓ Pago Verificado</strong> - Este código QR es válido para ingresar al evento' if pago_realizado else '<strong>⚠️ Pendiente de Pago</strong> - Realiza el pago para activar este código QR. Deberás presentarlo junto con tu cédula de identidad el día del evento.'}
                 </p>
             </div>
             ''' if mostrar_qr and qr_code_base64 else ''}
@@ -395,8 +400,12 @@ def generate_resumen_compra_html(entrada: Entrada, preview: bool = False) -> tup
             
             <!-- Información Importante -->
             <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 15px; margin: 20px 0;">
-                <p style="margin: 0; color: #856404; font-size: 14px;">
-                    <strong>ℹ️ Importante:</strong> Presenta este ticket en la entrada del evento. Puedes mostrarlo desde tu teléfono o imprimirlo. Guarda este email como comprobante de tu compra.
+                <p style="margin: 0; color: #856404; font-size: 14px; line-height: 1.6;">
+                    <strong>ℹ️ Importante:</strong><br>
+                    • Presenta el código QR junto con tu cédula de identidad el día del evento<br>
+                    • Puedes mostrar el QR desde tu teléfono o imprimirlo<br>
+                    • Guarda este email como comprobante de tu compra<br>
+                    {'• Tu código QR ya está activo y listo para usar' if pago_realizado else '• Una vez recibido el pago, tu código QR se activará automáticamente'}
                 </p>
             </div>
             

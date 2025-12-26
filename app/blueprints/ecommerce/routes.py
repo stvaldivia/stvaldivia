@@ -147,7 +147,7 @@ def landing():
             # Asegurar que precio_total sea correcto (cantidad * precio_unitario)
             precio_total_calculado = cantidad * precio_unitario
             
-            # Crear entrada directamente
+            # Crear entrada directamente con estado "recibido"
             entrada = Entrada(
                 ticket_code=Entrada.generate_ticket_code(),
                 evento_nombre=producto.name,
@@ -160,9 +160,9 @@ def landing():
                 cantidad=cantidad,
                 precio_unitario=precio_unitario,
                 precio_total=precio_total_calculado,
-                estado_pago='pagado',
-                metodo_pago='manual',  # Cambiado de 'getnet_web' a 'manual'
-                paid_at=datetime.utcnow()
+                estado_pago='recibido',  # Estado inicial: recibido
+                metodo_pago='manual',
+                # paid_at se actualizará cuando se confirme el pago
             )
             
             db.session.add(entrada)
@@ -182,13 +182,19 @@ def landing():
             checkout_session.entrada_id = entrada.id
             db.session.commit()
             
-            # Enviar email con ticket
+            # Enviar email de bienvenida al comprador (con QR y link de pago)
+            try:
+                from app.helpers.email_ticket_helper import send_resumen_compra_email
+                send_resumen_compra_email(entrada)
+                logger.info(f"Email de bienvenida enviado a {comprador_email}")
+            except Exception as email_error:
+                logger.warning(f"No se pudo enviar email de bienvenida: {email_error}")
+            
+            # También enviar notificación al admin
             try:
                 send_ticket_email(entrada)
-                logger.info(f"Email de ticket enviado a {comprador_email}")
             except Exception as email_error:
-                logger.warning(f"No se pudo enviar email de ticket: {email_error}")
-                # No fallar si el email no se puede enviar, el ticket ya está creado
+                logger.warning(f"No se pudo enviar email de notificación al admin: {email_error}")
             
             # Redirigir a confirmación
             return redirect(url_for('ecommerce.confirmation', ticket_code=entrada.ticket_code))
@@ -671,7 +677,7 @@ def _process_approved_payment(checkout_session: CheckoutSession, payment_status:
         # Asegurar que precio_total sea correcto (cantidad * precio_unitario)
         precio_total_calculado = float(checkout_session.cantidad) * float(checkout_session.precio_unitario)
         
-        # Crear entrada
+        # Crear entrada con estado "recibido" inicialmente
         entrada = Entrada(
             ticket_code=Entrada.generate_ticket_code(),
             evento_nombre=checkout_session.evento_nombre,
@@ -684,12 +690,12 @@ def _process_approved_payment(checkout_session: CheckoutSession, payment_status:
             cantidad=checkout_session.cantidad,
             precio_unitario=checkout_session.precio_unitario,
             precio_total=precio_total_calculado,
-            estado_pago='pagado',
+            estado_pago='recibido',  # Estado inicial: recibido
             metodo_pago='getnet_web',
             getnet_payment_id=payment_info.get('payment_id'),
             getnet_transaction_id=payment_info.get('transaction_id'),
             getnet_auth_code=payment_info.get('auth_code'),
-            paid_at=datetime.utcnow()
+            # paid_at se actualizará cuando se confirme el pago
         )
         
         db.session.add(entrada)
@@ -709,11 +715,20 @@ def _process_approved_payment(checkout_session: CheckoutSession, payment_status:
         checkout_session.entrada_id = entrada.id
         db.session.commit()
         
-        # Enviar email con ticket
+        # Enviar email de bienvenida al comprador (con QR y link de pago)
         try:
+            from app.helpers.email_ticket_helper import send_resumen_compra_email
+            send_resumen_compra_email(entrada)
+            logger.info(f"Email de bienvenida enviado a {entrada.comprador_email}")
+        except Exception as email_error:
+            logger.warning(f"No se pudo enviar email de bienvenida: {email_error}")
+        
+        # También enviar notificación al admin
+        try:
+            from app.helpers.email_ticket_helper import send_ticket_email
             send_ticket_email(entrada)
         except Exception as email_error:
-            logger.warning(f"No se pudo enviar email de ticket: {email_error}")
+            logger.warning(f"No se pudo enviar email de notificación al admin: {email_error}")
         
         # Redirigir a confirmación
         return redirect(url_for('ecommerce.confirmation', ticket_code=entrada.ticket_code))
