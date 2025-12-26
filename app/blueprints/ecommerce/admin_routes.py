@@ -105,6 +105,11 @@ def list_compras():
     ).distinct().order_by(Entrada.evento_nombre).all()
     eventos_list = [e[0] for e in eventos_disponibles]
     
+    # Agregar función helper para verificar atributos en el template
+    def safe_hasattr(obj, attr):
+        """Helper para verificar si un objeto tiene un atributo"""
+        return hasattr(obj, attr)
+    
     return render_template('admin/ecommerce_compras.html',
                          compras=compras,
                          eventos_stats=eventos_stats,
