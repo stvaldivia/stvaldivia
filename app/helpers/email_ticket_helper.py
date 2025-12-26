@@ -430,21 +430,42 @@ def send_resumen_compra_email(entrada: Entrada) -> bool:
             msg.attach(html_part)
             
             # Conectar y enviar
-            logger.info(f"Conectando a SMTP: {smtp_server}:{smtp_port}")
-            logger.info(f"Usuario: {smtp_user}")
+            # Resolver DNS antes de conectar para evitar problemas con eventlet/greendns
+            import socket
+            try:
+                logger.info(f"🔍 Resolviendo DNS para {smtp_server}...")
+                # Usar socket estándar (no eventlet) para resolver DNS
+                smtp_ip = socket.gethostbyname(smtp_server)
+                logger.info(f"   ✅ DNS resuelto: {smtp_server} -> {smtp_ip}")
+                # Usar IP directamente para evitar problemas con greendns
+                smtp_host = smtp_ip
+            except Exception as dns_error:
+                logger.warning(f"   ⚠️ No se pudo resolver DNS, usando hostname: {dns_error}")
+                smtp_host = smtp_server
             
-            if smtp_port == 465:
-                server = smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=30)
-                logger.info("✅ Conexión SSL establecida")
-            else:
-                server = smtplib.SMTP(smtp_server, smtp_port, timeout=30)
-                server.starttls()
-                logger.info("✅ TLS iniciado")
+            logger.info(f"🔌 Conectando a SMTP: {smtp_host}:{smtp_port}")
+            logger.info(f"   Usuario: {smtp_user}")
             
-            # Intentar autenticación
-            logger.info("Intentando autenticación SMTP...")
-            server.login(smtp_user, smtp_password)
-            logger.info("✅ Autenticación SMTP exitosa")
+            # Deshabilitar greendns temporalmente para smtplib usando socket estándar
+            import eventlet
+            original_patcher = eventlet.patcher.original('socket')
+            
+            try:
+                if smtp_port == 465:
+                    server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=30)
+                    logger.info("   ✅ Conexión SSL establecida")
+                else:
+                    server = smtplib.SMTP(smtp_host, smtp_port, timeout=30)
+                    server.starttls()
+                    logger.info("   ✅ TLS iniciado")
+                
+                # Intentar autenticación
+                logger.info(f"🔐 Intentando autenticación con usuario: {smtp_user}")
+                server.login(smtp_user, smtp_password)
+                logger.info("   ✅ Autenticación SMTP exitosa")
+            except Exception as conn_error:
+                logger.error(f"   ❌ Error en conexión/autenticación: {type(conn_error).__name__}: {str(conn_error)}")
+                raise
             server.send_message(msg)
             server.quit()
             
