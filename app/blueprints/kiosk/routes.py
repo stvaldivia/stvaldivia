@@ -353,6 +353,7 @@ def api_productos():
 
 
 @kiosk_bp.route('/api/pagos/sumup/create', methods=['POST'])
+@exempt_from_csrf
 def api_create_sumup_checkout():
     """Crea un checkout de SumUp para un pago del kiosko"""
     try:
