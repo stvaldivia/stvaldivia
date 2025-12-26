@@ -419,6 +419,75 @@ def enviar_resumen_compra(entrada_id):
         }), 500
 
 
+@admin_ecommerce_bp.route('/compras/enviar-resumen-por-codigo', methods=['POST'])
+def enviar_resumen_por_codigo():
+    """API: Enviar resumen de compra por email usando ticket_code"""
+    auth_check = require_admin()
+    if auth_check:
+        return jsonify({'success': False, 'error': 'No autorizado'}), 401
+    
+    try:
+        data = request.get_json()
+        ticket_code = data.get('ticket_code') if data else request.form.get('ticket_code')
+        
+        if not ticket_code:
+            return jsonify({
+                'success': False,
+                'error': 'Se requiere el parámetro ticket_code'
+            }), 400
+        
+        # Buscar la entrada por ticket_code
+        entrada = Entrada.query.filter_by(ticket_code=ticket_code).first()
+        
+        if not entrada:
+            return jsonify({
+                'success': False,
+                'error': f'No se encontró la entrada con código: {ticket_code}'
+            }), 404
+        
+        if not entrada.comprador_email:
+            return jsonify({
+                'success': False,
+                'error': 'El pedido no tiene email del comprador'
+            }), 400
+        
+        # Enviar email
+        enviado = send_resumen_compra_email(entrada)
+        
+        # Recargar la entrada para obtener los campos actualizados
+        db.session.refresh(entrada)
+        
+        if enviado:
+            fecha_envio = None
+            email_enviado = False
+            if hasattr(entrada, 'email_resumen_enviado_at') and entrada.email_resumen_enviado_at:
+                fecha_envio = entrada.email_resumen_enviado_at.strftime('%d/%m/%Y %H:%M')
+            if hasattr(entrada, 'email_resumen_enviado'):
+                email_enviado = entrada.email_resumen_enviado
+            
+            return jsonify({
+                'success': True,
+                'message': f'Resumen enviado exitosamente a {entrada.comprador_email}',
+                'email': entrada.comprador_email,
+                'fecha_envio': fecha_envio or 'N/A',
+                'email_enviado': email_enviado,
+                'ticket_code': ticket_code
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'No se pudo enviar el email. Verifica la configuración SMTP.',
+                'email_enviado': entrada.email_resumen_enviado if hasattr(entrada, 'email_resumen_enviado') else False
+            }), 500
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': f'Error al enviar resumen: {str(e)}'
+        }), 500
+
+
 @admin_ecommerce_bp.route('/compras/cambiar-todos-a-recibido', methods=['POST'])
 def cambiar_todos_a_recibido():
     """API: Cambiar todos los estados a 'recibido'"""
