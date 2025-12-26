@@ -74,12 +74,19 @@ class Config:
     # Test Registers: Mostrar cajas de prueba en selección POS
     ENABLE_TEST_REGISTERS: bool = os.environ.get('ENABLE_TEST_REGISTERS', '0').lower() in ('1', 'true', 'yes')
     
-    # Configuración de OpenAI para Agente de Redes Sociales
+    # Configuración de OpenAI para Agente de Redes Sociales (legacy)
     OPENAI_API_KEY: Optional[str] = os.environ.get('OPENAI_API_KEY')
     OPENAI_ORGANIZATION_ID: Optional[str] = os.environ.get('OPENAI_ORGANIZATION_ID')
     OPENAI_PROJECT_ID: Optional[str] = os.environ.get('OPENAI_PROJECT_ID')
     OPENAI_DEFAULT_MODEL: str = os.environ.get('OPENAI_DEFAULT_MODEL', 'gpt-4o-mini')
     OPENAI_DEFAULT_TEMPERATURE: float = float(os.environ.get('OPENAI_DEFAULT_TEMPERATURE', '0.7'))
+    
+    # Configuración de Dialogflow para Agente de Redes Sociales (opcional)
+    DIALOGFLOW_PROJECT_ID: Optional[str] = os.environ.get('DIALOGFLOW_PROJECT_ID')
+    DIALOGFLOW_CREDENTIALS_PATH: Optional[str] = os.environ.get('DIALOGFLOW_CREDENTIALS_PATH')
+    DIALOGFLOW_LANGUAGE_CODE: str = os.environ.get('DIALOGFLOW_LANGUAGE_CODE', 'es')
+    # Usar Dialogflow en lugar de OpenAI (por defecto: false, usa OpenAI)
+    USE_DIALOGFLOW: bool = os.environ.get('USE_DIALOGFLOW', 'false').lower() in ('1', 'true', 'yes')
 
 
 def init_app_config(app: Flask):

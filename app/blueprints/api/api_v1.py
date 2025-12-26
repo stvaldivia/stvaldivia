@@ -4,6 +4,7 @@ API V1 - Endpoints públicos y del bot
 from flask import Blueprint, jsonify, request, current_app
 from app.application.services.programacion_service import ProgramacionService
 from app.infrastructure.external.openai_client import OpenAIAPIClient
+from app.infrastructure.external.dialogflow_client import DialogflowAPIClient
 from app.helpers.simple_rate_limiter import check_rate_limit
 
 api_v1 = Blueprint('api_v1', __name__, url_prefix='/api/v1')
@@ -180,12 +181,32 @@ def bot_responder():
             
             Responde de forma cercana, cálida, queer-friendly y entusiasta, reflejando los valores de inclusividad y acogida de BIMBA. Tu función es atender mensajes en redes sociales de forma rápida y acogedora."""
         
-        # Intentar usar OpenAI, pero con fallback seguro
+        # Usar OpenAI como servicio principal
         client = OpenAIAPIClient()
         openai_client = client._get_client()
         
         if not openai_client:
-            # OpenAI no disponible - intentar generar respuesta más útil basada en el conocimiento
+            # OpenAI no disponible - intentar Dialogflow como fallback opcional
+            use_dialogflow = current_app.config.get('USE_DIALOGFLOW', False)
+            if use_dialogflow:
+                dialogflow_client = DialogflowAPIClient()
+                session_id = f"web_{client_ip.replace('.', '_')}"
+                dialogflow_response = dialogflow_client.generate_response(
+                    messages=[{"role": "user", "content": mensaje}],
+                    system_prompt=system_prompt,
+                    session_id=session_id
+                )
+                if dialogflow_response:
+                    return jsonify({
+                        "status": "ok",
+                        "respuesta": dialogflow_response,
+                        "source": "dialogflow",
+                        "intent": intent,
+                        "modelo": "dialogflow",
+                        "tokens": None
+                    }), 200
+            
+            # Si no hay OpenAI ni Dialogflow, usar fallback basado en reglas
             current_app.logger.warning("OpenAI no disponible, generando respuesta basada en reglas y conocimiento")
             
             # Intentar generar respuesta más útil según la intención detectada

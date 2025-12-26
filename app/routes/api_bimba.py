@@ -5,6 +5,7 @@ from flask import Blueprint, request, jsonify, current_app
 from app.prompts.prompts_bimba import build_programacion_context, get_prompt_maestro_bimba
 from app.application.services.programacion_service import ProgramacionService
 from app.infrastructure.external.openai_client import OpenAIAPIClient
+from app.infrastructure.external.dialogflow_client import DialogflowAPIClient
 from app.helpers.simple_rate_limiter import check_rate_limit
 import json
 
@@ -77,7 +78,20 @@ def bimba_chat():
         )
         
         if not response:
-            # Fallback si OpenAI falla
+            # Fallback a Dialogflow si está configurado
+            use_dialogflow = current_app.config.get('USE_DIALOGFLOW', False)
+            if use_dialogflow:
+                dialogflow_client = DialogflowAPIClient()
+                session_id = f"bimba_{canal}_{request.remote_addr or 'unknown'}"
+                response = dialogflow_client.generate_response(
+                    messages=[{"role": "user", "content": user_message}],
+                    system_prompt=system_prompt,
+                    session_id=session_id
+                )
+                if response:
+                    return jsonify({"reply": response}), 200
+            
+            # Fallback final si ambos servicios fallan
             return jsonify({
                 "reply": "Hola! 💜 Soy BIMBA. Lo siento, estoy teniendo problemas técnicos en este momento. Por favor, intenta más tarde o revisa nuestras redes sociales @valdiviaesbimba 💜✨",
                 "error": "openai_unavailable"

@@ -295,11 +295,18 @@ def create_app():
     app.config['CHILE_TZ'] = CHILE_TZ
     
     
-    # Configuración de OpenAI para Agente de Redes Sociales
+    # Configuración de OpenAI para Agente de Redes Sociales (legacy)
     # Puede configurarse independientemente del modo local
     app.config['OPENAI_API_KEY'] = os.environ.get('OPENAI_API_KEY')
     app.config['OPENAI_ORGANIZATION_ID'] = os.environ.get('OPENAI_ORGANIZATION_ID')
     app.config['OPENAI_PROJECT_ID'] = os.environ.get('OPENAI_PROJECT_ID')
+    
+    # Configuración de Dialogflow para Agente de Redes Sociales (opcional)
+    app.config['DIALOGFLOW_PROJECT_ID'] = os.environ.get('DIALOGFLOW_PROJECT_ID')
+    app.config['DIALOGFLOW_CREDENTIALS_PATH'] = os.environ.get('DIALOGFLOW_CREDENTIALS_PATH') or os.environ.get('GOOGLE_APPLICATION_CREDENTIALS')
+    app.config['DIALOGFLOW_LANGUAGE_CODE'] = os.environ.get('DIALOGFLOW_LANGUAGE_CODE', 'es')
+    # Por defecto usa OpenAI, Dialogflow solo si USE_DIALOGFLOW=true
+    app.config['USE_DIALOGFLOW'] = os.environ.get('USE_DIALOGFLOW', 'false').lower() in ('1', 'true', 'yes')
     app.config['OPENAI_DEFAULT_MODEL'] = os.environ.get('OPENAI_DEFAULT_MODEL')
     app.config['OPENAI_DEFAULT_TEMPERATURE'] = float(os.environ.get('OPENAI_DEFAULT_TEMPERATURE', '0.7'))
 

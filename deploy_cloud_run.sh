@@ -50,6 +50,10 @@ FLASK_ENV="production"
 FLASK_SECRET_KEY="pHcn36mrPP3nCWT8LfYr0UfKbGxVZ0WtV8qN3nU4lt8GVe1D3Jh_Vi_nYalWxFNc2dun8nzyJsMjr-qcS3Lm4Q"
 DATABASE_URL="postgresql://bimba_user:qbiqpVcv9zJPVB0aaA9YwfAJSzFIGroUBcwJHNhzsas=@/bimba?host=/cloudsql/pelagic-river-479014-a3:us-central1:bimba-db"
 
+# Variables de OpenAI para el chatbot BIMBA
+OPENAI_API_KEY="${OPENAI_API_KEY:-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}"
+USE_DIALOGFLOW="${USE_DIALOGFLOW:-false}"
+
 # Variables de GetNet (para pagos online)
 # IMPORTANTE: Configurar estas variables según tu cuenta GetNet
 GETNET_API_BASE_URL="${GETNET_API_BASE_URL:-https://checkout.test.getnet.cl}"
@@ -62,6 +66,8 @@ echo "📦 Variables de entorno configuradas:"
 echo "  FLASK_ENV=$FLASK_ENV"
 echo "  FLASK_SECRET_KEY=***"
 echo "  DATABASE_URL=***"
+echo "  OPENAI_API_KEY=${OPENAI_API_KEY:+***configurado}"
+echo "  USE_DIALOGFLOW=$USE_DIALOGFLOW"
 echo "  GETNET_API_BASE_URL=$GETNET_API_BASE_URL"
 echo "  GETNET_LOGIN=${GETNET_LOGIN:+***configurado}"
 echo "  GETNET_TRANKEY=${GETNET_TRANKEY:+***configurado}"
@@ -85,6 +91,8 @@ echo ""
 
 # Construir lista de variables de entorno
 ENV_VARS="FLASK_ENV=$FLASK_ENV,FLASK_SECRET_KEY=$FLASK_SECRET_KEY,DATABASE_URL=$DATABASE_URL"
+ENV_VARS="$ENV_VARS,OPENAI_API_KEY=$OPENAI_API_KEY"
+ENV_VARS="$ENV_VARS,USE_DIALOGFLOW=$USE_DIALOGFLOW"
 ENV_VARS="$ENV_VARS,GETNET_API_BASE_URL=$GETNET_API_BASE_URL"
 ENV_VARS="$ENV_VARS,PUBLIC_BASE_URL=$PUBLIC_BASE_URL"
 ENV_VARS="$ENV_VARS,GETNET_DEMO_MODE=$GETNET_DEMO_MODE"
