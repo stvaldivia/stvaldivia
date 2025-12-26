@@ -213,7 +213,13 @@ def kiosk_checkout():
         return redirect(url_for('kiosk.kiosk_checkout'))
     
     carrito_data = session.get('carrito', '[]')
-    return render_template('kiosk/kiosk_checkout.html', carrito_data=carrito_data)
+    
+    # Verificar si SumUp está configurado
+    sumup_enabled = bool(current_app.config.get('SUMUP_API_KEY'))
+    
+    return render_template('kiosk/kiosk_checkout.html', 
+                         carrito_data=carrito_data,
+                         sumup_enabled=sumup_enabled)
 
 
 @kiosk_bp.route('/waiting')

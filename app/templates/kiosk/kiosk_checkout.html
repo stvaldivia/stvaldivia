@@ -28,14 +28,20 @@
                 ← Volver a Productos
             </button>
             <div style="display: flex; flex-direction: column; gap: 1rem; width: 100%; margin-top: 2rem;">
+                {% if sumup_enabled %}
                 <button id="btn-pagar-sumup" class="btn-primary btn-large" onclick="pagarConSumUp()" style="display: none;">
                     💳 Pagar con SumUp
                 </button>
                 <div id="loading-sumup" style="display: none; text-align: center; padding: 1rem;">
                     <p>Creando pago...</p>
                 </div>
+                {% endif %}
                 <p style="text-align: center; color: #666; padding: 1rem; font-size: 0.9rem;">
+                    {% if sumup_enabled %}
                     O acércate a la caja para realizar el pago en efectivo.
+                    {% else %}
+                    Acércate a la caja para realizar el pago en efectivo.
+                    {% endif %}
                 </p>
             </div>
         </div>
@@ -80,6 +86,9 @@ function mostrarCarrito() {
     
     itemsEl.innerHTML = html;
     totalEl.textContent = `$${total.toLocaleString()}`;
+    
+    // Mostrar botones de pago después de mostrar el carrito
+    mostrarBotonesPago();
 }
 
 
@@ -89,6 +98,11 @@ function mostrarBotonesPago() {
         const btnSumUp = document.getElementById('btn-pagar-sumup');
         if (btnSumUp) {
             btnSumUp.style.display = 'block';
+        }
+    } else {
+        const btnSumUp = document.getElementById('btn-pagar-sumup');
+        if (btnSumUp) {
+            btnSumUp.style.display = 'none';
         }
     }
 }
@@ -137,7 +151,6 @@ async function pagarConSumUp() {
 
 // Cargar carrito al iniciar
 cargarCarrito();
-mostrarBotonesPago();
 </script>
 
 <style>
