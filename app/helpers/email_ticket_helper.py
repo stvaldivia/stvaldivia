@@ -396,14 +396,16 @@ def send_resumen_compra_email(entrada: Entrada) -> bool:
         from email.mime.multipart import MIMEMultipart
         
         # Obtener configuración de email
-        smtp_server = current_app.config.get('SMTP_SERVER') or os.environ.get('SMTP_SERVER')
-        smtp_port = int(current_app.config.get('SMTP_PORT') or os.environ.get('SMTP_PORT', '587'))
-        smtp_user = current_app.config.get('SMTP_USER') or os.environ.get('SMTP_USER')
-        smtp_password = current_app.config.get('SMTP_PASSWORD') or os.environ.get('SMTP_PASSWORD')
-        smtp_from = current_app.config.get('SMTP_FROM') or os.environ.get('SMTP_FROM') or smtp_user
+        # Priorizar variables de entorno del sistema (desde systemd)
+        smtp_server = os.environ.get('SMTP_SERVER') or current_app.config.get('SMTP_SERVER')
+        smtp_port = int(os.environ.get('SMTP_PORT') or current_app.config.get('SMTP_PORT') or '587')
+        smtp_user = os.environ.get('SMTP_USER') or current_app.config.get('SMTP_USER')
+        smtp_password = os.environ.get('SMTP_PASSWORD') or current_app.config.get('SMTP_PASSWORD')
+        smtp_from = os.environ.get('SMTP_FROM') or current_app.config.get('SMTP_FROM') or smtp_user
         
         # Log de configuración (sin mostrar contraseña completa)
         logger.info(f"📧 Configuración SMTP: servidor={smtp_server}, puerto={smtp_port}, usuario={smtp_user}")
+        logger.debug(f"   Variables desde os.environ: SMTP_SERVER={bool(os.environ.get('SMTP_SERVER'))}, SMTP_USER={bool(os.environ.get('SMTP_USER'))}, SMTP_PASSWORD={bool(os.environ.get('SMTP_PASSWORD'))}")
         
         if not smtp_server or not smtp_user or not smtp_password:
             logger.warning("⚠️ Configuración de SMTP incompleta. Email no enviado.")
