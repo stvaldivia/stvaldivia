@@ -279,10 +279,10 @@ def generate_resumen_compra_html(entrada: Entrada, preview: bool = False) -> tup
                     💰 Pagar ${precio_total:,.0f}
                 </a>
                 <p style="color: rgba(255,255,255,0.95); font-size: 16px; margin: 20px 0 10px 0; font-weight: 500;">
-                    Haz clic aquí para realizar tu pago
+                    <a href="https://pay.sumup.com/b2c/Q3XX3AP6" target="_blank" style="color: white; text-decoration: underline;">Haz clic aquí para realizar tu pago</a>
                 </p>
                 <p style="color: rgba(255,255,255,0.85); font-size: 14px; margin: 10px 0 0 0;">
-                    <a href="https://pay.sumup.com/b2c/Q3XX3AP6" style="color: white; word-break: break-all; text-decoration: underline;">https://pay.sumup.com/b2c/Q3XX3AP6</a>
+                    <a href="https://pay.sumup.com/b2c/Q3XX3AP6" target="_blank" style="color: white; word-break: break-all; text-decoration: underline;">https://pay.sumup.com/b2c/Q3XX3AP6</a>
                 </p>
             </div>
             ''' if mostrar_link_pago else ''}
