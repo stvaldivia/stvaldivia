@@ -430,19 +430,29 @@ def send_resumen_compra_email(entrada: Entrada) -> bool:
             msg.attach(html_part)
             
             # Conectar y enviar
-            # Resolver DNS antes de conectar para evitar problemas con eventlet/greendns
+            # Si el servidor es una IP, usarla directamente. Si es un hostname, resolver DNS primero
             import socket
-            try:
-                logger.info(f"🔍 Resolviendo DNS para {smtp_server}...")
-                # Usar socket estándar (no eventlet) para resolver DNS
-                # Esto evita el timeout de greendns
-                smtp_ip = socket.gethostbyname(smtp_server)
-                logger.info(f"   ✅ DNS resuelto: {smtp_server} -> {smtp_ip}")
-                # Usar IP directamente para evitar problemas con greendns
-                smtp_host = smtp_ip
-            except Exception as dns_error:
-                logger.warning(f"   ⚠️ No se pudo resolver DNS, usando hostname: {dns_error}")
+            import re
+            
+            # Verificar si es una IP (formato IPv4)
+            ip_pattern = re.compile(r'^(\d{1,3}\.){3}\d{1,3}$')
+            if ip_pattern.match(smtp_server):
+                # Es una IP, usarla directamente (evita problemas de DNS con eventlet/greendns)
                 smtp_host = smtp_server
+                logger.info(f"🔌 Usando IP directa: {smtp_host}")
+            else:
+                # Es un hostname, resolver DNS antes de conectar para evitar problemas con eventlet/greendns
+                try:
+                    logger.info(f"🔍 Resolviendo DNS para {smtp_server}...")
+                    # Usar socket estándar (no eventlet) para resolver DNS
+                    # Esto evita el timeout de greendns
+                    smtp_ip = socket.gethostbyname(smtp_server)
+                    logger.info(f"   ✅ DNS resuelto: {smtp_server} -> {smtp_ip}")
+                    # Usar IP directamente para evitar problemas con greendns
+                    smtp_host = smtp_ip
+                except Exception as dns_error:
+                    logger.warning(f"   ⚠️ No se pudo resolver DNS, usando hostname: {dns_error}")
+                    smtp_host = smtp_server
             
             logger.info(f"🔌 Conectando a SMTP: {smtp_host}:{smtp_port}")
             logger.info(f"   Usuario: {smtp_user}")
