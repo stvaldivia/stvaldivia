@@ -419,13 +419,21 @@ def send_resumen_compra_email(entrada: Entrada) -> bool:
             msg.attach(html_part)
             
             # Conectar y enviar
-            if smtp_port == 465:
-                server = smtplib.SMTP_SSL(smtp_server, smtp_port)
-            else:
-                server = smtplib.SMTP(smtp_server, smtp_port)
-                server.starttls()
+            logger.info(f"Conectando a SMTP: {smtp_server}:{smtp_port}")
+            logger.info(f"Usuario: {smtp_user}")
             
+            if smtp_port == 465:
+                server = smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=30)
+                logger.info("✅ Conexión SSL establecida")
+            else:
+                server = smtplib.SMTP(smtp_server, smtp_port, timeout=30)
+                server.starttls()
+                logger.info("✅ TLS iniciado")
+            
+            # Intentar autenticación
+            logger.info("Intentando autenticación SMTP...")
             server.login(smtp_user, smtp_password)
+            logger.info("✅ Autenticación SMTP exitosa")
             server.send_message(msg)
             server.quit()
             
