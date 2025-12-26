@@ -407,4 +407,55 @@ def enviar_resumen_compra(entrada_id):
         }), 500
 
 
+@admin_ecommerce_bp.route('/compras/cambiar-todos-a-recibido', methods=['POST'])
+def cambiar_todos_a_recibido():
+    """API: Cambiar todos los estados a 'recibido'"""
+    auth_check = require_admin()
+    if auth_check:
+        return jsonify({'success': False, 'error': 'No autorizado'}), 401
+    
+    try:
+        # Obtener todas las entradas
+        entradas = Entrada.query.all()
+        
+        if not entradas:
+            return jsonify({
+                'success': False,
+                'error': 'No hay compras en la base de datos'
+            }), 400
+        
+        # Contar estados actuales
+        estados_antes = {}
+        for entrada in entradas:
+            estado = entrada.estado_pago or 'sin_estado'
+            estados_antes[estado] = estados_antes.get(estado, 0) + 1
+        
+        # Cambiar todos los estados a 'recibido'
+        actualizados = 0
+        for entrada in entradas:
+            if entrada.estado_pago != 'recibido':
+                entrada.estado_pago = 'recibido'
+                # Si tenía paid_at, limpiarlo ya que ahora está en 'recibido'
+                if entrada.paid_at:
+                    entrada.paid_at = None
+                actualizados += 1
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Se actualizaron {actualizados} compras a estado "recibido"',
+            'actualizados': actualizados,
+            'total': len(entradas),
+            'estados_antes': estados_antes
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': f'Error al cambiar estados: {str(e)}'
+        }), 500
+
+
 
