@@ -303,9 +303,9 @@
                 <div class="filter-group">
                     <label>Estado</label>
                     <select name="estado">
+                        <option value="recibido" {% if filtro_estado == 'recibido' %}selected{% endif %}>Recibido</option>
                         <option value="pagado" {% if filtro_estado == 'pagado' %}selected{% endif %}>Pagado</option>
-                        <option value="pendiente" {% if filtro_estado == 'pendiente' %}selected{% endif %}>Pendiente</option>
-                        <option value="cancelado" {% if filtro_estado == 'cancelado' %}selected{% endif %}>Cancelado</option>
+                        <option value="entregado" {% if filtro_estado == 'entregado' %}selected{% endif %}>Entregado</option>
                         <option value="" {% if not filtro_estado %}selected{% endif %}>Todos</option>
                     </select>
                 </div>
@@ -343,6 +343,7 @@
                         <th>Evento</th>
                         <th>Fecha Evento</th>
                         <th>Cantidad</th>
+                        <th>Precio Unit.</th>
                         <th>Total</th>
                         <th>Estado</th>
                         <th>Fecha Pago</th>
@@ -358,10 +359,11 @@
                         <td>{{ compra.evento_nombre }}</td>
                         <td>{{ compra.evento_fecha.strftime('%d/%m/%Y %H:%M') if compra.evento_fecha else 'N/A' }}</td>
                         <td>{{ compra.cantidad }}</td>
-                        <td><strong>${{ "{:,.0f}".format(compra.precio_total) }}</strong></td>
+                        <td>${{ "{:,.0f}".format(compra.precio_unitario) }}</td>
+                        <td><strong>${{ "{:,.0f}".format(compra.cantidad * compra.precio_unitario) }}</strong></td>
                         <td>
-                            <span class="badge {% if compra.estado_pago == 'pagado' %}badge-success{% else %}badge-pending{% endif %}">
-                                {{ compra.estado_pago }}
+                            <span class="badge {% if compra.estado_pago == 'pagado' or compra.estado_pago == 'entregado' %}badge-success{% elif compra.estado_pago == 'recibido' %}badge-pending{% else %}badge-pending{% endif %}">
+                                {{ compra.estado_pago|title }}
                             </span>
                         </td>
                         <td>{{ compra.paid_at.strftime('%d/%m/%Y %H:%M') if compra.paid_at else 'N/A' }}</td>

@@ -32,7 +32,7 @@ class Entrada(db.Model):
     precio_total = db.Column(Numeric(10, 2), nullable=False)
     
     # Estado del pago
-    estado_pago = db.Column(String(50), nullable=False, default='pendiente', index=True)  # pendiente, pagado, cancelado, reembolsado
+    estado_pago = db.Column(String(50), nullable=False, default='recibido', index=True)  # recibido, pagado, entregado
     metodo_pago = db.Column(String(50), nullable=True)  # getnet_web, getnet_link, etc.
     
     # Referencias de GetNet
@@ -82,6 +82,12 @@ class Entrada(db.Model):
     def generate_ticket_code():
         """Genera un código único para el ticket"""
         return f"ENT-{datetime.utcnow().strftime('%Y%m%d')}-{uuid.uuid4().hex[:8].upper()}"
+    
+    def calculate_precio_total(self):
+        """Calcula el precio total basado en cantidad y precio unitario"""
+        if self.cantidad and self.precio_unitario:
+            return float(self.cantidad) * float(self.precio_unitario)
+        return 0.0
 
 
 class CheckoutSession(db.Model):

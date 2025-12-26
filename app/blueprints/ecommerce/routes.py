@@ -144,6 +144,9 @@ def landing():
                     flash(f'Solo hay {producto.stock_quantity} unidad(es) disponible(s)', 'error')
                     return redirect(url_for('ecommerce.landing'))
             
+            # Asegurar que precio_total sea correcto (cantidad * precio_unitario)
+            precio_total_calculado = cantidad * precio_unitario
+            
             # Crear entrada directamente
             entrada = Entrada(
                 ticket_code=Entrada.generate_ticket_code(),
@@ -156,7 +159,7 @@ def landing():
                 comprador_telefono=comprador_telefono,
                 cantidad=cantidad,
                 precio_unitario=precio_unitario,
-                precio_total=precio_total,
+                precio_total=precio_total_calculado,
                 estado_pago='pagado',
                 metodo_pago='manual',  # Cambiado de 'getnet_web' a 'manual'
                 paid_at=datetime.utcnow()
@@ -665,6 +668,9 @@ def _process_approved_payment(checkout_session: CheckoutSession, payment_status:
                 flash('Stock insuficiente. El producto ya no está disponible.', 'error')
                 return redirect(url_for('ecommerce.index'))
         
+        # Asegurar que precio_total sea correcto (cantidad * precio_unitario)
+        precio_total_calculado = float(checkout_session.cantidad) * float(checkout_session.precio_unitario)
+        
         # Crear entrada
         entrada = Entrada(
             ticket_code=Entrada.generate_ticket_code(),
@@ -677,7 +683,7 @@ def _process_approved_payment(checkout_session: CheckoutSession, payment_status:
             comprador_telefono=checkout_session.comprador_telefono,
             cantidad=checkout_session.cantidad,
             precio_unitario=checkout_session.precio_unitario,
-            precio_total=checkout_session.precio_total,
+            precio_total=precio_total_calculado,
             estado_pago='pagado',
             metodo_pago='getnet_web',
             getnet_payment_id=payment_info.get('payment_id'),

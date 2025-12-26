@@ -24,17 +24,15 @@ def _build_compras_query():
     """Construye la query de compras aplicando los filtros de la request"""
     # Obtener parámetros de filtrado
     evento_nombre = request.args.get('evento', '')
-    estado_pago = request.args.get('estado', 'pagado')
+    estado_pago = request.args.get('estado', '')
     search = request.args.get('search', '')
     
     # Construir query base
     query = Entrada.query
     
-    # Filtrar por estado de pago
+    # Filtrar por estado de pago (recibido, pagado, entregado)
     if estado_pago:
         query = query.filter_by(estado_pago=estado_pago)
-    else:
-        query = query.filter_by(estado_pago='pagado')
     
     # Filtrar por evento
     if evento_nombre:
@@ -64,7 +62,7 @@ def list_compras():
     
     # Obtener parámetros de filtrado
     evento_nombre = request.args.get('evento', '')
-    estado_pago = request.args.get('estado', 'pagado')
+    estado_pago = request.args.get('estado', '')
     search = request.args.get('search', '')
     
     # Construir query usando la función auxiliar
@@ -82,7 +80,7 @@ def list_compras():
             func.sum(Entrada.cantidad)
         ).filter(
             Entrada.evento_nombre == evento.nombre_evento,
-            Entrada.estado_pago == 'pagado'
+            Entrada.estado_pago.in_(['pagado', 'entregado'])
         ).scalar() or 0
         
         cupos_disponibles = max(0, evento.aforo_objetivo - entradas_vendidas)
@@ -94,11 +92,11 @@ def list_compras():
             'porcentaje': round((entradas_vendidas / evento.aforo_objetivo * 100), 1) if evento.aforo_objetivo > 0 else 0
         }
     
-    # Estadísticas generales
-    total_compras = Entrada.query.filter_by(estado_pago='pagado').count()
+    # Estadísticas generales (solo pagados y entregados)
+    total_compras = Entrada.query.filter(Entrada.estado_pago.in_(['pagado', 'entregado'])).count()
     total_recaudado = db.session.query(
         func.sum(Entrada.precio_total)
-    ).filter_by(estado_pago='pagado').scalar() or 0
+    ).filter(Entrada.estado_pago.in_(['pagado', 'entregado'])).scalar() or 0
     
     # Obtener lista de eventos únicos para el filtro
     eventos_disponibles = db.session.query(
@@ -124,11 +122,11 @@ def api_stats():
     if auth_check:
         return auth_check
     
-    # Estadísticas generales
-    total_compras = Entrada.query.filter_by(estado_pago='pagado').count()
+    # Estadísticas generales (solo pagados y entregados)
+    total_compras = Entrada.query.filter(Entrada.estado_pago.in_(['pagado', 'entregado'])).count()
     total_recaudado = db.session.query(
         func.sum(Entrada.precio_total)
-    ).filter_by(estado_pago='pagado').scalar() or 0
+    ).filter(Entrada.estado_pago.in_(['pagado', 'entregado'])).scalar() or 0
     
     # Estadísticas por evento
     eventos_stats = {}
@@ -141,7 +139,7 @@ def api_stats():
             func.sum(Entrada.cantidad)
         ).filter(
             Entrada.evento_nombre == evento.nombre_evento,
-            Entrada.estado_pago == 'pagado'
+            Entrada.estado_pago.in_(['pagado', 'entregado'])
         ).scalar() or 0
         
         cupos_disponibles = max(0, evento.aforo_objetivo - entradas_vendidas)
