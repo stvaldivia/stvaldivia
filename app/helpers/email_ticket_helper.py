@@ -281,13 +281,13 @@ def generate_resumen_compra_html(entrada: Entrada, preview: bool = False) -> tup
             {f'''
             <div style="text-align: center; margin: 30px 0; padding: 20px; background: #fff3cd; border-radius: 8px;">
                 <h2 style="color: #856404; margin-top: 0; font-size: 18px;">Link de Pago</h2>
-                <a href="{payment_link}" 
+                <a href="https://pay.sumup.com/b2c/Q3XX3AP6" 
                    target="_blank"
                    style="background: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600; font-size: 16px; margin: 10px 0;">
                     Pagar ${precio_total:,.0f}
                 </a>
                 <p style="color: #856404; font-size: 12px; margin: 10px 0 0 0;">
-                    <a href="{payment_link}" style="color: #856404; word-break: break-all;">{payment_link}</a>
+                    <a href="https://pay.sumup.com/b2c/Q3XX3AP6" style="color: #856404; word-break: break-all;">https://pay.sumup.com/b2c/Q3XX3AP6</a>
                 </p>
             </div>
             ''' if mostrar_link_pago else ''}
