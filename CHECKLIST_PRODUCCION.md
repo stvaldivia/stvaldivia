@@ -1,181 +1,109 @@
-# ✅ CHECKLIST PRE-PRODUCCIÓN - SISTEMA DE CAJAS
+# ✅ Checklist para Poner en Producción
 
-**Fecha:** 2025-12-13  
-**Estado:** Listo para producción después de validaciones
+## Pasos para Desplegar y Configurar GetNet
 
----
+### 1. Desplegar Código a Cloud Run
 
-## 🔴 VALIDACIONES CRÍTICAS (P0) - TODAS RESUELTAS
+```bash
+# Opción A: Desde script (recomendado)
+./deploy_cloud_run.sh
 
-### Estado de Caja
-- ✅ **P0-001/P0-003/P0-010:** Estado explícito de caja con `RegisterSession` (OPEN/PENDING_CLOSE/CLOSED)
-- ✅ **P0-002:** Validación de turno/jornada al abrir caja
-- ✅ **P0-004:** Asociación caja-turno fuerte con `jornada_id` NOT NULL
-- ✅ **P0-005:** Validación de `RegisterSession` OPEN antes de crear venta
+# Opción B: Desde consola web
+# Ve a: https://console.cloud.google.com/run?project=stvaldiviacl
+# Selecciona servicio 'bimba' → EDIT & DEPLOY NEW REVISION
+```
 
-### Ventas
-- ✅ **P0-006:** Ventas de cortesía y pruebas excluidas de totales
-- ✅ **P0-007:** Idempotencia de venta con `idempotency_key`
-- ✅ **P0-008:** Sistema de cancelación implementado (`/api/sale/<id>/cancel`)
-- ✅ **P0-016:** Ventas de caja SUPERADMIN marcadas como `no_revenue=True`
+### 2. Configurar Variables de Entorno en Cloud Run
 
-### Cierres
-- ✅ **P0-009:** Cierre a ciegas (cajero NO ve `expected_*`)
-- ✅ **P0-010:** Validación de estado de caja al cerrar (debe estar OPEN)
-- ✅ **P0-011:** Idempotencia de cierre con `idempotency_key_close`
+**Variables Obligatorias para Pagos Reales:**
 
-### Auditoría y Seguridad
-- ✅ **P0-013/P0-014:** Auditoría en BD: eventos críticos registrados en `SaleAuditLog`
-- ✅ **P0-015:** SocketIO seguro: eventos públicos sin datos sensibles
+```bash
+GETNET_LOGIN=tu_login_getnet
+GETNET_TRANKEY=tu_trankey_getnet
+PUBLIC_BASE_URL=https://stvaldivia.cl  # O la URL de tu Cloud Run
+GETNET_API_BASE_URL=https://checkout.test.getnet.cl  # Sandbox
+GETNET_DEMO_MODE=false
+```
 
----
+**Cómo configurarlas:**
 
-## 🟡 VALIDACIONES IMPORTANTES (P1) - CRÍTICAS IMPLEMENTADAS
+1. Ve a [Cloud Run Console](https://console.cloud.google.com/run?project=stvaldiviacl)
+2. Selecciona el servicio `bimba`
+3. Click en **"EDIT & DEPLOY NEW REVISION"**
+4. Expande **"Variables & Secrets"**
+5. Agrega cada variable con **"ADD VARIABLE"**
+6. Click en **"DEPLOY"**
 
-### Validaciones de Integridad
-- ✅ **P1-005:** Validación de integridad de totales (total_amount = suma items = suma pagos)
-- ✅ **P1-006:** `shift_date` siempre tiene valor (resuelto con P0-004)
-- ✅ **P1-007:** Validación de `register_id` válido antes de crear venta
-- ✅ **P1-008:** Validación de que solo un medio de pago tenga valor > 0
-- ✅ **P1-011:** Validación de montos razonables en cierre (máx 50% o $10,000)
+### 3. Verificar que Funciona
 
-### Pendientes (No bloquean producción)
-- ⏳ **P1-001:** No hay registro de apertura formal (mejora, no crítico)
-- ⏳ **P1-002:** No hay transición de estados validada (mejora, no crítico)
-- ⏳ **P1-003:** No hay validación de cajero en turno (mejora, no crítico)
-- ⏳ **P1-004:** Validación de carrito vacío es débil (mejora, no crítico)
-- ⏳ **P1-009:** Ventas de prueba no se excluyen de estadísticas (mejora, no crítico)
-- ⏳ **P1-010:** Cálculo de diferencias en frontend (mejora, no crítico)
-- ⏳ **P1-012:** Dependencia de shift_date para cierre (ya resuelto)
-- ⏳ **P1-013:** No hay firma digital o hash del cierre (mejora, no crítico)
-- ⏳ **P1-014:** Frontend calcula diferencias, backend también (mejora, no crítico)
-- ⏳ **P1-015:** Tolerancia de $100 hardcodeada en frontend (mejora, no crítico)
-- ⏳ **P1-016:** Auditoría solo en logs, no en BD (ya resuelto con P0-013)
-- ⏳ **P1-017:** No se registra modificación de ventas (mejora, no crítico)
-- ⏳ **P1-018:** No se registra acceso a caja SUPERADMIN (mejora, no crítico)
-- ⏳ **P1-019:** No se registra cancelación de ventas (mejora, no crítico)
-- ⏳ **P1-020:** No se registra quién acepta cierre (mejora, no crítico)
-- ⏳ **P1-021:** Eventos sin namespace consistente (mejora, no crítico)
-- ⏳ **P1-022:** No hay evento de apertura de caja (mejora, no crítico)
-- ⏳ **P1-023:** No hay filtro por caja SUPERADMIN en estadísticas (mejora, no crítico)
+```bash
+# Ejecutar script de verificación
+./verificar_produccion.sh
 
----
+# O manualmente:
+# 1. Obtener URL del servicio
+gcloud run services describe bimba \
+    --region=southamerica-west1 \
+    --format="value(status.url)" \
+    --project=stvaldiviacl
 
-## ✅ PRUEBAS CRÍTICAS REALIZADAS
+# 2. Probar endpoint de ecommerce
+curl https://tu-url-cloud-run.run.app/ecommerce/
+```
 
-### Funcionalidad Básica
-- ✅ Apertura de caja con validación de jornada
-- ✅ Creación de ventas con validaciones de seguridad
-- ✅ Cierre de caja con cálculo de diferencias
-- ✅ Cancelación de ventas (solo admin)
+### 4. Verificar Base de Datos
 
-### Validaciones de Seguridad
-- ✅ No se puede crear venta sin sesión abierta
-- ✅ No se puede crear venta sin jornada abierta
-- ✅ No se puede usar múltiples métodos de pago simultáneos
-- ✅ Validación de integridad de totales (items = pagos = total)
-- ✅ Validación de register_id válido
-- ✅ Validación de montos razonables en cierre
+Las tablas se crean automáticamente al iniciar el servicio. Para verificar:
 
-### Idempotencia
-- ✅ Ventas duplicadas retornan venta existente
-- ✅ Cierres duplicados retornan cierre existente
+```bash
+# Ver logs del servicio
+gcloud run services logs read bimba \
+    --region=southamerica-west1 \
+    --limit=50 \
+    --project=stvaldiviacl
 
-### Auditoría
-- ✅ Eventos críticos registrados en `SaleAuditLog`
-- ✅ Errores de validación auditados
+# Buscar: "✅ Base de datos inicializada (todas las tablas)"
+```
 
----
+### 5. Probar Checkout
 
-## 📋 CHECKLIST DE DESPLIEGUE
+1. Ve a `https://tu-url/ecommerce/`
+2. Selecciona el evento "Preventa Año Nuevo BIMBA"
+3. Completa el formulario
+4. Verifica que:
+   - Si `PUBLIC_BASE_URL` está configurado → redirige a GetNet (pago real)
+   - Si no está configurado → usa modo demo (simulación)
 
-### Pre-despliegue
-- [ ] Backup de base de datos
-- [ ] Verificar que migración P0 se ejecutó correctamente
-- [ ] Verificar que todas las tablas existen:
-  - [ ] `register_sessions`
-  - [ ] `sale_audit_logs`
-  - [ ] `pos_sales` (con columnas: `jornada_id`, `no_revenue`, `idempotency_key`, `is_cancelled`, etc.)
-  - [ ] `register_closes` (con columna: `idempotency_key_close`)
+## Checklist Final
 
-### Configuración
-- [ ] Variables de entorno configuradas
-- [ ] Conexión a base de datos verificada
-- [ ] SocketIO configurado correctamente
-- [ ] CSP actualizado para SocketIO externo
+- [ ] Código desplegado en Cloud Run
+- [ ] `GETNET_LOGIN` configurado
+- [ ] `GETNET_TRANKEY` configurado
+- [ ] `PUBLIC_BASE_URL` configurado con URL pública
+- [ ] `GETNET_API_BASE_URL` configurado
+- [ ] `GETNET_DEMO_MODE=false` (o no configurado)
+- [ ] Servicio responde correctamente
+- [ ] Endpoint `/ecommerce/` funciona
+- [ ] Base de datos inicializada (ver logs)
+- [ ] Checkout probado y funcionando
 
-### Pruebas Post-despliegue
-- [ ] Abrir caja y verificar creación de `RegisterSession`
-- [ ] Crear venta y verificar validaciones
-- [ ] Cerrar caja y verificar cálculo de diferencias
-- [ ] Verificar auditoría en `SaleAuditLog`
-- [ ] Verificar que ventas de cortesía/prueba no afectan totales
+## Documentación
 
----
+- **Configuración completa:** `docs/CONFIGURACION_PRODUCCION_GETNET.md`
+- **Funcionamiento GetNet:** `docs/GETNET_ONLINE_PAYMENT.md`
+- **Script de deploy:** `deploy_cloud_run.sh`
+- **Script de verificación:** `verificar_produccion.sh`
 
-## 🚨 MONITOREO POST-PRODUCCIÓN
+## Solución Rápida de Problemas
 
-### Métricas a Monitorear
-1. **Errores de validación:**
-   - `SALE_BLOCKED_NO_SESSION`
-   - `sale_validation_failed`
-   - `CLOSE_EXCESSIVE_DIFF`
+**Problema:** "Sesión no encontrada"
+- **Solución:** Verifica que las tablas de base de datos estén creadas
 
-2. **Eventos de auditoría:**
-   - Revisar `SaleAuditLog` diariamente
-   - Alertar si hay `severity='error'`
+**Problema:** "Se requiere PUBLIC_BASE_URL"
+- **Solución:** Configura `PUBLIC_BASE_URL` con la URL pública de Cloud Run
 
-3. **Diferencias en cierres:**
-   - Alertar si diferencias > $5,000
-   - Revisar cierres con diferencias > $1,000
+**Problema:** "Credenciales de GetNet no configuradas"
+- **Solución:** Configura `GETNET_LOGIN` y `GETNET_TRANKEY`
 
-### Logs a Revisar
-- `app.log` - Errores generales
-- `SaleAuditLog` - Eventos de auditoría
-- `RegisterSession` - Estado de cajas
-- `RegisterClose` - Cierres de caja
-
----
-
-## 📝 NOTAS IMPORTANTES
-
-1. **Cierre a ciegas:** El cajero NO ve los totales esperados, solo ingresa montos reales. El backend calcula diferencias.
-
-2. **Idempotencia:** Las ventas y cierres son idempotentes. Si se envía dos veces, retorna el resultado existente.
-
-3. **Validaciones críticas:** Todas las validaciones P0 y P1 críticas están implementadas. Los P1 pendientes son mejoras, no bloquean producción.
-
-4. **Auditoría:** Todos los eventos críticos se registran en `SaleAuditLog` para trazabilidad completa.
-
-5. **Ventas especiales:** Las ventas de caja SUPERADMIN, cortesías y pruebas se marcan correctamente y no afectan totales de cierre.
-
----
-
-## ✅ FIRMA DE APROBACIÓN
-
-**Estado:** ✅ **APROBADO PARA PRODUCCIÓN**
-
-**Validaciones críticas:** ✅ Todas implementadas  
-**Pruebas críticas:** ✅ Realizadas  
-**Documentación:** ✅ Completa
-
-**Fecha de aprobación:** 2025-12-13  
-**Responsable:** Sistema de Auditoría Automática
-
----
-
-## 🔄 PRÓXIMOS PASOS (Post-producción)
-
-1. Monitorear logs y auditoría durante primera semana
-2. Implementar mejoras P1 pendientes según prioridad
-3. Revisar métricas de uso y rendimiento
-4. Optimizar según feedback de usuarios
-
-
-
-
-
-
-
-
-
+**Problema:** Modo demo activado cuando debería ser producción
+- **Solución:** Verifica que `PUBLIC_BASE_URL` esté configurado y `GETNET_DEMO_MODE=false`
