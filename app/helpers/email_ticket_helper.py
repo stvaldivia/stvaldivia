@@ -420,7 +420,7 @@ def send_resumen_compra_email(entrada: Entrada) -> bool:
         
         try:
             # Crear mensaje - ENVIAR AL COMPRADOR
-            msg = MIMEMultipart('alternative')
+            msg = MIMEMultipart('related')  # Cambiar a 'related' para permitir attachments inline
             msg['Subject'] = email_subject
             msg['From'] = smtp_from
             msg['To'] = entrada.comprador_email
@@ -428,6 +428,31 @@ def send_resumen_compra_email(entrada: Entrada) -> bool:
             # Agregar cuerpo HTML
             html_part = MIMEText(email_body, 'html', 'utf-8')
             msg.attach(html_part)
+            
+            # Adjuntar QR como imagen para mejor compatibilidad con clientes de email
+            # (algunos bloquean imágenes base64 inline)
+            from app.helpers.qr_ticket_helper import generate_ticket_qr
+            import base64
+            qr_code_base64 = generate_ticket_qr(entrada.ticket_code, size=250)
+            if qr_code_base64:
+                try:
+                    # Extraer los datos base64 del data URI
+                    if qr_code_base64.startswith('data:image'):
+                        base64_data = qr_code_base64.split(',')[1]
+                    else:
+                        base64_data = qr_code_base64
+                    
+                    # Decodificar y crear attachment
+                    qr_image_data = base64.b64decode(base64_data)
+                    from email.mime.image import MIMEImage
+                    qr_attachment = MIMEImage(qr_image_data)
+                    qr_cid = f'qr_{entrada.ticket_code}'
+                    qr_attachment.add_header('Content-ID', f'<{qr_cid}>')
+                    qr_attachment.add_header('Content-Disposition', 'inline', filename=f'qr_{entrada.ticket_code}.png')
+                    msg.attach(qr_attachment)
+                    logger.info(f"   ✅ QR adjuntado como imagen (Content-ID: {qr_cid})")
+                except Exception as qr_error:
+                    logger.warning(f"   ⚠️ No se pudo adjuntar QR como imagen: {qr_error}")
             
             # Conectar y enviar
             # Si el servidor es una IP, usarla directamente. Si es un hostname, resolver DNS primero
