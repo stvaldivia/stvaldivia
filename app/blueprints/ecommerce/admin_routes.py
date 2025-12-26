@@ -384,6 +384,19 @@ def enviar_resumen_compra(entrada_id):
                 'error': 'El pedido no tiene email del comprador'
             }), 400
         
+        # Verificar configuración SMTP antes de intentar enviar
+        import os
+        from flask import current_app
+        smtp_server = current_app.config.get('SMTP_SERVER') or os.environ.get('SMTP_SERVER')
+        smtp_user = current_app.config.get('SMTP_USER') or os.environ.get('SMTP_USER')
+        smtp_password = current_app.config.get('SMTP_PASSWORD') or os.environ.get('SMTP_PASSWORD')
+        
+        if not all([smtp_server, smtp_user, smtp_password]):
+            return jsonify({
+                'success': False,
+                'error': 'Configuración SMTP incompleta. Verifica SMTP_SERVER, SMTP_USER y SMTP_PASSWORD en las variables de entorno.'
+            }), 500
+        
         # Enviar email
         enviado = send_resumen_compra_email(entrada)
         
@@ -408,7 +421,7 @@ def enviar_resumen_compra(entrada_id):
         else:
             return jsonify({
                 'success': False,
-                'error': 'No se pudo enviar el email. Verifica la configuración SMTP.',
+                'error': 'No se pudo enviar el email. Verifica la configuración SMTP y los logs del servidor.',
                 'email_enviado': entrada.email_resumen_enviado if hasattr(entrada, 'email_resumen_enviado') else False
             }), 500
         
