@@ -103,13 +103,31 @@ class SumUpClient:
             logger.info(f"Creando checkout SumUp: {url}")
             logger.debug(f"Payload: {payload}")
             
-            # Usar timeout más largo para conexión y lectura (conexión: 30s, lectura: 30s)
-            response = requests.post(
-                url,
-                json=payload,
-                headers=self._get_headers(),
-                timeout=(30, 30)  # (connect timeout, read timeout)
-            )
+            # Intentar conexión con retry para manejar problemas de DNS intermitentes
+            max_retries = 3
+            last_error = None
+            
+            for attempt in range(1, max_retries + 1):
+                try:
+                    # Usar timeout más largo para conexión y lectura (conexión: 30s, lectura: 30s)
+                    response = requests.post(
+                        url,
+                        json=payload,
+                        headers=self._get_headers(),
+                        timeout=(30, 30)  # (connect timeout, read timeout)
+                    )
+                    # Si llegamos aquí, la conexión fue exitosa
+                    break
+                except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+                    last_error = e
+                    if attempt < max_retries:
+                        wait_time = attempt * 2  # Backoff exponencial: 2s, 4s
+                        logger.warning(f"⚠️  Intento {attempt}/{max_retries} falló: {e}. Reintentando en {wait_time}s...")
+                        import time
+                        time.sleep(wait_time)
+                    else:
+                        logger.error(f"❌ Todos los intentos fallaron después de {max_retries} intentos")
+                        raise
             
             # Verificar Content-Type
             content_type = response.headers.get('Content-Type', '').lower()
@@ -162,11 +180,14 @@ class SumUpClient:
                     'status_code': response.status_code
                 }
             
-        except requests.exceptions.RequestException as e:
+        except (requests.exceptions.RequestException, requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+            error_msg = str(e)
+            if 'NameResolutionError' in error_msg or 'Failed to resolve' in error_msg:
+                error_msg = 'Error de conexión: No se pudo resolver el servidor de SumUp. Por favor intenta de nuevo.'
             logger.error(f"Error de red al crear checkout en SumUp: {e}")
             return {
                 'success': False,
-                'error': f'Error de conexión: {str(e)}'
+                'error': f'Error de conexión: {error_msg}'
             }
         except Exception as e:
             logger.error(f"Error inesperado al crear checkout: {e}", exc_info=True)
