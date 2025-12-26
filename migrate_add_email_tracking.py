@@ -7,6 +7,14 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+# Configurar logging antes de importar app
+import logging
+logging.basicConfig(level=logging.ERROR)
+
+# Configurar variables de entorno para evitar problemas
+os.environ['FLASK_ENV'] = 'production'
+os.environ['LOG_FILE'] = '/dev/null'
+
 from app import create_app
 from app.models import db
 from sqlalchemy import text
