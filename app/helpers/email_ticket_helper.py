@@ -145,6 +145,251 @@ def send_ticket_email(entrada: Entrada) -> bool:
         return False
 
 
+def get_payment_link_by_amount(monto: float) -> str:
+    """
+    Obtiene el link de pago según el monto de la compra
+    
+    Args:
+        monto: Monto total de la compra
+        
+    Returns:
+        URL del link de pago correspondiente
+    """
+    # Links de pago SumUp según monto
+    payment_links = {
+        5000: 'https://pay.sumup.com/b2c/Q3XX3AP6',
+        10000: 'https://pay.sumup.com/b2c/Q877B989',
+        15000: 'https://pay.sumup.com/b2c/QV9H60YE',
+        20000: 'https://pay.sumup.com/b2c/QWXAE7H2'
+    }
+    
+    # Redondear al monto más cercano
+    monto_redondeado = round(monto / 1000) * 1000
+    
+    # Buscar el link correspondiente (usar el más cercano hacia abajo)
+    if monto_redondeado >= 20000:
+        return payment_links[20000]
+    elif monto_redondeado >= 15000:
+        return payment_links[15000]
+    elif monto_redondeado >= 10000:
+        return payment_links[10000]
+    elif monto_redondeado >= 5000:
+        return payment_links[5000]
+    else:
+        # Si es menor a $5.000, usar el link de $5.000
+        return payment_links[5000]
+
+
+def generate_resumen_compra_html(entrada: Entrada, preview: bool = False) -> tuple[str, str]:
+    """
+    Genera el HTML del email de resumen de compra
+    
+    Args:
+        entrada: Objeto Entrada
+        preview: Si es True, no incluye información sensible
+        
+    Returns:
+        Tupla con (subject, html_body)
+    """
+    email_subject = f"Resumen de tu compra - {entrada.evento_nombre} | BIMBA"
+    
+    # Generar URL del ticket
+    try:
+        ticket_url = url_for('ecommerce.view_ticket', ticket_code=entrada.ticket_code, _external=True)
+    except RuntimeError:
+        public_base_url = current_app.config.get('PUBLIC_BASE_URL') or os.environ.get('PUBLIC_BASE_URL')
+        if public_base_url:
+            ticket_url = f"{public_base_url.rstrip('/')}/ecommerce/ticket/{entrada.ticket_code}"
+        else:
+            ticket_url = f"/ecommerce/ticket/{entrada.ticket_code}"
+    
+    # Formatear fechas
+    fecha_evento = entrada.evento_fecha.strftime('%d de %B de %Y a las %H:%M') if entrada.evento_fecha else 'No especificada'
+    fecha_compra = entrada.created_at.strftime('%d/%m/%Y %H:%M') if entrada.created_at else 'N/A'
+    fecha_pago = entrada.paid_at.strftime('%d/%m/%Y %H:%M') if entrada.paid_at else 'N/A'
+    
+    # Calcular precio total
+    precio_total = float(entrada.cantidad) * float(entrada.precio_unitario) if entrada.precio_unitario else float(entrada.precio_total or 0)
+    
+    # Obtener link de pago según el monto
+    payment_link = get_payment_link_by_amount(precio_total)
+    
+    # Estado en español
+    estados = {
+        'recibido': 'Recibido',
+        'pagado': 'Pagado',
+        'entregado': 'Entregado'
+    }
+    estado_display = estados.get(entrada.estado_pago.lower(), entrada.estado_pago.title())
+    
+    # Método de pago en español
+    metodos_pago = {
+        'getnet_web': 'Tarjeta de Crédito/Débito (GetNet)',
+        'getnet_link': 'Link de Pago (GetNet)',
+        'manual': 'Pago Manual',
+        'sumup': 'Link de Pago (SumUp)'
+    }
+    metodo_display = metodos_pago.get(entrada.metodo_pago, entrada.metodo_pago or 'No especificado')
+    
+    # Determinar si mostrar link de pago (solo si el estado es "recibido")
+    mostrar_link_pago = entrada.estado_pago.lower() == 'recibido'
+    
+    email_body = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+        
+        <!-- Header -->
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+            <h1 style="color: white; margin: 0; font-size: 28px;">🎫 BIMBA</h1>
+            <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;">Resumen de tu Compra</p>
+        </div>
+        
+        <!-- Contenido Principal -->
+        <div style="background: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+            
+            <p style="font-size: 16px; margin-bottom: 20px;">Hola <strong>{entrada.comprador_nombre}</strong>,</p>
+            
+            <p style="font-size: 16px; color: #666;">Gracias por tu compra. Aquí está el resumen completo de tu pedido:</p>
+            
+            <!-- Código de Ticket -->
+            <div style="background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%); padding: 25px; border-radius: 8px; margin: 25px 0; text-align: center; border: 2px dashed #667eea;">
+                <p style="margin: 0 0 10px 0; color: #666; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Código de Ticket</p>
+                <p style="font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #667eea; margin: 0; font-family: 'Courier New', monospace;">
+                    {entrada.ticket_code}
+                </p>
+            </div>
+            
+            <!-- Información del Evento -->
+            <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea;">
+                <h2 style="color: #667eea; margin-top: 0; font-size: 22px;">📅 Información del Evento</h2>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="padding: 8px 0; color: #666; width: 40%;"><strong>Evento:</strong></td>
+                        <td style="padding: 8px 0; color: #333;">{entrada.evento_nombre}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 0; color: #666;"><strong>Fecha:</strong></td>
+                        <td style="padding: 8px 0; color: #333;">{fecha_evento}</td>
+                    </tr>
+                    {f'<tr><td style="padding: 8px 0; color: #666;"><strong>Lugar:</strong></td><td style="padding: 8px 0; color: #333;">{entrada.evento_lugar}</td></tr>' if entrada.evento_lugar else ''}
+                </table>
+            </div>
+            
+            <!-- Detalles de la Compra -->
+            <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
+                <h2 style="color: #10b981; margin-top: 0; font-size: 22px;">💰 Detalles de la Compra</h2>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="padding: 8px 0; color: #666; width: 40%;"><strong>Cantidad:</strong></td>
+                        <td style="padding: 8px 0; color: #333;">{entrada.cantidad} entrada(s)</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 0; color: #666;"><strong>Precio unitario:</strong></td>
+                        <td style="padding: 8px 0; color: #333;">${float(entrada.precio_unitario):,.0f}</td>
+                    </tr>
+                    <tr style="border-top: 2px solid #ddd;">
+                        <td style="padding: 12px 0; color: #333; font-size: 18px;"><strong>Total a pagar:</strong></td>
+                        <td style="padding: 12px 0; color: #10b981; font-size: 20px; font-weight: bold;">${precio_total:,.0f}</td>
+                    </tr>
+                </table>
+            </div>
+            
+            {'<!-- Link de Pago -->' if mostrar_link_pago else ''}
+            {f'''
+            <div style="background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%); padding: 25px; border-radius: 8px; margin: 20px 0; text-align: center;">
+                <h2 style="color: white; margin-top: 0; font-size: 22px;">💳 Realizar Pago</h2>
+                <p style="color: rgba(255,255,255,0.9); margin: 15px 0; font-size: 16px;">
+                    Para completar tu compra, haz clic en el siguiente botón para realizar el pago:
+                </p>
+                <a href="{payment_link}" 
+                   target="_blank"
+                   style="background: white; color: #f59e0b; padding: 15px 30px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); margin-top: 10px;">
+                    💳 Pagar ${precio_total:,.0f}
+                </a>
+                <p style="color: rgba(255,255,255,0.8); margin: 15px 0 0 0; font-size: 12px;">
+                    O copia este link: <a href="{payment_link}" style="color: white; word-break: break-all;">{payment_link}</a>
+                </p>
+            </div>
+            ''' if mostrar_link_pago else ''}
+            
+            <!-- Información de Pago -->
+            <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+                <h2 style="color: #f59e0b; margin-top: 0; font-size: 22px;">💳 Información de Pago</h2>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="padding: 8px 0; color: #666; width: 40%;"><strong>Estado:</strong></td>
+                        <td style="padding: 8px 0; color: #333;">
+                            <span style="background: {'#10b981' if entrada.estado_pago in ['pagado', 'entregado'] else '#f59e0b'}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">
+                                {estado_display}
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 0; color: #666;"><strong>Método de pago:</strong></td>
+                        <td style="padding: 8px 0; color: #333;">{metodo_display}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 0; color: #666;"><strong>Fecha de compra:</strong></td>
+                        <td style="padding: 8px 0; color: #333;">{fecha_compra}</td>
+                    </tr>
+                    {f'<tr><td style="padding: 8px 0; color: #666;"><strong>Fecha de pago:</strong></td><td style="padding: 8px 0; color: #333;">{fecha_pago}</td></tr>' if entrada.paid_at else ''}
+                    {f'<tr><td style="padding: 8px 0; color: #666;"><strong>ID Transacción:</strong></td><td style="padding: 8px 0; color: #333; font-family: monospace; font-size: 12px;">{entrada.getnet_transaction_id}</td></tr>' if entrada.getnet_transaction_id else ''}
+                </table>
+            </div>
+            
+            <!-- Tus Datos -->
+            <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #8b5cf6;">
+                <h2 style="color: #8b5cf6; margin-top: 0; font-size: 22px;">👤 Tus Datos</h2>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="padding: 8px 0; color: #666; width: 40%;"><strong>Nombre:</strong></td>
+                        <td style="padding: 8px 0; color: #333;">{entrada.comprador_nombre}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 0; color: #666;"><strong>Email:</strong></td>
+                        <td style="padding: 8px 0; color: #333;">{entrada.comprador_email}</td>
+                    </tr>
+                    {f'<tr><td style="padding: 8px 0; color: #666;"><strong>Teléfono:</strong></td><td style="padding: 8px 0; color: #333;">{entrada.comprador_telefono}</td></tr>' if entrada.comprador_telefono else ''}
+                    {f'<tr><td style="padding: 8px 0; color: #666;"><strong>RUT:</strong></td><td style="padding: 8px 0; color: #333;">{entrada.comprador_rut}</td></tr>' if entrada.comprador_rut else ''}
+                </table>
+            </div>
+            
+            <!-- Botón Ver Ticket -->
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{ticket_url}" 
+                   style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);">
+                    📱 Ver mi Ticket Digital
+                </a>
+            </div>
+            
+            <!-- Información Importante -->
+            <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                <p style="margin: 0; color: #856404; font-size: 14px;">
+                    <strong>ℹ️ Importante:</strong> Presenta este ticket en la entrada del evento. Puedes mostrarlo desde tu teléfono o imprimirlo. Guarda este email como comprobante de tu compra.
+                </p>
+            </div>
+            
+        </div>
+        
+        <!-- Footer -->
+        <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
+            <p style="margin: 5px 0;">BIMBA - Valdivia es BIMBA</p>
+            <p style="margin: 5px 0;">Si tienes alguna pregunta, contáctanos en hola@valdiviaesbimba.cl</p>
+            <p style="margin: 5px 0;">Este es un email automático, por favor no respondas a este mensaje.</p>
+        </div>
+        
+    </body>
+    </html>
+    """
+    
+    return email_subject, email_body
+
+
 def send_resumen_compra_email(entrada: Entrada) -> bool:
     """
     Envía email con resumen de compra y datos de pago directamente al comprador
@@ -177,159 +422,8 @@ def send_resumen_compra_email(entrada: Entrada) -> bool:
         fecha_compra = entrada.created_at.strftime('%d/%m/%Y %H:%M') if entrada.created_at else 'N/A'
         fecha_pago = entrada.paid_at.strftime('%d/%m/%Y %H:%M') if entrada.paid_at else 'N/A'
         
-        # Calcular precio total
-        precio_total = float(entrada.cantidad) * float(entrada.precio_unitario) if entrada.precio_unitario else float(entrada.precio_total or 0)
-        
-        # Estado en español
-        estados = {
-            'recibido': 'Recibido',
-            'pagado': 'Pagado',
-            'entregado': 'Entregado'
-        }
-        estado_display = estados.get(entrada.estado_pago.lower(), entrada.estado_pago.title())
-        
-        # Método de pago en español
-        metodos_pago = {
-            'getnet_web': 'Tarjeta de Crédito/Débito (GetNet)',
-            'getnet_link': 'Link de Pago (GetNet)',
-            'manual': 'Pago Manual'
-        }
-        metodo_display = metodos_pago.get(entrada.metodo_pago, entrada.metodo_pago or 'No especificado')
-        
-        email_body = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
-            
-            <!-- Header -->
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
-                <h1 style="color: white; margin: 0; font-size: 28px;">🎫 BIMBA</h1>
-                <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;">Resumen de tu Compra</p>
-            </div>
-            
-            <!-- Contenido Principal -->
-            <div style="background: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                
-                <p style="font-size: 16px; margin-bottom: 20px;">Hola <strong>{entrada.comprador_nombre}</strong>,</p>
-                
-                <p style="font-size: 16px; color: #666;">Gracias por tu compra. Aquí está el resumen completo de tu pedido:</p>
-                
-                <!-- Código de Ticket -->
-                <div style="background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%); padding: 25px; border-radius: 8px; margin: 25px 0; text-align: center; border: 2px dashed #667eea;">
-                    <p style="margin: 0 0 10px 0; color: #666; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Código de Ticket</p>
-                    <p style="font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #667eea; margin: 0; font-family: 'Courier New', monospace;">
-                        {entrada.ticket_code}
-                    </p>
-                </div>
-                
-                <!-- Información del Evento -->
-                <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #667eea;">
-                    <h2 style="color: #667eea; margin-top: 0; font-size: 22px;">📅 Información del Evento</h2>
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <tr>
-                            <td style="padding: 8px 0; color: #666; width: 40%;"><strong>Evento:</strong></td>
-                            <td style="padding: 8px 0; color: #333;">{entrada.evento_nombre}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px 0; color: #666;"><strong>Fecha:</strong></td>
-                            <td style="padding: 8px 0; color: #333;">{fecha_evento}</td>
-                        </tr>
-                        {f'<tr><td style="padding: 8px 0; color: #666;"><strong>Lugar:</strong></td><td style="padding: 8px 0; color: #333;">{entrada.evento_lugar}</td></tr>' if entrada.evento_lugar else ''}
-                    </table>
-                </div>
-                
-                <!-- Detalles de la Compra -->
-                <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981;">
-                    <h2 style="color: #10b981; margin-top: 0; font-size: 22px;">💰 Detalles de la Compra</h2>
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <tr>
-                            <td style="padding: 8px 0; color: #666; width: 40%;"><strong>Cantidad:</strong></td>
-                            <td style="padding: 8px 0; color: #333;">{entrada.cantidad} entrada(s)</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px 0; color: #666;"><strong>Precio unitario:</strong></td>
-                            <td style="padding: 8px 0; color: #333;">${float(entrada.precio_unitario):,.0f}</td>
-                        </tr>
-                        <tr style="border-top: 2px solid #ddd;">
-                            <td style="padding: 12px 0; color: #333; font-size: 18px;"><strong>Total pagado:</strong></td>
-                            <td style="padding: 12px 0; color: #10b981; font-size: 20px; font-weight: bold;">${precio_total:,.0f}</td>
-                        </tr>
-                    </table>
-                </div>
-                
-                <!-- Información de Pago -->
-                <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
-                    <h2 style="color: #f59e0b; margin-top: 0; font-size: 22px;">💳 Información de Pago</h2>
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <tr>
-                            <td style="padding: 8px 0; color: #666; width: 40%;"><strong>Estado:</strong></td>
-                            <td style="padding: 8px 0; color: #333;">
-                                <span style="background: {'#10b981' if entrada.estado_pago in ['pagado', 'entregado'] else '#f59e0b'}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">
-                                    {estado_display}
-                                </span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px 0; color: #666;"><strong>Método de pago:</strong></td>
-                            <td style="padding: 8px 0; color: #333;">{metodo_display}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px 0; color: #666;"><strong>Fecha de compra:</strong></td>
-                            <td style="padding: 8px 0; color: #333;">{fecha_compra}</td>
-                        </tr>
-                        {f'<tr><td style="padding: 8px 0; color: #666;"><strong>Fecha de pago:</strong></td><td style="padding: 8px 0; color: #333;">{fecha_pago}</td></tr>' if entrada.paid_at else ''}
-                        {f'<tr><td style="padding: 8px 0; color: #666;"><strong>ID Transacción:</strong></td><td style="padding: 8px 0; color: #333; font-family: monospace; font-size: 12px;">{entrada.getnet_transaction_id}</td></tr>' if entrada.getnet_transaction_id else ''}
-                    </table>
-                </div>
-                
-                <!-- Tus Datos -->
-                <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #8b5cf6;">
-                    <h2 style="color: #8b5cf6; margin-top: 0; font-size: 22px;">👤 Tus Datos</h2>
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <tr>
-                            <td style="padding: 8px 0; color: #666; width: 40%;"><strong>Nombre:</strong></td>
-                            <td style="padding: 8px 0; color: #333;">{entrada.comprador_nombre}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 8px 0; color: #666;"><strong>Email:</strong></td>
-                            <td style="padding: 8px 0; color: #333;">{entrada.comprador_email}</td>
-                        </tr>
-                        {f'<tr><td style="padding: 8px 0; color: #666;"><strong>Teléfono:</strong></td><td style="padding: 8px 0; color: #333;">{entrada.comprador_telefono}</td></tr>' if entrada.comprador_telefono else ''}
-                        {f'<tr><td style="padding: 8px 0; color: #666;"><strong>RUT:</strong></td><td style="padding: 8px 0; color: #333;">{entrada.comprador_rut}</td></tr>' if entrada.comprador_rut else ''}
-                    </table>
-                </div>
-                
-                <!-- Botón Ver Ticket -->
-                <div style="text-align: center; margin: 30px 0;">
-                    <a href="{ticket_url}" 
-                       style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; display: inline-block; font-weight: 600; font-size: 16px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);">
-                        📱 Ver mi Ticket Digital
-                    </a>
-                </div>
-                
-                <!-- Información Importante -->
-                <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 15px; margin: 20px 0;">
-                    <p style="margin: 0; color: #856404; font-size: 14px;">
-                        <strong>ℹ️ Importante:</strong> Presenta este ticket en la entrada del evento. Puedes mostrarlo desde tu teléfono o imprimirlo. Guarda este email como comprobante de tu compra.
-                    </p>
-                </div>
-                
-            </div>
-            
-            <!-- Footer -->
-            <div style="text-align: center; padding: 20px; color: #999; font-size: 12px;">
-                <p style="margin: 5px 0;">BIMBA - Valdivia es BIMBA</p>
-                <p style="margin: 5px 0;">Si tienes alguna pregunta, contáctanos en hola@valdiviaesbimba.cl</p>
-                <p style="margin: 5px 0;">Este es un email automático, por favor no respondas a este mensaje.</p>
-            </div>
-            
-        </body>
-        </html>
-        """
+        # Generar HTML del email usando la función helper
+        email_subject, email_body = generate_resumen_compra_html(entrada, preview=False)
         
         # Enviar email usando smtplib
         import smtplib

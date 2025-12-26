@@ -325,6 +325,38 @@ def export_compras():
         return redirect(url_for('admin_ecommerce.list_compras'))
 
 
+@admin_ecommerce_bp.route('/compras/<int:entrada_id>/preview-email', methods=['GET'])
+def preview_resumen_compra(entrada_id):
+    """Vista previa del email de resumen de compra"""
+    auth_check = require_admin()
+    if auth_check:
+        return auth_check
+    
+    try:
+        # Buscar la entrada
+        entrada = Entrada.query.get_or_404(entrada_id)
+        
+        # Generar HTML del email
+        from app.helpers.email_ticket_helper import generate_resumen_compra_html
+        email_subject, email_body = generate_resumen_compra_html(entrada, preview=True)
+        
+        # Calcular precio total para mostrar info
+        precio_total = float(entrada.cantidad) * float(entrada.precio_unitario) if entrada.precio_unitario else float(entrada.precio_total or 0)
+        from app.helpers.email_ticket_helper import get_payment_link_by_amount
+        payment_link = get_payment_link_by_amount(precio_total)
+        
+        return render_template('admin/preview_email.html',
+                             entrada=entrada,
+                             email_subject=email_subject,
+                             email_body=email_body,
+                             precio_total=precio_total,
+                             payment_link=payment_link)
+        
+    except Exception as e:
+        flash(f'Error al generar vista previa: {str(e)}', 'error')
+        return redirect(url_for('admin_ecommerce.list_compras'))
+
+
 @admin_ecommerce_bp.route('/compras/<int:entrada_id>/enviar-resumen', methods=['POST'])
 def enviar_resumen_compra(entrada_id):
     """API: Enviar resumen de compra por email al comprador"""
