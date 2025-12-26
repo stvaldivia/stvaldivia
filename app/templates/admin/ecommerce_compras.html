@@ -513,11 +513,11 @@
                         <td>{{ compra.comprador_nombre }}</td>
                         <td>
                             {{ compra.comprador_email }}
-                            {% if compra.email_resumen_enviado %}
+                            {% if hasattr(compra, 'email_resumen_enviado') and compra.email_resumen_enviado %}
                                 <span style="color: #10b981; font-size: 0.85rem; margin-left: 0.5rem;" title="Email enviado el {{ compra.email_resumen_enviado_at.strftime('%d/%m/%Y %H:%M') if compra.email_resumen_enviado_at else 'N/A' }}">
                                     ✅ Enviado
                                 </span>
-                            {% else %}
+                            {% elif hasattr(compra, 'email_resumen_enviado') %}
                                 <span style="color: #f59e0b; font-size: 0.85rem; margin-left: 0.5rem;" title="Email no enviado">
                                     ⏳ Pendiente
                                 </span>

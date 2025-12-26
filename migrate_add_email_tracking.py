@@ -15,29 +15,51 @@ app = create_app()
 
 with app.app_context():
     try:
-        # Verificar si las columnas ya existen
-        inspector = db.inspect(db.engine)
-        columns = [col['name'] for col in inspector.get_columns('entradas')]
+        # Configurar logging para evitar problemas de permisos
+        import logging
+        logging.basicConfig(level=logging.ERROR)
         
-        if 'email_resumen_enviado' not in columns:
+        # Verificar si las columnas ya existen usando SQL directo
+        try:
+            result = db.session.execute(text("SHOW COLUMNS FROM entradas LIKE 'email_resumen_enviado'"))
+            col_exists = result.fetchone() is not None
+        except:
+            col_exists = False
+        
+        if not col_exists:
             print("Agregando columna email_resumen_enviado...")
-            db.session.execute(text("""
-                ALTER TABLE entradas 
-                ADD COLUMN email_resumen_enviado BOOLEAN DEFAULT 0 NOT NULL
-            """))
-            db.session.commit()
-            print("✅ Columna email_resumen_enviado agregada")
+            try:
+                db.session.execute(text("""
+                    ALTER TABLE entradas 
+                    ADD COLUMN email_resumen_enviado BOOLEAN DEFAULT 0 NOT NULL
+                """))
+                db.session.commit()
+                print("✅ Columna email_resumen_enviado agregada")
+            except Exception as e:
+                print(f"⚠️ Error al agregar columna email_resumen_enviado: {e}")
+                db.session.rollback()
         else:
             print("✅ Columna email_resumen_enviado ya existe")
         
-        if 'email_resumen_enviado_at' not in columns:
+        # Verificar segunda columna
+        try:
+            result = db.session.execute(text("SHOW COLUMNS FROM entradas LIKE 'email_resumen_enviado_at'"))
+            col_exists = result.fetchone() is not None
+        except:
+            col_exists = False
+        
+        if not col_exists:
             print("Agregando columna email_resumen_enviado_at...")
-            db.session.execute(text("""
-                ALTER TABLE entradas 
-                ADD COLUMN email_resumen_enviado_at DATETIME
-            """))
-            db.session.commit()
-            print("✅ Columna email_resumen_enviado_at agregada")
+            try:
+                db.session.execute(text("""
+                    ALTER TABLE entradas 
+                    ADD COLUMN email_resumen_enviado_at DATETIME
+                """))
+                db.session.commit()
+                print("✅ Columna email_resumen_enviado_at agregada")
+            except Exception as e:
+                print(f"⚠️ Error al agregar columna email_resumen_enviado_at: {e}")
+                db.session.rollback()
         else:
             print("✅ Columna email_resumen_enviado_at ya existe")
         

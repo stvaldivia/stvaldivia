@@ -385,13 +385,19 @@ def enviar_resumen_compra(entrada_id):
         db.session.refresh(entrada)
         
         if enviado:
-            fecha_envio = entrada.email_resumen_enviado_at.strftime('%d/%m/%Y %H:%M') if entrada.email_resumen_enviado_at else 'N/A'
+            fecha_envio = None
+            email_enviado = False
+            if hasattr(entrada, 'email_resumen_enviado_at') and entrada.email_resumen_enviado_at:
+                fecha_envio = entrada.email_resumen_enviado_at.strftime('%d/%m/%Y %H:%M')
+            if hasattr(entrada, 'email_resumen_enviado'):
+                email_enviado = entrada.email_resumen_enviado
+            
             return jsonify({
                 'success': True,
                 'message': f'Resumen enviado exitosamente a {entrada.comprador_email}',
                 'email': entrada.comprador_email,
-                'fecha_envio': fecha_envio,
-                'email_enviado': entrada.email_resumen_enviado
+                'fecha_envio': fecha_envio or 'N/A',
+                'email_enviado': email_enviado
             })
         else:
             return jsonify({
