@@ -447,13 +447,20 @@ def send_resumen_compra_email(entrada: Entrada) -> bool:
             return True
             
         except smtplib.SMTPAuthenticationError as e:
-            logger.error(f"❌ Error de autenticación SMTP: {e}")
+            error_msg = str(e)
+            logger.error(f"❌ Error de autenticación SMTP: {error_msg}")
+            logger.error(f"   Servidor: {smtp_server}:{smtp_port}")
+            logger.error(f"   Usuario: {smtp_user}")
+            logger.error(f"   Verifica que las credenciales sean correctas y que la cuenta esté activa")
             return False
         except smtplib.SMTPException as e:
-            logger.error(f"❌ Error SMTP: {e}")
+            error_msg = str(e)
+            logger.error(f"❌ Error SMTP: {error_msg}")
+            logger.error(f"   Servidor: {smtp_server}:{smtp_port}")
             return False
         except Exception as email_error:
-            logger.error(f"❌ Error al enviar email de resumen a {entrada.comprador_email}: {email_error}", exc_info=True)
+            error_msg = str(email_error)
+            logger.error(f"❌ Error al enviar email de resumen a {entrada.comprador_email}: {error_msg}", exc_info=True)
             return False
         
     except Exception as e:
