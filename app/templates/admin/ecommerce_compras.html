@@ -525,10 +525,18 @@
                         </td>
                         <td>{{ compra.paid_at.strftime('%d/%m/%Y %H:%M') if compra.paid_at else 'N/A' }}</td>
                         <td>
-                            <a href="{{ url_for('ecommerce.view_ticket', ticket_code=compra.ticket_code) }}" 
-                               class="btn-link" target="_blank">
-                                Ver Ticket
-                            </a>
+                            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                <a href="{{ url_for('ecommerce.view_ticket', ticket_code=compra.ticket_code) }}" 
+                                   class="btn-link" target="_blank">
+                                    Ver Ticket
+                                </a>
+                                <button class="btn-enviar-resumen" 
+                                        data-entrada-id="{{ compra.id }}"
+                                        data-email="{{ compra.comprador_email }}"
+                                        style="background: #10b981; color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600;">
+                                    📧 Enviar Resumen
+                                </button>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
@@ -754,6 +762,65 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .finally(() => {
                 // Rehabilitar el selector
+                this.disabled = false;
+                this.style.opacity = estiloOriginal || '1';
+            });
+        });
+    });
+    
+    // Manejar envío de resumen individual
+    const botonesEnviarResumen = document.querySelectorAll('.btn-enviar-resumen');
+    botonesEnviarResumen.forEach(boton => {
+        boton.addEventListener('click', function() {
+            const entradaId = this.dataset.entradaId;
+            const email = this.dataset.email;
+            
+            if (!email) {
+                alert('Este pedido no tiene email del comprador');
+                return;
+            }
+            
+            // Confirmar envío
+            if (!confirm(`¿Enviar resumen de compra a ${email}?`)) {
+                return;
+            }
+            
+            // Deshabilitar botón mientras se procesa
+            this.disabled = true;
+            const textoOriginal = this.textContent;
+            this.textContent = 'Enviando...';
+            const estiloOriginal = this.style.opacity;
+            this.style.opacity = '0.7';
+            
+            // Hacer la petición AJAX
+            fetch(`/admin/ecommerce/compras/${entradaId}/enviar-resumen`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    this.textContent = '✅ Enviado';
+                    this.style.background = '#10b981';
+                    setTimeout(() => {
+                        this.textContent = textoOriginal;
+                        this.style.background = '#10b981';
+                        this.disabled = false;
+                        this.style.opacity = estiloOriginal || '1';
+                    }, 2000);
+                } else {
+                    alert('Error: ' + (data.error || 'No se pudo enviar el resumen'));
+                    this.textContent = textoOriginal;
+                    this.disabled = false;
+                    this.style.opacity = estiloOriginal || '1';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al enviar el resumen. Por favor intenta nuevamente.');
+                this.textContent = textoOriginal;
                 this.disabled = false;
                 this.style.opacity = estiloOriginal || '1';
             });

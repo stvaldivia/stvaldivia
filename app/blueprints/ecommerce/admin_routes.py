@@ -6,6 +6,7 @@ from app.models.ecommerce_models import Entrada, CheckoutSession
 from app.models.programacion_models import ProgramacionEvento
 from app.models import db
 from app.helpers.export_utils import DataExporter
+from app.helpers.email_ticket_helper import send_resumen_compra_email
 from sqlalchemy import func, desc
 from datetime import datetime
 
@@ -322,6 +323,45 @@ def export_compras():
     except Exception as e:
         flash(f'Error al exportar compras: {str(e)}', 'error')
         return redirect(url_for('admin_ecommerce.list_compras'))
+
+
+@admin_ecommerce_bp.route('/compras/<int:entrada_id>/enviar-resumen', methods=['POST'])
+def enviar_resumen_compra(entrada_id):
+    """API: Enviar resumen de compra por email al comprador"""
+    auth_check = require_admin()
+    if auth_check:
+        return jsonify({'success': False, 'error': 'No autorizado'}), 401
+    
+    try:
+        # Buscar la entrada
+        entrada = Entrada.query.get_or_404(entrada_id)
+        
+        if not entrada.comprador_email:
+            return jsonify({
+                'success': False,
+                'error': 'El pedido no tiene email del comprador'
+            }), 400
+        
+        # Enviar email
+        enviado = send_resumen_compra_email(entrada)
+        
+        if enviado:
+            return jsonify({
+                'success': True,
+                'message': f'Resumen enviado exitosamente a {entrada.comprador_email}',
+                'email': entrada.comprador_email
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'No se pudo enviar el email. Verifica la configuración SMTP.'
+            }), 500
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error al enviar resumen: {str(e)}'
+        }), 500
 
 
 
