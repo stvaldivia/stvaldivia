@@ -62,6 +62,14 @@ class Config:
     GETNET_MERCHANT_ID: Optional[str] = os.environ.get('GETNET_MERCHANT_ID')
     GETNET_SANDBOX: bool = os.environ.get('GETNET_SANDBOX', 'true').lower() in ('1', 'true', 'yes')
     GETNET_DEMO_MODE: bool = os.environ.get('GETNET_DEMO_MODE', 'false').lower() in ('1', 'true', 'yes')  # Modo demo para desarrollo
+
+    # KLAP Checkout (pagos online)
+    KLAP_API_BASE_URL: Optional[str] = os.environ.get('KLAP_API_BASE_URL')
+    KLAP_CHECKOUT_CREATE_URL: Optional[str] = os.environ.get('KLAP_CHECKOUT_CREATE_URL')
+    KLAP_CHECKOUT_STATUS_URL: Optional[str] = os.environ.get('KLAP_CHECKOUT_STATUS_URL')
+    KLAP_API_KEY: Optional[str] = os.environ.get('KLAP_API_KEY')
+    KLAP_API_KEY_HEADER: Optional[str] = os.environ.get('KLAP_API_KEY_HEADER', 'Authorization')
+    KLAP_DEMO_MODE: bool = os.environ.get('KLAP_DEMO_MODE', 'false').lower() in ('1', 'true', 'yes')
     
     # URL pública para callbacks de GetNet (requerida porque GetNet necesita acceder desde internet)
     # En producción: https://stvaldivia.cl
@@ -152,6 +160,14 @@ def init_app_config(app: Flask):
     app.config['GETNET_MERCHANT_ID'] = Config.GETNET_MERCHANT_ID
     app.config['GETNET_SANDBOX'] = Config.GETNET_SANDBOX
     app.config['GETNET_DEMO_MODE'] = Config.GETNET_DEMO_MODE
+
+    # Configuración de KLAP Checkout
+    app.config['KLAP_API_BASE_URL'] = Config.KLAP_API_BASE_URL
+    app.config['KLAP_CHECKOUT_CREATE_URL'] = Config.KLAP_CHECKOUT_CREATE_URL
+    app.config['KLAP_CHECKOUT_STATUS_URL'] = Config.KLAP_CHECKOUT_STATUS_URL
+    app.config['KLAP_API_KEY'] = Config.KLAP_API_KEY
+    app.config['KLAP_API_KEY_HEADER'] = Config.KLAP_API_KEY_HEADER
+    app.config['KLAP_DEMO_MODE'] = Config.KLAP_DEMO_MODE
     
     # URL pública para callbacks (GetNet necesita URLs accesibles desde internet)
     app.config['PUBLIC_BASE_URL'] = Config.PUBLIC_BASE_URL
@@ -172,4 +188,3 @@ def init_app_config(app: Flask):
             app.logger.info("✅ GetNet Web Checkout configurado")
         else:
             app.logger.warning("⚠️ GetNet Web Checkout no configurado (GETNET_CLIENT_ID faltante)")
-

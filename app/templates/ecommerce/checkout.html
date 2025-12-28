@@ -48,6 +48,22 @@
                 <input type="tel" id="telefono" name="telefono" 
                        style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
             </div>
+
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Método de pago</label>
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                    <label style="display: flex; align-items: center; gap: 0.4rem;">
+                        <input type="radio" name="payment_provider" value="GETNET"
+                               {% if payment_provider_default == 'GETNET' %}checked{% endif %}>
+                        GetNet
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.4rem;">
+                        <input type="radio" name="payment_provider" value="KLAP"
+                               {% if payment_provider_default == 'KLAP' %}checked{% endif %}>
+                        KLAP Checkout
+                    </label>
+                </div>
+            </div>
             
             <button type="submit" class="btn btn-primary" 
                     style="width: 100%; padding: 1rem; font-size: 1.1rem; font-weight: 600; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;">
@@ -57,8 +73,7 @@
     </div>
     
     <div style="text-align: center; margin-top: 1rem; color: #666; font-size: 0.9rem;">
-        <p>🔒 Pago seguro procesado por GetNet</p>
+        <p>🔒 Pago seguro procesado por GetNet o KLAP</p>
     </div>
 </div>
 {% endblock %}
-
