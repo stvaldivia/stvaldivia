@@ -126,7 +126,8 @@ class CheckoutSession(db.Model):
     
     # Estado
     estado = db.Column(String(50), nullable=False, default='iniciado', index=True)  # iniciado, completado, expirado
-    payment_intent_id = db.Column(String(100), nullable=True, index=True)  # ID del payment intent de GetNet
+    payment_intent_id = db.Column(String(100), nullable=True, index=True)  # ID del payment intent (GetNet/KLAP)
+    payment_provider = db.Column(String(50), nullable=True, index=True)  # GETNET, KLAP, etc.
     
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
@@ -151,6 +152,7 @@ class CheckoutSession(db.Model):
             'precio_total': float(self.precio_total) if self.precio_total else 0.0,
             'estado': self.estado,
             'payment_intent_id': self.payment_intent_id,
+            'payment_provider': self.payment_provider,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'expires_at': self.expires_at.isoformat() if self.expires_at else None,
         }
@@ -163,4 +165,3 @@ class CheckoutSession(db.Model):
     def generate_session_id():
         """Genera un ID único para la sesión"""
         return f"CHK-{uuid.uuid4().hex}"
-

@@ -18,6 +18,12 @@ from app.helpers.getnet_web_helper import (
     is_payment_approved,
     extract_payment_info
 )
+from app.helpers.klap_checkout_helper import (
+    create_klap_checkout,
+    get_klap_payment_status,
+    is_klap_payment_approved,
+    extract_klap_payment_info
+)
 # Intentar también con helper PlaceToPay (GetNet usa PlaceToPay como base)
 try:
     from app.helpers.getnet_placepay_helper import create_getnet_payment_placetopay
@@ -340,13 +346,17 @@ def checkout():
         
         precio_unitario = float(producto.price) if producto.price else 0.0
         precio_total = cantidad * precio_unitario
+        payment_provider_default = request.args.get('payment_provider', 'GETNET').strip().upper()
+        if payment_provider_default not in {'GETNET', 'KLAP'}:
+            payment_provider_default = 'GETNET'
         
         return render_template('ecommerce/checkout.html',
                              producto_id=producto.id,
                              producto_nombre=producto.name,
                              cantidad=cantidad,
                              precio_unitario=precio_unitario,
-                             precio_total=precio_total)
+                             precio_total=precio_total,
+                             payment_provider_default=payment_provider_default)
     
     # POST: Procesar datos del formulario
     try:
@@ -359,6 +369,7 @@ def checkout():
         comprador_email = data.get('email', '').strip()
         comprador_rut = data.get('rut', '').strip()
         comprador_telefono = data.get('telefono', '').strip()
+        payment_provider = data.get('payment_provider', 'GETNET').strip().upper()
         product_id = data.get('producto_id', type=int)
         cantidad = int(data.get('cantidad', 1))
         precio_unitario = Decimal(data.get('precio_unitario', 0))
@@ -410,6 +421,10 @@ def checkout():
         if cantidad <= 0 or precio_total <= 0:
             flash('Cantidad y precio deben ser mayores a 0', 'error')
             return redirect(url_for('ecommerce.checkout', product_id=product_id, cantidad=cantidad))
+
+        if payment_provider not in {'GETNET', 'KLAP'}:
+            logger.warning(f"Provider de pago inválido: {payment_provider}. Usando GETNET por defecto.")
+            payment_provider = 'GETNET'
         
         # Usar evento_nombre para almacenar el nombre del producto
         # evento_fecha será la fecha actual (para compatibilidad con el modelo)
@@ -428,6 +443,7 @@ def checkout():
             cantidad=cantidad,
             precio_unitario=precio_unitario,
             precio_total=precio_total,
+            payment_provider=payment_provider,
             estado='iniciado',
             expires_at=datetime.utcnow() + timedelta(minutes=30)  # Expira en 30 minutos
         )
@@ -477,12 +493,24 @@ def process_payment(session_id):
         flash('Error: Sesión completada pero entrada no encontrada', 'error')
         return redirect(url_for('ecommerce.index'))
     
+    payment_provider = (checkout_session.payment_provider or '').upper()
+    if checkout_session.payment_intent_id and checkout_session.payment_intent_id.startswith('KLAP:'):
+        payment_provider = 'KLAP'
+    if not payment_provider:
+        payment_provider = 'GETNET'
+
     # Si ya tiene payment_intent_id, verificar estado
     if checkout_session.payment_intent_id:
-        payment_status = get_getnet_payment_status(checkout_session.payment_intent_id)
-        if payment_status and is_payment_approved(payment_status):
-            # Pago ya aprobado, procesar
-            return _process_approved_payment(checkout_session, payment_status)
+        if payment_provider == 'GETNET':
+            payment_status = get_getnet_payment_status(checkout_session.payment_intent_id)
+            if payment_status and is_payment_approved(payment_status):
+                # Pago ya aprobado, procesar
+                return _process_approved_payment(checkout_session, payment_status, payment_provider)
+        elif payment_provider == 'KLAP':
+            klap_payment_id = checkout_session.payment_intent_id.replace('KLAP:', '')
+            payment_status = get_klap_payment_status(klap_payment_id)
+            if payment_status and is_klap_payment_approved(payment_status):
+                return _process_approved_payment(checkout_session, payment_status, payment_provider)
     
     # Crear nuevo payment en GetNet
     try:
@@ -521,12 +549,20 @@ def process_payment(session_id):
         
         if public_base_url:
             # Usar URL pública configurada
-            return_url = f"{public_base_url.rstrip('/')}{url_for('ecommerce.payment_callback', session_id=session_id)}"
-            cancel_url = f"{public_base_url.rstrip('/')}{url_for('ecommerce.payment_cancelled', session_id=session_id)}"
+            if payment_provider == 'KLAP':
+                return_url = f\"{public_base_url.rstrip('/')}{url_for('ecommerce.klap_payment_callback', session_id=session_id)}\"
+                cancel_url = f\"{public_base_url.rstrip('/')}{url_for('ecommerce.klap_payment_cancelled', session_id=session_id)}\"
+            else:
+                return_url = f\"{public_base_url.rstrip('/')}{url_for('ecommerce.payment_callback', session_id=session_id)}\"
+                cancel_url = f\"{public_base_url.rstrip('/')}{url_for('ecommerce.payment_cancelled', session_id=session_id)}\"
         else:
             # Fallback a _external=True (puede no funcionar en desarrollo local)
-            return_url = url_for('ecommerce.payment_callback', session_id=session_id, _external=True)
-            cancel_url = url_for('ecommerce.payment_cancelled', session_id=session_id, _external=True)
+            if payment_provider == 'KLAP':
+                return_url = url_for('ecommerce.klap_payment_callback', session_id=session_id, _external=True)
+                cancel_url = url_for('ecommerce.klap_payment_cancelled', session_id=session_id, _external=True)
+            else:
+                return_url = url_for('ecommerce.payment_callback', session_id=session_id, _external=True)
+                cancel_url = url_for('ecommerce.payment_cancelled', session_id=session_id, _external=True)
         
         logger.info(f"Return URL: {return_url}")
         logger.info(f"Cancel URL: {cancel_url}")
@@ -538,16 +574,15 @@ def process_payment(session_id):
             'evento_fecha': checkout_session.evento_fecha.isoformat() if checkout_session.evento_fecha else '',
         }
         
-        # Crear pago en GetNet
-        logger.info(f"Intentando crear pago en GetNet para sesión: {session_id}")
+        # Crear pago en GetNet/KLAP
+        logger.info(f"Intentando crear pago en {payment_provider} para sesión: {session_id}")
         logger.info(f"Monto: {checkout_session.precio_total}, Currency: CLP")
         
-        # Intentar primero con método PlaceToPay (estándar de GetNet)
         payment_result = None
-        if create_getnet_payment_placetopay:
+        if payment_provider == 'KLAP':
             try:
-                logger.info("Intentando crear pago con método PlaceToPay/GetNet estándar")
-                payment_result = create_getnet_payment_placetopay(
+                logger.info("Intentando crear pago con KLAP Checkout")
+                payment_result = create_klap_checkout(
                     amount=float(checkout_session.precio_total),
                     currency='CLP',
                     order_id=checkout_session.session_id,
@@ -557,27 +592,50 @@ def process_payment(session_id):
                     metadata=metadata
                 )
             except Exception as e:
-                logger.warning(f"Error con método PlaceToPay, intentando método alternativo: {e}")
-        
-        # Si PlaceToPay falla, intentar método alternativo
-        if not payment_result:
-            try:
-                logger.info("Intentando crear pago con método alternativo")
-                payment_result = create_getnet_payment(
-                    amount=float(checkout_session.precio_total),
-                    currency='CLP',
-                    order_id=checkout_session.session_id,
-                    customer_data=customer_data,
-                    return_url=return_url,
-                    cancel_url=cancel_url,
-                    metadata=metadata
-                )
-            except Exception as e:
-                logger.error(f"Excepción al crear pago en GetNet: {e}", exc_info=True)
-                flash('Error al conectar con el sistema de pagos. Por favor intenta más tarde.', 'error')
+                logger.error(f"Excepción al crear pago en KLAP: {e}", exc_info=True)
+                flash('Error al conectar con KLAP. Por favor intenta más tarde.', 'error')
                 return redirect(url_for('ecommerce.index'))
+        else:
+            # Intentar primero con método PlaceToPay (estándar de GetNet)
+            if create_getnet_payment_placetopay:
+                try:
+                    logger.info("Intentando crear pago con método PlaceToPay/GetNet estándar")
+                    payment_result = create_getnet_payment_placetopay(
+                        amount=float(checkout_session.precio_total),
+                        currency='CLP',
+                        order_id=checkout_session.session_id,
+                        customer_data=customer_data,
+                        return_url=return_url,
+                        cancel_url=cancel_url,
+                        metadata=metadata
+                    )
+                except Exception as e:
+                    logger.warning(f"Error con método PlaceToPay, intentando método alternativo: {e}")
+            
+            # Si PlaceToPay falla, intentar método alternativo
+            if not payment_result:
+                try:
+                    logger.info("Intentando crear pago con método alternativo")
+                    payment_result = create_getnet_payment(
+                        amount=float(checkout_session.precio_total),
+                        currency='CLP',
+                        order_id=checkout_session.session_id,
+                        customer_data=customer_data,
+                        return_url=return_url,
+                        cancel_url=cancel_url,
+                        metadata=metadata
+                    )
+                except Exception as e:
+                    logger.error(f"Excepción al crear pago en GetNet: {e}", exc_info=True)
+                    flash('Error al conectar con el sistema de pagos. Por favor intenta más tarde.', 'error')
+                    return redirect(url_for('ecommerce.index'))
         
         if not payment_result:
+            if payment_provider == 'KLAP':
+                logger.error("No se pudo crear pago en KLAP - payment_result es None")
+                flash('Error al conectar con KLAP. Por favor intenta más tarde.', 'error')
+                return redirect(url_for('ecommerce.index'))
+
             # Obtener información de configuración para debug
             from app.helpers.getnet_web_helper import get_getnet_config, get_getnet_auth_headers
             config = get_getnet_config()
@@ -622,14 +680,18 @@ def process_payment(session_id):
             return redirect(url_for('ecommerce.index'))
         
         # Guardar payment_intent_id
-        checkout_session.payment_intent_id = payment_result.get('payment_id')
+        payment_id = payment_result.get('payment_id')
+        if payment_provider == 'KLAP' and payment_id:
+            checkout_session.payment_intent_id = f"KLAP:{payment_id}"
+        else:
+            checkout_session.payment_intent_id = payment_id
         db.session.commit()
         
         # Redirigir a GetNet Web Checkout
         checkout_url = payment_result.get('checkout_url')
         
         if checkout_url:
-            logger.info(f"Redirigiendo a GetNet Web Checkout: session_id={session_id}, payment_id={checkout_session.payment_intent_id}")
+            logger.info(f"Redirigiendo a {payment_provider} Checkout: session_id={session_id}, payment_id={checkout_session.payment_intent_id}")
             return redirect(checkout_url)
         else:
             flash('Error: No se recibió URL de checkout de GetNet', 'error')
@@ -643,7 +705,7 @@ def process_payment(session_id):
         return redirect(url_for('ecommerce.checkout'))
 
 
-def _process_approved_payment(checkout_session: CheckoutSession, payment_status: dict):
+def _process_approved_payment(checkout_session: CheckoutSession, payment_status: dict, payment_provider: str = 'GETNET'):
     """
     Procesa un pago aprobado: crea la entrada y redirige a confirmación
     
@@ -657,7 +719,11 @@ def _process_approved_payment(checkout_session: CheckoutSession, payment_status:
     try:
         from app.models.product_models import Product
         
-        payment_info = extract_payment_info(payment_status)
+        payment_provider = (payment_provider or 'GETNET').upper()
+        if payment_provider == 'KLAP':
+            payment_info = extract_klap_payment_info(payment_status)
+        else:
+            payment_info = extract_payment_info(payment_status)
         
         # Buscar el producto por nombre (evento_nombre contiene el nombre del producto)
         # Usar comparación case-insensitive para la categoría
@@ -678,6 +744,17 @@ def _process_approved_payment(checkout_session: CheckoutSession, payment_status:
         precio_total_calculado = float(checkout_session.cantidad) * float(checkout_session.precio_unitario)
         
         # Crear entrada con estado "recibido" inicialmente
+        metodo_pago = 'getnet_web'
+        entrada_metadata = None
+        if payment_provider == 'KLAP':
+            metodo_pago = 'klap_checkout'
+            entrada_metadata = json.dumps({
+                'provider': 'KLAP',
+                'payment_id': payment_info.get('payment_id'),
+                'transaction_id': payment_info.get('transaction_id'),
+                'status': payment_info.get('status'),
+            })
+
         entrada = Entrada(
             ticket_code=Entrada.generate_ticket_code(),
             evento_nombre=checkout_session.evento_nombre,
@@ -691,10 +768,11 @@ def _process_approved_payment(checkout_session: CheckoutSession, payment_status:
             precio_unitario=checkout_session.precio_unitario,
             precio_total=precio_total_calculado,
             estado_pago='recibido',  # Estado inicial: recibido
-            metodo_pago='getnet_web',
-            getnet_payment_id=payment_info.get('payment_id'),
-            getnet_transaction_id=payment_info.get('transaction_id'),
-            getnet_auth_code=payment_info.get('auth_code'),
+            metodo_pago=metodo_pago,
+            metadata_json=entrada_metadata,
+            getnet_payment_id=payment_info.get('payment_id') if payment_provider != 'KLAP' else None,
+            getnet_transaction_id=payment_info.get('transaction_id') if payment_provider != 'KLAP' else None,
+            getnet_auth_code=payment_info.get('auth_code') if payment_provider != 'KLAP' else None,
             # paid_at se actualizará cuando se confirme el pago
         )
         
@@ -771,6 +849,10 @@ def payment_callback(session_id):
         request.args.get('paymentId') or
         checkout_session.payment_intent_id
     )
+
+    if not checkout_session.payment_provider:
+        checkout_session.payment_provider = 'GETNET'
+        db.session.commit()
     
     if not payment_id:
         logger.error(f"Callback sin payment_id: session_id={session_id}")
@@ -792,7 +874,7 @@ def payment_callback(session_id):
         }
         # Procesar pago aprobado directamente
         logger.info(f"Pago aprobado (demo): payment_id={payment_id}, session_id={session_id}")
-        return _process_approved_payment(checkout_session, payment_status)
+        return _process_approved_payment(checkout_session, payment_status, 'GETNET')
     
     # Verificar estado del pago con GetNet (solo si no es demo)
     payment_status = get_getnet_payment_status(payment_id)
@@ -806,7 +888,7 @@ def payment_callback(session_id):
     if is_payment_approved(payment_status):
         # Pago aprobado - procesar
         logger.info(f"Pago aprobado: payment_id={payment_id}, session_id={session_id}")
-        return _process_approved_payment(checkout_session, payment_status)
+        return _process_approved_payment(checkout_session, payment_status, 'GETNET')
     else:
         # Pago rechazado o error
         payment_info = extract_payment_info(payment_status)
@@ -830,6 +912,87 @@ def payment_cancelled(session_id):
         checkout_session.estado = 'expirado'
         db.session.commit()
     
+    flash('Pago cancelado', 'info')
+    return redirect(url_for('ecommerce.index'))
+
+
+@ecommerce_bp.route('/payment/klap/callback/<session_id>', methods=['GET', 'POST'])
+@exempt_from_csrf
+def klap_payment_callback(session_id):
+    """Callback desde KLAP después del pago"""
+    logger.info(f"Callback KLAP recibido: session_id={session_id}")
+    logger.info(f"Request args: {dict(request.args)}")
+    logger.info(f"Request form: {dict(request.form)}")
+
+    checkout_session = CheckoutSession.query.filter_by(session_id=session_id).first()
+
+    if not checkout_session:
+        logger.error(f"Sesión no encontrada: session_id={session_id}")
+        flash('Sesión no encontrada', 'error')
+        return redirect(url_for('ecommerce.index'))
+
+    if not checkout_session.payment_provider:
+        checkout_session.payment_provider = 'KLAP'
+        db.session.commit()
+
+    payload = request.get_json(silent=True) or {}
+    payment_id = (
+        request.args.get('payment_id')
+        or request.form.get('payment_id')
+        or request.args.get('paymentId')
+        or request.form.get('paymentId')
+        or request.args.get('id')
+        or request.form.get('id')
+        or payload.get('payment_id')
+        or payload.get('id')
+    )
+    status = (
+        request.args.get('status')
+        or request.form.get('status')
+        or payload.get('status')
+        or payload.get('state')
+    )
+
+    if payment_id and not checkout_session.payment_intent_id:
+        checkout_session.payment_intent_id = f"KLAP:{payment_id}"
+        db.session.commit()
+
+    if payment_id and payment_id.startswith('DEMO-KLAP'):
+        payment_status = {
+            'status': 'APPROVED',
+            'payment_id': payment_id,
+            'transaction_id': f'DEMO-TXN-{payment_id}',
+            'message': 'Pago simulado en modo demo KLAP'
+        }
+        return _process_approved_payment(checkout_session, payment_status, 'KLAP')
+
+    payment_status = payload if payload else {}
+    if payment_id:
+        payment_status.setdefault('payment_id', payment_id)
+    if status:
+        payment_status.setdefault('status', status)
+
+    if payment_id and not payment_status:
+        payment_status = get_klap_payment_status(payment_id) or {}
+
+    if is_klap_payment_approved(payment_status):
+        return _process_approved_payment(checkout_session, payment_status, 'KLAP')
+
+    checkout_session.estado = 'expirado'
+    db.session.commit()
+    flash('El pago fue rechazado o no completado. Por favor intenta nuevamente.', 'error')
+    return redirect(url_for('ecommerce.checkout'))
+
+
+@ecommerce_bp.route('/payment/klap/cancelled/<session_id>')
+def klap_payment_cancelled(session_id):
+    """Usuario canceló el pago KLAP"""
+    checkout_session = CheckoutSession.query.filter_by(session_id=session_id).first()
+
+    if checkout_session:
+        checkout_session.estado = 'expirado'
+        db.session.commit()
+
     flash('Pago cancelado', 'info')
     return redirect(url_for('ecommerce.index'))
 
@@ -912,4 +1075,3 @@ def getnet_webhook():
     except Exception as e:
         logger.error(f"Error en webhook GetNet: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
-
