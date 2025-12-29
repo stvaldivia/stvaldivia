@@ -68,6 +68,13 @@ def create_register():
     # Obtener categorías disponibles
     available_categories = get_available_categories()
     
+    # Obtener impresoras disponibles
+    try:
+        available_printers = PrinterHelper.get_available_printers()
+    except Exception as e:
+        current_app.logger.warning(f"Error al obtener impresoras: {e}")
+        available_printers = []
+    
     if request.method == 'POST':
         try:
             name = request.form.get('name', '').strip()

@@ -1562,20 +1562,36 @@ def api_venta_ok():
         # Crear la venta
         from app.helpers.financial_utils import to_decimal, round_currency
         
-        result = comprehensive_sale_validation(
-            register_id=str(register_id),
+        # Validación completa de seguridad
+        is_valid, error_message, validated_items = comprehensive_sale_validation(
+            items=cart,
+            total=float(total),
+            payment_type=payment_type,
             employee_id=str(employee_id),
-            employee_name=employee_name,
-            jornada_id=active_session.jornada_id,
-            shift_date=active_session.shift_date,
-            payment_type=payment_type.lower(),
-            payment_provider='GETNET',
-            cart=cart,
-            total_amount=to_decimal(total)
+            register_id=str(register_id),
+            pos_service=pos_service
         )
         
-        if not result['valid']:
-            return jsonify({'ok': False, 'error': result.get('error', 'Validación falló')}), 400
+        if not is_valid:
+            # Registrar evento de seguridad
+            SaleAuditLogger.log_security_event(
+                event_type='sale_validation_failed',
+                employee_id=str(employee_id),
+                employee_name=employee_name,
+                register_id=str(register_id),
+                details={
+                    'error': error_message,
+                    'cart_size': len(cart),
+                    'total': total,
+                    'payment_type': payment_type
+                },
+                severity='warning'
+            )
+            return jsonify({'ok': False, 'error': error_message or 'Validación falló'}), 400
+        
+        # Usar items validados si están disponibles
+        if validated_items:
+            cart = validated_items
         
         # Crear la venta
         # NOTA: Los datos de Getnet (authorizationCode, responseCode, etc.) no se guardan directamente en PosSale
