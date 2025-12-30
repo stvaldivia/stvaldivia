@@ -30,7 +30,7 @@ ExecStart=/var/www/stvaldivia/venv/bin/gunicorn \\
     --timeout 30 \\
     --access-logfile /var/www/stvaldivia/logs/access.log \\
     --error-logfile /var/www/stvaldivia/logs/error.log \\
-    app:create_app()
+    app:create_app
 Restart=always
 RestartSec=10
 StandardOutput=journal

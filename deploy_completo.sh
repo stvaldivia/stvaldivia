@@ -33,7 +33,7 @@ echo "🗑️  Paso 2: Eliminando código actual en la VM..."
 ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no "$VM_USER@$VM_IP" "
     # Detener servicios
     echo '🛑 Deteniendo servicios...'
-    sudo pkill -f 'gunicorn.*app:create_app()' 2>/dev/null || true
+    sudo pkill -f 'gunicorn.*app:create_app' 2>/dev/null || true
     sleep 2
     
     # Eliminar directorio (excepto backups y logs importantes)
@@ -114,12 +114,12 @@ ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no "$VM_USER@$VM_IP" "
     
     # Iniciar gunicorn en background
     echo '🚀 Iniciando gunicorn...'
-    nohup gunicorn --bind 127.0.0.1:5001 --workers 2 --timeout 120 --access-logfile /var/www/stvaldivia/logs/access.log --error-logfile /var/www/stvaldivia/logs/error.log app:create_app() > /var/www/stvaldivia/logs/gunicorn.log 2>&1 &
+    nohup gunicorn --bind 127.0.0.1:5001 --workers 2 --timeout 120 --access-logfile /var/www/stvaldivia/logs/access.log --error-logfile /var/www/stvaldivia/logs/error.log app:create_app > /var/www/stvaldivia/logs/gunicorn.log 2>&1 &
     
     sleep 3
     
     # Verificar que está corriendo
-    if pgrep -f 'gunicorn.*app:create_app()' > /dev/null; then
+    if pgrep -f 'gunicorn.*app:create_app' > /dev/null; then
         echo '✅ Gunicorn iniciado correctamente'
     else
         echo '❌ Error: Gunicorn no se inició'
