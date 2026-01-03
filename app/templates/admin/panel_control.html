@@ -1708,6 +1708,48 @@
                                 });
                             }
 
+                            function showN8nMetrics() {
+                                const messageDiv = document.getElementById('n8n-config-message');
+                                messageDiv.style.display = 'block';
+                                messageDiv.style.background = 'rgba(255, 152, 0, 0.2)';
+                                messageDiv.textContent = '⏳ Cargando métricas...';
+
+                                fetch('/admin/api/n8n/metrics')
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        if (data.success && data.metrics) {
+                                            const m = data.metrics;
+                                            const successRate = m.success_rate || 0;
+                                            const color = successRate >= 95 ? '#4caf50' : successRate >= 80 ? '#ff9800' : '#f44336';
+                                            
+                                            messageDiv.style.background = 'rgba(102, 126, 234, 0.2)';
+                                            messageDiv.style.border = '1px solid rgba(102, 126, 234, 0.5)';
+                                            messageDiv.style.color = '#667eea';
+                                            messageDiv.innerHTML = `
+                                                <strong>📊 Métricas de n8n:</strong><br>
+                                                Total enviados: ${m.total_sent || 0}<br>
+                                                Exitosos: ${m.total_success || 0} | Fallidos: ${m.total_failed || 0}<br>
+                                                Timeouts: ${m.total_timeout || 0}<br>
+                                                Tasa de éxito: <span style="color: ${color}">${successRate}%</span><br>
+                                                ${m.last_success_time ? 'Último éxito: ' + new Date(m.last_success_time).toLocaleString('es-CL') : ''}<br>
+                                                ${m.last_failure_time ? 'Último fallo: ' + new Date(m.last_failure_time).toLocaleString('es-CL') : ''}
+                                            `;
+                                        } else {
+                                            messageDiv.style.background = 'rgba(244, 67, 54, 0.2)';
+                                            messageDiv.style.border = '1px solid rgba(244, 67, 54, 0.5)';
+                                            messageDiv.style.color = '#f44336';
+                                            messageDiv.textContent = '❌ Error al obtener métricas';
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('Error:', error);
+                                        messageDiv.style.background = 'rgba(244, 67, 54, 0.2)';
+                                        messageDiv.style.border = '1px solid rgba(244, 67, 54, 0.5)';
+                                        messageDiv.style.color = '#f44336';
+                                        messageDiv.textContent = '❌ Error de conexión: ' + (error.message || 'No se pudo conectar con el servidor');
+                                    });
+                            }
+
                             function deployToProduction() {
                                 console.log('🚀 deployToProduction() llamada');
                                 const btn = document.getElementById('deploy-btn');
@@ -2157,6 +2199,10 @@
                                         <button type="button" onclick="testN8nConnection()"
                                             style="padding: 12px 24px; background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.5); color: #22c55e; border-radius: 8px; cursor: pointer; font-weight: 600;">
                                             🧪 Probar Conexión
+                                        </button>
+                                        <button type="button" onclick="showN8nMetrics()"
+                                            style="padding: 12px 24px; background: rgba(102, 126, 234, 0.2); border: 1px solid rgba(102, 126, 234, 0.5); color: #667eea; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                                            📊 Ver Métricas
                                         </button>
                                         <button type="button" onclick="closeN8nConfigModal()"
                                             style="padding: 12px 24px; background: rgba(102, 126, 234, 0.2); border: 1px solid rgba(102, 126, 234, 0.5); color: #667eea; border-radius: 8px; cursor: pointer; font-weight: 600;">

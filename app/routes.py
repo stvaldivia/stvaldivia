@@ -2825,11 +2825,11 @@ def admin_api_n8n_test():
         from app.helpers.n8n_client import send_to_n8n
         from datetime import datetime
         
-        # Enviar evento de prueba
+        # Enviar evento de prueba (síncrono para obtener resultado inmediato)
         result = send_to_n8n('test', {
             'message': 'Prueba de conexión desde panel de control',
             'timestamp': datetime.utcnow().isoformat()
-        })
+        }, async_mode=False, max_retries=1, timeout=5)
         
         if result:
             return jsonify({
@@ -2843,6 +2843,37 @@ def admin_api_n8n_test():
             }), 400
     except Exception as e:
         current_app.logger.error(f"Error probando conexión n8n: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@bp.route('/admin/api/n8n/metrics', methods=['GET'])
+def admin_api_n8n_metrics():
+    """API: Obtener métricas de webhooks n8n"""
+    if not session.get('admin_logged_in'):
+        return jsonify({'success': False, 'error': 'No autenticado'}), 401
+    
+    try:
+        from app.helpers.n8n_client import get_webhook_metrics
+        
+        metrics = get_webhook_metrics()
+        
+        # Calcular tasa de éxito
+        total = metrics.get('total_sent', 0)
+        success = metrics.get('total_success', 0)
+        success_rate = (success / total * 100) if total > 0 else 0
+        
+        return jsonify({
+            'success': True,
+            'metrics': {
+                **metrics,
+                'success_rate': round(success_rate, 2)
+            }
+        })
+    except Exception as e:
+        current_app.logger.error(f"Error obteniendo métricas n8n: {e}", exc_info=True)
         return jsonify({
             'success': False,
             'error': str(e)
