@@ -1284,6 +1284,18 @@ def api_create_sale():
             except Exception as e:
                 logger.warning(f"Error al enviar notificación de venta: {e}")
             
+            # Enviar evento a n8n (después de crear venta exitosamente)
+            try:
+                from app.helpers.n8n_client import send_sale_created
+                send_sale_created(
+                    sale_id=str(local_sale.id),
+                    amount=float(total),
+                    payment_method=payment_type_normalized,
+                    register_id=register_id
+                )
+            except Exception as e:
+                logger.warning(f"Error enviando evento de venta a n8n: {e}")
+            
             # Limpiar carrito
             session['pos_cart'] = []
             session.modified = True

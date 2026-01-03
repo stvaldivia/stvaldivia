@@ -322,6 +322,19 @@ class SaleDeliveryService:
             
             db.session.commit()
             
+            # Enviar evento a n8n (después de commit exitoso)
+            try:
+                from app.helpers.n8n_client import send_delivery_created
+                send_delivery_created(
+                    delivery_id=delivery.id,
+                    item_name=product_name,
+                    quantity=quantity,
+                    bartender=bartender_name,
+                    barra=location
+                )
+            except Exception as e:
+                current_app.logger.warning(f"Error enviando evento a n8n: {e}")
+            
             message = f"{quantity} x {product_name} entregado(s)"
             if ingredients_consumed:
                 ingredientes_str = ", ".join([

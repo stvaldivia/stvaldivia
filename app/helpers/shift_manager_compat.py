@@ -224,6 +224,39 @@ def close_shift(closed_by='admin'):
             
             db.session.commit()
             
+            # Enviar evento a n8n (después de commit exitoso)
+            try:
+                from app.helpers.n8n_client import send_shift_closed
+                from app.models.delivery_models import Delivery
+                from app.models.pos_models import PosSale
+                from datetime import datetime as dt
+                
+                # Calcular totales del turno
+                shift_date = jornada.fecha_jornada.strftime('%Y-%m-%d') if hasattr(jornada.fecha_jornada, 'strftime') else str(jornada.fecha_jornada)
+                
+                # Contar entregas del día
+                total_deliveries = Delivery.query.filter(
+                    db.func.date(Delivery.timestamp) == jornada.fecha_jornada
+                ).count() if hasattr(jornada, 'fecha_jornada') else 0
+                
+                # Calcular total de ventas del día
+                total_sales = 0.0
+                try:
+                    sales = PosSale.query.filter(
+                        db.func.date(PosSale.created_at) == jornada.fecha_jornada
+                    ).all() if hasattr(jornada, 'fecha_jornada') else []
+                    total_sales = sum(float(sale.total_amount or 0) for sale in sales)
+                except:
+                    pass
+                
+                send_shift_closed(
+                    shift_date=shift_date,
+                    total_sales=total_sales,
+                    total_deliveries=total_deliveries
+                )
+            except Exception as e:
+                current_app.logger.warning(f"Error enviando evento de cierre de turno a n8n: {e}")
+            
             current_app.logger.info(f"✅ Turno cerrado: {jornada.fecha_jornada} por {closed_by}")
             return True, f"Turno cerrado correctamente. Turno del día {jornada.fecha_jornada}"
         except Exception as e:

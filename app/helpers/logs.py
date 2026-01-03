@@ -47,6 +47,19 @@ def save_log(sale_id, item_name, qty, bartender, barra):
         db.session.add(delivery)
         db.session.commit()
         
+        # Enviar evento a n8n (después de commit exitoso)
+        try:
+            from app.helpers.n8n_client import send_delivery_created
+            send_delivery_created(
+                delivery_id=delivery.id,
+                item_name=item_name,
+                quantity=qty_int,
+                bartender=bartender,
+                barra=barra
+            )
+        except Exception as e:
+            current_app.logger.warning(f"Error enviando evento a n8n: {e}")
+        
         # Preparar entrada para emitir (formato CSV para compatibilidad)
         entry = [sale_id, item_name, str(qty_int), bartender, barra, timestamp.strftime('%Y-%m-%d %H:%M:%S')]
         
