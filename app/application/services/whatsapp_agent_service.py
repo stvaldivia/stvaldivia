@@ -198,20 +198,38 @@ CANAL: WhatsApp (puedes ser más casual que en otros canales)"""
     def _get_conversation_history(self, from_number: str, limit: int = 5) -> List[Dict]:
         """Obtiene el historial de conversación de un número"""
         try:
+            # Usar conversation_id basado en el número de teléfono
+            conversation_id = f"whatsapp_{from_number}"
+            
             logs = BotLog.query.filter_by(
                 canal='whatsapp',
-                user_identifier=from_number
-            ).order_by(BotLog.timestamp.desc()).limit(limit).all()
+                conversation_id=conversation_id
+            ).order_by(BotLog.timestamp.desc()).limit(limit * 2).all()  # Obtener más para filtrar
             
             history = []
             for log in reversed(logs):  # Invertir para orden cronológico
-                history.append({
-                    'user_message': log.user_message,
-                    'bot_response': log.bot_response,
-                    'timestamp': log.timestamp.isoformat() if log.timestamp else None
-                })
+                if log.direction == 'user':
+                    history.append({
+                        'user_message': log.message,
+                        'bot_response': None,
+                        'timestamp': log.timestamp.isoformat() if log.timestamp else None
+                    })
+                elif log.direction == 'bot':
+                    # Si el último mensaje fue del bot, agregar la respuesta
+                    if history and history[-1].get('bot_response') is None:
+                        history[-1]['bot_response'] = log.message
+                    else:
+                        # Si no hay mensaje de usuario previo, crear entrada
+                        history.append({
+                            'user_message': None,
+                            'bot_response': log.message,
+                            'timestamp': log.timestamp.isoformat() if log.timestamp else None
+                        })
             
-            return history
+            # Filtrar solo las entradas con ambos mensajes y limitar
+            complete_history = [h for h in history if h.get('user_message') and h.get('bot_response')]
+            return complete_history[-limit:] if len(complete_history) > limit else complete_history
+            
         except Exception as e:
             logger.warning(f"Error obteniendo historial de conversación: {e}")
             return []
@@ -219,19 +237,32 @@ CANAL: WhatsApp (puedes ser más casual que en otros canales)"""
     def _save_conversation_log(self, from_number: str, user_message: str, bot_response: str, success: bool):
         """Guarda la conversación en los logs"""
         try:
-            log = BotLog(
+            from app.application.services.bot_log_service import BotLogService
+            bot_log_service = BotLogService()
+            
+            conversation_id = f"whatsapp_{from_number}"
+            
+            # Guardar mensaje del usuario
+            user_log = bot_log_service.log_user_message(
                 canal='whatsapp',
-                user_identifier=from_number,
-                user_message=user_message,
-                bot_response=bot_response,
-                intent_detected=None,  # Podríamos agregar detección de intención
-                success=success,
-                response_time_ms=None,  # Podríamos medir el tiempo
-                tokens_used=None,  # Podríamos trackear tokens
-                error_message=None if success else "Error enviando mensaje"
+                conversation_id=conversation_id,
+                message=user_message,
+                meta={'from_number': from_number}
             )
-            db.session.add(log)
-            db.session.commit()
+            
+            # Guardar respuesta del bot
+            bot_log_service.log_bot_response(
+                canal='whatsapp',
+                conversation_id=conversation_id,
+                message=bot_response,
+                model='gpt-4o-mini',
+                status='success' if success else 'error',
+                meta={
+                    'from_number': from_number,
+                    'success': success
+                }
+            )
+            
         except Exception as e:
             logger.error(f"Error guardando log de conversación: {e}")
             db.session.rollback()
