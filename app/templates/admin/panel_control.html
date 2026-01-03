@@ -468,7 +468,7 @@
                         style="font-size: 3rem; display: block; margin-bottom: 15px;">⚙️</span>
                     <h3 style="color: #fff; margin: 15px 0; font-size: 1.5rem; font-weight: bold;">Configurar n8n</h3>
                     <p style="color: #aaa; margin: 15px 0; font-size: 1rem; line-height: 1.6;">Configura la integración con n8n para automatización de flujos de trabajo. Conecta tu aplicación con workflows de n8n para automatizar procesos.</p>
-                    <button id="btn-configurar-n8n" 
+                    <button id="btn-configurar-n8n" onclick="openN8nConfigModal()"
                         style="margin-top: 20px; padding: 15px 30px; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); border: none; color: white; border-radius: 10px; cursor: pointer; font-weight: 700; width: 100%; font-size: 1.1rem; box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3); transition: all 0.3s ease;">
                         ⚙️ Configurar n8n
                     </button>
@@ -1607,41 +1607,27 @@
                                 });
                             }
 
-                            // Funciones para configuración de n8n - Asegurar que esté en scope global
-                            // Definir inmediatamente, no esperar a DOMContentLoaded
-                            if (typeof window.openN8nConfigModal === 'undefined') {
-                                window.openN8nConfigModal = function() {
-                                console.log('openN8nConfigModal llamada');
+                            // Función para abrir modal de configuración n8n
+                            function openN8nConfigModal() {
                                 const modal = document.getElementById('n8n-config-modal');
-                                console.log('Modal encontrado:', modal);
                                 if (!modal) {
-                                    console.error('Modal n8n-config-modal no encontrado');
-                                    alert('Error: No se pudo encontrar el modal de configuración. Por favor, recarga la página.');
+                                    alert('Error: No se pudo encontrar el modal. Por favor, recarga la página.');
                                     return;
                                 }
                                 
-                                // Mostrar modal primero
-                                modal.style.display = 'flex';
+                                // Mostrar modal con todos los estilos necesarios
+                                modal.style.cssText = 'display: flex !important; position: fixed !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; background: rgba(0, 0, 0, 0.8) !important; z-index: 10002 !important; align-items: center !important; justify-content: center !important;';
                                 
                                 // Cargar configuración actual
                                 fetch('/admin/api/n8n/config')
-                                    .then(response => {
-                                        if (!response.ok) {
-                                            throw new Error('Error en la respuesta del servidor');
-                                        }
-                                        return response.json();
-                                    })
+                                    .then(response => response.json())
                                     .then(data => {
-                                        console.log('Configuración cargada:', data);
-                                        const urlInput = document.getElementById('n8n-webhook-url');
-                                        const secretInput = document.getElementById('n8n-webhook-secret');
-                                        const apiKeyInput = document.getElementById('n8n-api-key');
-                                        
                                         if (data.success && data.config) {
-                                            if (urlInput) {
-                                                urlInput.value = data.config.webhook_url || '';
-                                            }
-                                            // No mostrar valores sensibles, solo indicar si están configurados
+                                            const urlInput = document.getElementById('n8n-webhook-url');
+                                            const secretInput = document.getElementById('n8n-webhook-secret');
+                                            const apiKeyInput = document.getElementById('n8n-api-key');
+                                            
+                                            if (urlInput) urlInput.value = data.config.webhook_url || '';
                                             if (secretInput && data.config.webhook_secret_set) {
                                                 secretInput.value = '';
                                                 secretInput.placeholder = '*** Configurado (dejar vacío para mantener)';
@@ -1652,35 +1638,32 @@
                                             }
                                         }
                                     })
-                                    .catch(error => {
-                                        console.error('Error cargando configuración n8n:', error);
-                                        // El modal ya está visible, solo mostrar error si es necesario
-                                    });
-                                };
+                                    .catch(error => console.error('Error cargando configuración:', error));
                             }
+                            
+                            // Asegurar que la función esté en window para onclick
+                            window.openN8nConfigModal = openN8nConfigModal;
 
                             function closeN8nConfigModal() {
                                 const modal = document.getElementById('n8n-config-modal');
                                 const messageDiv = document.getElementById('n8n-config-message');
-                                if (modal) {
-                                    modal.style.display = 'none';
-                                }
+                                const form = document.getElementById('n8n-config-form');
+                                
+                                if (modal) modal.style.display = 'none';
                                 if (messageDiv) {
                                     messageDiv.style.display = 'none';
                                     messageDiv.textContent = '';
                                 }
-                                // Limpiar formulario
-                                const form = document.getElementById('n8n-config-form');
-                                if (form) {
-                                    form.reset();
-                                }
+                                if (form) form.reset();
                             }
+                            
+                            window.closeN8nConfigModal = closeN8nConfigModal;
 
                             function saveN8nConfig(event) {
                                 event.preventDefault();
-                                const form = event.target;
                                 const messageDiv = document.getElementById('n8n-config-message');
-                                const submitBtn = form.querySelector('button[type="submit"]');
+                                const submitBtn = event.target.querySelector('button[type="submit"]');
+                                const originalText = submitBtn ? submitBtn.textContent : '';
 
                                 const configData = {
                                     webhook_url: document.getElementById('n8n-webhook-url').value.trim(),
@@ -1688,8 +1671,6 @@
                                     api_key: document.getElementById('n8n-api-key').value.trim()
                                 };
 
-                                // Mostrar mensaje de carga
-                                const originalText = submitBtn ? submitBtn.textContent : '';
                                 if (submitBtn) {
                                     submitBtn.textContent = '⏳ Guardando...';
                                     submitBtn.disabled = true;
@@ -1698,12 +1679,9 @@
                                 messageDiv.style.background = 'rgba(255, 152, 0, 0.2)';
                                 messageDiv.textContent = '⏳ Guardando configuración...';
 
-                                // Enviar a la API
                                 fetch('/admin/api/n8n/config', {
                                     method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json'
-                                    },
+                                    headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify(configData)
                                 })
                                 .then(response => response.json())
@@ -1713,9 +1691,7 @@
                                         messageDiv.style.border = '1px solid rgba(76, 175, 80, 0.5)';
                                         messageDiv.style.color = '#4caf50';
                                         messageDiv.textContent = '✅ ' + (data.message || 'Configuración guardada correctamente');
-                                        setTimeout(() => {
-                                            closeN8nConfigModal();
-                                        }, 1500);
+                                        setTimeout(closeN8nConfigModal, 1500);
                                     } else {
                                         messageDiv.style.background = 'rgba(244, 67, 54, 0.2)';
                                         messageDiv.style.border = '1px solid rgba(244, 67, 54, 0.5)';
@@ -1739,6 +1715,8 @@
                                     }
                                 });
                             }
+                            
+                            window.saveN8nConfig = saveN8nConfig;
 
                             function testN8nConnection() {
                                 const messageDiv = document.getElementById('n8n-config-message');
@@ -1759,9 +1737,7 @@
 
                                 fetch('/admin/api/n8n/test', {
                                     method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json'
-                                    }
+                                    headers: { 'Content-Type': 'application/json' }
                                 })
                                 .then(response => response.json())
                                 .then(data => {
@@ -1785,6 +1761,8 @@
                                     messageDiv.textContent = '❌ Error de conexión: ' + (error.message || 'No se pudo conectar con el servidor');
                                 });
                             }
+                            
+                            window.testN8nConnection = testN8nConnection;
 
                             function showN8nMetrics() {
                                 const messageDiv = document.getElementById('n8n-config-message');
@@ -1827,6 +1805,8 @@
                                         messageDiv.textContent = '❌ Error de conexión: ' + (error.message || 'No se pudo conectar con el servidor');
                                     });
                             }
+                            
+                            window.showN8nMetrics = showN8nMetrics;
 
                             function deployToProduction() {
                                 console.log('🚀 deployToProduction() llamada');
@@ -2138,82 +2118,7 @@
                         </script>
 
                         <script>
-                            // Configurar botón de n8n cuando el DOM esté listo
-                            document.addEventListener('DOMContentLoaded', function () {
-                                const btnN8n = document.getElementById('btn-configurar-n8n');
-                                if (btnN8n) {
-                                    btnN8n.addEventListener('click', function(e) {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        console.log('Botón n8n clickeado');
-                                        
-                                        // Intentar mostrar el modal directamente primero
-                                        const modal = document.getElementById('n8n-config-modal');
-                                        if (modal) {
-                                            console.log('Mostrando modal directamente');
-                                            // Asegurar que el modal sea visible
-                                            modal.style.display = 'flex';
-                                            modal.style.position = 'fixed';
-                                            modal.style.top = '0';
-                                            modal.style.left = '0';
-                                            modal.style.width = '100%';
-                                            modal.style.height = '100%';
-                                            modal.style.zIndex = '10002';
-                                            modal.style.alignItems = 'center';
-                                            modal.style.justifyContent = 'center';
-                                            console.log('Modal configurado:', {
-                                                display: modal.style.display,
-                                                zIndex: modal.style.zIndex,
-                                                position: modal.style.position
-                                            });
-                                            
-                                            // Luego intentar cargar la configuración si la función está disponible
-                                            if (typeof window.openN8nConfigModal === 'function') {
-                                                console.log('Función disponible, cargando configuración');
-                                                // La función ya muestra el modal, pero como ya lo mostramos, solo cargamos la config
-                                                fetch('/admin/api/n8n/config')
-                                                    .then(response => {
-                                                        if (!response.ok) {
-                                                            throw new Error('Error en la respuesta del servidor');
-                                                        }
-                                                        return response.json();
-                                                    })
-                                                    .then(data => {
-                                                        console.log('Configuración cargada:', data);
-                                                        const urlInput = document.getElementById('n8n-webhook-url');
-                                                        const secretInput = document.getElementById('n8n-webhook-secret');
-                                                        const apiKeyInput = document.getElementById('n8n-api-key');
-                                                        
-                                                        if (data.success && data.config) {
-                                                            if (urlInput) {
-                                                                urlInput.value = data.config.webhook_url || '';
-                                                            }
-                                                            if (secretInput && data.config.webhook_secret_set) {
-                                                                secretInput.value = '';
-                                                                secretInput.placeholder = '*** Configurado (dejar vacío para mantener)';
-                                                            }
-                                                            if (apiKeyInput && data.config.api_key_set) {
-                                                                apiKeyInput.value = '';
-                                                                apiKeyInput.placeholder = '*** Configurado (dejar vacío para mantener)';
-                                                            }
-                                                        }
-                                                    })
-                                                    .catch(error => {
-                                                        console.error('Error cargando configuración n8n:', error);
-                                                    });
-                                            } else {
-                                                console.log('Función no disponible, solo mostrando modal');
-                                            }
-                                        } else {
-                                            console.error('Modal n8n-config-modal no encontrado');
-                                            alert('Error: No se pudo encontrar el modal. Por favor, recarga la página.');
-                                        }
-                                    });
-                                    console.log('Event listener agregado al botón n8n');
-                                } else {
-                                    console.error('Botón btn-configurar-n8n no encontrado');
-                                }
-                            });
+                            // Funciones n8n - Definidas en scope global inmediatamente
 
                             // Confirmación personalizada para reiniciar servicio
                             document.addEventListener('DOMContentLoaded', function () {
