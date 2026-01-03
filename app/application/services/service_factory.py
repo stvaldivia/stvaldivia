@@ -15,9 +15,11 @@ from .inventory_service import InventoryService
 from .guardarropia_service import GuardarropiaService
 
 from app.infrastructure.repositories.shift_repository import JsonShiftRepository
+from app.infrastructure.repositories.sql_shift_repository import SqlShiftRepository
 from app.infrastructure.repositories.delivery_repository import CsvDeliveryRepository
 from app.infrastructure.repositories.sql_delivery_repository import SqlDeliveryRepository
 from app.infrastructure.repositories.survey_repository import CsvSurveyRepository
+from app.infrastructure.repositories.sql_survey_repository import SqlSurveyRepository
 from app.infrastructure.repositories.social_media_repository import CsvSocialMediaRepository
 from app.infrastructure.repositories.inventory_repository import JsonInventoryRepository
 from app.infrastructure.repositories.sql_inventory_repository import SqlInventoryRepository
@@ -68,7 +70,22 @@ def create_shift_service(
         event_publisher = create_event_publisher()
     
     if shift_repository is None:
-        shift_repository = JsonShiftRepository()
+        # Intentar usar SQL primero, fallback a JSON solo si falla
+        try:
+            shift_repository = SqlShiftRepository()
+            try:
+                current_app.logger.info("✅ SqlShiftRepository inicializado")
+            except RuntimeError:
+                import logging
+                logging.getLogger(__name__).info("✅ SqlShiftRepository inicializado")
+        except Exception as e:
+            # Fallback a JSON solo en desarrollo
+            try:
+                current_app.logger.warning(f"⚠️ No se pudo inicializar SqlShiftRepository, usando JsonShiftRepository: {e}")
+            except RuntimeError:
+                import logging
+                logging.getLogger(__name__).warning(f"⚠️ No se pudo inicializar SqlShiftRepository, usando JsonShiftRepository: {e}")
+            shift_repository = JsonShiftRepository()
     
     return ShiftService(
         shift_repository=shift_repository,
@@ -135,7 +152,22 @@ def create_delivery_service(
             delivery_repository = CsvDeliveryRepository()
     
     if shift_repository is None:
-        shift_repository = JsonShiftRepository()
+        # Intentar usar SQL primero, fallback a JSON solo si falla
+        try:
+            shift_repository = SqlShiftRepository()
+            try:
+                current_app.logger.info("✅ SqlShiftRepository inicializado")
+            except RuntimeError:
+                import logging
+                logging.getLogger(__name__).info("✅ SqlShiftRepository inicializado")
+        except Exception as e:
+            # Fallback a JSON solo en desarrollo
+            try:
+                current_app.logger.warning(f"⚠️ No se pudo inicializar SqlShiftRepository, usando JsonShiftRepository: {e}")
+            except RuntimeError:
+                import logging
+                logging.getLogger(__name__).warning(f"⚠️ No se pudo inicializar SqlShiftRepository, usando JsonShiftRepository: {e}")
+            shift_repository = JsonShiftRepository()
     
     if pos_client is None:
         pos_client = PhpPosApiClient()
@@ -175,10 +207,40 @@ def create_survey_service(
         event_publisher = create_event_publisher()
     
     if survey_repository is None:
-        survey_repository = CsvSurveyRepository()
+        # Intentar usar SQL primero, fallback a CSV solo si falla
+        try:
+            survey_repository = SqlSurveyRepository()
+            try:
+                current_app.logger.info("✅ SqlSurveyRepository inicializado")
+            except RuntimeError:
+                import logging
+                logging.getLogger(__name__).info("✅ SqlSurveyRepository inicializado")
+        except Exception as e:
+            # Fallback a CSV solo en desarrollo
+            try:
+                current_app.logger.warning(f"⚠️ No se pudo inicializar SqlSurveyRepository, usando CsvSurveyRepository: {e}")
+            except RuntimeError:
+                import logging
+                logging.getLogger(__name__).warning(f"⚠️ No se pudo inicializar SqlSurveyRepository, usando CsvSurveyRepository: {e}")
+            survey_repository = CsvSurveyRepository()
     
     if shift_repository is None:
-        shift_repository = JsonShiftRepository()
+        # Intentar usar SQL primero, fallback a JSON solo si falla
+        try:
+            shift_repository = SqlShiftRepository()
+            try:
+                current_app.logger.info("✅ SqlShiftRepository inicializado")
+            except RuntimeError:
+                import logging
+                logging.getLogger(__name__).info("✅ SqlShiftRepository inicializado")
+        except Exception as e:
+            # Fallback a JSON solo en desarrollo
+            try:
+                current_app.logger.warning(f"⚠️ No se pudo inicializar SqlShiftRepository, usando JsonShiftRepository: {e}")
+            except RuntimeError:
+                import logging
+                logging.getLogger(__name__).warning(f"⚠️ No se pudo inicializar SqlShiftRepository, usando JsonShiftRepository: {e}")
+            shift_repository = JsonShiftRepository()
     
     if shift_service is None:
         shift_service = create_shift_service(
@@ -214,10 +276,40 @@ def create_stats_service(
             delivery_repository = CsvDeliveryRepository()
     
     if shift_repository is None:
-        shift_repository = JsonShiftRepository()
+        # Intentar usar SQL primero, fallback a JSON solo si falla
+        try:
+            shift_repository = SqlShiftRepository()
+            try:
+                current_app.logger.info("✅ SqlShiftRepository inicializado")
+            except RuntimeError:
+                import logging
+                logging.getLogger(__name__).info("✅ SqlShiftRepository inicializado")
+        except Exception as e:
+            # Fallback a JSON solo en desarrollo
+            try:
+                current_app.logger.warning(f"⚠️ No se pudo inicializar SqlShiftRepository, usando JsonShiftRepository: {e}")
+            except RuntimeError:
+                import logging
+                logging.getLogger(__name__).warning(f"⚠️ No se pudo inicializar SqlShiftRepository, usando JsonShiftRepository: {e}")
+            shift_repository = JsonShiftRepository()
     
     if survey_repository is None:
-        survey_repository = CsvSurveyRepository()
+        # Intentar usar SQL primero, fallback a CSV solo si falla
+        try:
+            survey_repository = SqlSurveyRepository()
+            try:
+                current_app.logger.info("✅ SqlSurveyRepository inicializado")
+            except RuntimeError:
+                import logging
+                logging.getLogger(__name__).info("✅ SqlSurveyRepository inicializado")
+        except Exception as e:
+            # Fallback a CSV solo en desarrollo
+            try:
+                current_app.logger.warning(f"⚠️ No se pudo inicializar SqlSurveyRepository, usando CsvSurveyRepository: {e}")
+            except RuntimeError:
+                import logging
+                logging.getLogger(__name__).warning(f"⚠️ No se pudo inicializar SqlSurveyRepository, usando CsvSurveyRepository: {e}")
+            survey_repository = CsvSurveyRepository()
     
     if pos_client is None:
         pos_client = PhpPosApiClient()
@@ -366,7 +458,22 @@ def create_inventory_service(
                 inventory_repository = JsonInventoryRepository()
     
     if shift_repository is None:
-        shift_repository = JsonShiftRepository()
+        # Intentar usar SQL primero, fallback a JSON solo si falla
+        try:
+            shift_repository = SqlShiftRepository()
+            try:
+                current_app.logger.info("✅ SqlShiftRepository inicializado")
+            except RuntimeError:
+                import logging
+                logging.getLogger(__name__).info("✅ SqlShiftRepository inicializado")
+        except Exception as e:
+            # Fallback a JSON solo en desarrollo
+            try:
+                current_app.logger.warning(f"⚠️ No se pudo inicializar SqlShiftRepository, usando JsonShiftRepository: {e}")
+            except RuntimeError:
+                import logging
+                logging.getLogger(__name__).warning(f"⚠️ No se pudo inicializar SqlShiftRepository, usando JsonShiftRepository: {e}")
+            shift_repository = JsonShiftRepository()
     
     return InventoryService(
         inventory_repository=inventory_repository,
@@ -394,7 +501,22 @@ def create_guardarropia_service(
         repository = SqlGuardarropiaRepository()
     
     if shift_repository is None:
-        shift_repository = JsonShiftRepository()
+        # Intentar usar SQL primero, fallback a JSON solo si falla
+        try:
+            shift_repository = SqlShiftRepository()
+            try:
+                current_app.logger.info("✅ SqlShiftRepository inicializado")
+            except RuntimeError:
+                import logging
+                logging.getLogger(__name__).info("✅ SqlShiftRepository inicializado")
+        except Exception as e:
+            # Fallback a JSON solo en desarrollo
+            try:
+                current_app.logger.warning(f"⚠️ No se pudo inicializar SqlShiftRepository, usando JsonShiftRepository: {e}")
+            except RuntimeError:
+                import logging
+                logging.getLogger(__name__).warning(f"⚠️ No se pudo inicializar SqlShiftRepository, usando JsonShiftRepository: {e}")
+            shift_repository = JsonShiftRepository()
     
     return GuardarropiaService(
         repository=repository,
