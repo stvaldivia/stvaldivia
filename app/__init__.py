@@ -1337,9 +1337,27 @@ def create_app():
     app.config['META_APP_SECRET'] = os.environ.get('META_APP_SECRET')
     
     # Configuración de n8n Integration
+    # Se leerá desde SystemConfig en tiempo de ejecución, pero inicializar con variables de entorno
     app.config['N8N_WEBHOOK_URL'] = os.environ.get('N8N_WEBHOOK_URL')
     app.config['N8N_WEBHOOK_SECRET'] = os.environ.get('N8N_WEBHOOK_SECRET')
     app.config['N8N_API_KEY'] = os.environ.get('N8N_API_KEY')
+    
+    # Actualizar desde SystemConfig si existe (después de inicializar la BD)
+    with app.app_context():
+        try:
+            from app.models.system_config_models import SystemConfig
+            n8n_webhook_url = SystemConfig.get('n8n_webhook_url')
+            n8n_webhook_secret = SystemConfig.get('n8n_webhook_secret')
+            n8n_api_key = SystemConfig.get('n8n_api_key')
+            
+            if n8n_webhook_url:
+                app.config['N8N_WEBHOOK_URL'] = n8n_webhook_url
+            if n8n_webhook_secret:
+                app.config['N8N_WEBHOOK_SECRET'] = n8n_webhook_secret
+            if n8n_api_key:
+                app.config['N8N_API_KEY'] = n8n_api_key
+        except Exception as e:
+            app.logger.debug(f"No se pudo leer configuración n8n desde SystemConfig: {e}")
 
     # Registrar filtros personalizados de Jinja2
     @app.template_filter('to_datetime')

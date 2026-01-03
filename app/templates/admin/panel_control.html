@@ -1554,6 +1554,160 @@
                                 });
                             }
 
+                            // Funciones para configuración de n8n
+                            function openN8nConfigModal() {
+                                const modal = document.getElementById('n8n-config-modal');
+                                if (modal) {
+                                    // Cargar configuración actual
+                                    fetch('/admin/api/n8n/config')
+                                        .then(response => response.json())
+                                        .then(data => {
+                                            if (data.success && data.config) {
+                                                document.getElementById('n8n-webhook-url').value = data.config.webhook_url || '';
+                                                // No mostrar valores sensibles, solo indicar si están configurados
+                                                if (data.config.webhook_secret_set) {
+                                                    document.getElementById('n8n-webhook-secret').placeholder = '*** Configurado (dejar vacío para mantener)';
+                                                }
+                                                if (data.config.api_key_set) {
+                                                    document.getElementById('n8n-api-key').placeholder = '*** Configurado (dejar vacío para mantener)';
+                                                }
+                                            }
+                                            modal.style.display = 'flex';
+                                        })
+                                        .catch(error => {
+                                            console.error('Error cargando configuración n8n:', error);
+                                            modal.style.display = 'flex';
+                                        });
+                                }
+                            }
+
+                            function closeN8nConfigModal() {
+                                const modal = document.getElementById('n8n-config-modal');
+                                const messageDiv = document.getElementById('n8n-config-message');
+                                if (modal) {
+                                    modal.style.display = 'none';
+                                }
+                                if (messageDiv) {
+                                    messageDiv.style.display = 'none';
+                                    messageDiv.textContent = '';
+                                }
+                                // Limpiar formulario
+                                const form = document.getElementById('n8n-config-form');
+                                if (form) {
+                                    form.reset();
+                                }
+                            }
+
+                            function saveN8nConfig(event) {
+                                event.preventDefault();
+                                const form = event.target;
+                                const messageDiv = document.getElementById('n8n-config-message');
+                                const submitBtn = form.querySelector('button[type="submit"]');
+
+                                const configData = {
+                                    webhook_url: document.getElementById('n8n-webhook-url').value.trim(),
+                                    webhook_secret: document.getElementById('n8n-webhook-secret').value.trim(),
+                                    api_key: document.getElementById('n8n-api-key').value.trim()
+                                };
+
+                                // Mostrar mensaje de carga
+                                const originalText = submitBtn ? submitBtn.textContent : '';
+                                if (submitBtn) {
+                                    submitBtn.textContent = '⏳ Guardando...';
+                                    submitBtn.disabled = true;
+                                }
+                                messageDiv.style.display = 'block';
+                                messageDiv.style.background = 'rgba(255, 152, 0, 0.2)';
+                                messageDiv.textContent = '⏳ Guardando configuración...';
+
+                                // Enviar a la API
+                                fetch('/admin/api/n8n/config', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify(configData)
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        messageDiv.style.background = 'rgba(76, 175, 80, 0.2)';
+                                        messageDiv.style.border = '1px solid rgba(76, 175, 80, 0.5)';
+                                        messageDiv.style.color = '#4caf50';
+                                        messageDiv.textContent = '✅ ' + (data.message || 'Configuración guardada correctamente');
+                                        setTimeout(() => {
+                                            closeN8nConfigModal();
+                                        }, 1500);
+                                    } else {
+                                        messageDiv.style.background = 'rgba(244, 67, 54, 0.2)';
+                                        messageDiv.style.border = '1px solid rgba(244, 67, 54, 0.5)';
+                                        messageDiv.style.color = '#f44336';
+                                        messageDiv.textContent = '❌ Error: ' + (data.error || 'Error desconocido');
+                                    }
+                                    if (submitBtn) {
+                                        submitBtn.textContent = originalText;
+                                        submitBtn.disabled = false;
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Error:', error);
+                                    messageDiv.style.background = 'rgba(244, 67, 54, 0.2)';
+                                    messageDiv.style.border = '1px solid rgba(244, 67, 54, 0.5)';
+                                    messageDiv.style.color = '#f44336';
+                                    messageDiv.textContent = '❌ Error de conexión: ' + (error.message || 'No se pudo conectar con el servidor');
+                                    if (submitBtn) {
+                                        submitBtn.textContent = originalText;
+                                        submitBtn.disabled = false;
+                                    }
+                                });
+                            }
+
+                            function testN8nConnection() {
+                                const messageDiv = document.getElementById('n8n-config-message');
+                                const webhookUrl = document.getElementById('n8n-webhook-url').value.trim();
+                                
+                                if (!webhookUrl) {
+                                    messageDiv.style.display = 'block';
+                                    messageDiv.style.background = 'rgba(244, 67, 54, 0.2)';
+                                    messageDiv.style.border = '1px solid rgba(244, 67, 54, 0.5)';
+                                    messageDiv.style.color = '#f44336';
+                                    messageDiv.textContent = '❌ Por favor, ingresa la URL del webhook primero';
+                                    return;
+                                }
+
+                                messageDiv.style.display = 'block';
+                                messageDiv.style.background = 'rgba(255, 152, 0, 0.2)';
+                                messageDiv.textContent = '⏳ Probando conexión...';
+
+                                fetch('/admin/api/n8n/test', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    }
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        messageDiv.style.background = 'rgba(76, 175, 80, 0.2)';
+                                        messageDiv.style.border = '1px solid rgba(76, 175, 80, 0.5)';
+                                        messageDiv.style.color = '#4caf50';
+                                        messageDiv.textContent = '✅ ' + (data.message || 'Conexión exitosa');
+                                    } else {
+                                        messageDiv.style.background = 'rgba(244, 67, 54, 0.2)';
+                                        messageDiv.style.border = '1px solid rgba(244, 67, 54, 0.5)';
+                                        messageDiv.style.color = '#f44336';
+                                        messageDiv.textContent = '❌ ' + (data.error || 'Error al probar conexión');
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Error:', error);
+                                    messageDiv.style.background = 'rgba(244, 67, 54, 0.2)';
+                                    messageDiv.style.border = '1px solid rgba(244, 67, 54, 0.5)';
+                                    messageDiv.style.color = '#f44336';
+                                    messageDiv.textContent = '❌ Error de conexión: ' + (error.message || 'No se pudo conectar con el servidor');
+                                });
+                            }
+
                             function deployToProduction() {
                                 console.log('🚀 deployToProduction() llamada');
                                 const btn = document.getElementById('deploy-btn');
@@ -1944,6 +2098,79 @@
                             </div>
                         </div>
 
+                        <!-- Modal para Configurar n8n -->
+                        <div id="n8n-config-modal"
+                            style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); z-index: 10002; align-items: center; justify-content: center;">
+                            <div
+                                style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border: 2px solid rgba(34, 197, 94, 0.5); border-radius: 15px; padding: 30px; max-width: 700px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 50px rgba(0,0,0,0.5);">
+                                <div
+                                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                                    <h2 style="color: #e8e8e8; margin: 0; font-size: 1.5rem;">
+                                        🔗 Configurar Integración n8n</h2>
+                                    <button onclick="closeN8nConfigModal()"
+                                        style="background: rgba(244, 67, 54, 0.3); border: 1px solid rgba(244, 67, 54, 0.5); color: #f44336; border-radius: 5px; padding: 8px 16px; cursor: pointer; font-size: 1.2rem; line-height: 1;">
+                                        ✕
+                                    </button>
+                                </div>
+                                <form id="n8n-config-form" onsubmit="saveN8nConfig(event)">
+                                    <div style="margin-bottom: 20px;">
+                                        <label style="display: block; color: #e8e8e8; margin-bottom: 8px; font-weight: 600;">
+                                            URL del Webhook de n8n
+                                        </label>
+                                        <input type="url" id="n8n-webhook-url" name="webhook_url"
+                                            placeholder="https://tu-n8n-instance.com/webhook/bimba"
+                                            style="width: 100%; padding: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #e8e8e8; font-size: 0.9rem; box-sizing: border-box;">
+                                        <p style="color: #aaa; font-size: 0.8rem; margin-top: 5px;">
+                                            URL donde n8n recibirá eventos desde esta aplicación
+                                        </p>
+                                    </div>
+                                    
+                                    <div style="margin-bottom: 20px;">
+                                        <label style="display: block; color: #e8e8e8; margin-bottom: 8px; font-weight: 600;">
+                                            Secreto del Webhook (opcional)
+                                        </label>
+                                        <input type="password" id="n8n-webhook-secret" name="webhook_secret"
+                                            placeholder="Dejar vacío para no usar firma"
+                                            style="width: 100%; padding: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #e8e8e8; font-size: 0.9rem; box-sizing: border-box;">
+                                        <p style="color: #aaa; font-size: 0.8rem; margin-top: 5px;">
+                                            Secreto para validar firmas HMAC de webhooks entrantes
+                                        </p>
+                                    </div>
+                                    
+                                    <div style="margin-bottom: 20px;">
+                                        <label style="display: block; color: #e8e8e8; margin-bottom: 8px; font-weight: 600;">
+                                            API Key (opcional)
+                                        </label>
+                                        <input type="password" id="n8n-api-key" name="api_key"
+                                            placeholder="Dejar vacío para no usar autenticación"
+                                            style="width: 100%; padding: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #e8e8e8; font-size: 0.9rem; box-sizing: border-box;">
+                                        <p style="color: #aaa; font-size: 0.8rem; margin-top: 5px;">
+                                            API Key para autenticar webhooks entrantes desde n8n
+                                        </p>
+                                    </div>
+                                    
+                                    <div id="n8n-config-message"
+                                        style="display: none; padding: 12px; border-radius: 8px; margin: 15px 0; font-size: 0.9rem;">
+                                    </div>
+                                    
+                                    <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                                        <button type="button" onclick="testN8nConnection()"
+                                            style="padding: 12px 24px; background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.5); color: #22c55e; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                                            🧪 Probar Conexión
+                                        </button>
+                                        <button type="button" onclick="closeN8nConfigModal()"
+                                            style="padding: 12px 24px; background: rgba(102, 126, 234, 0.2); border: 1px solid rgba(102, 126, 234, 0.5); color: #667eea; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                                            Cancelar
+                                        </button>
+                                        <button type="submit"
+                                            style="padding: 12px 24px; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); border: none; color: white; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                                            💾 Guardar Configuración
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
                         <!-- Agente de Redes Sociales -->
                         <div class="category-section" style="margin-top: 10px; margin-bottom: 10px;">
                             <h2 class="category-title"
@@ -1974,6 +2201,29 @@
                                     <span class="badge"
                                         style="background: rgba(102, 126, 234, 0.2); color: #667eea; padding: 3px 8px; border-radius: 12px; font-size: 0.7rem; display: inline-block; margin-top: 5px;">Logs</span>
                                 </a>
+                            </div>
+                        </div>
+
+                        <!-- Integración n8n -->
+                        <div class="category-section" style="margin-top: 10px; margin-bottom: 10px;">
+                            <h2 class="category-title"
+                                style="color: #e8e8e8; font-size: 1.1rem; margin-bottom: 8px; text-align: center; padding: 8px 12px; background: linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(34, 197, 94, 0.1) 100%); border-radius: 8px; border: 2px solid rgba(34, 197, 94, 0.3);">
+                                🔗 Integración n8n</h2>
+                            <div class="tools-grid"
+                                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                                <div class="tool-card"
+                                    style="background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%); padding: 25px; border-radius: 15px; border: 2px solid rgba(34, 197, 94, 0.3);">
+                                    <span
+                                        style="display: inline-block; background: rgba(34, 197, 94, 0.3); color: #22c55e; padding: 4px 10px; border-radius: 20px; font-size: 0.85rem; font-weight: bold; margin-bottom: 10px;">3.1</span>
+                                    <span class="icon"
+                                        style="font-size: 2.5rem; display: block; margin-bottom: 10px;">⚙️</span>
+                                    <h3 style="color: #fff; margin: 10px 0; font-size: 1.3rem;">Configurar n8n</h3>
+                                    <p style="color: #aaa; margin: 10px 0;">Configura la integración con n8n para automatización de flujos de trabajo</p>
+                                    <button onclick="openN8nConfigModal()"
+                                        style="margin-top: 15px; padding: 10px 20px; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); border: none; color: white; border-radius: 8px; cursor: pointer; font-weight: 600; width: 100%;">
+                                        Configurar n8n
+                                    </button>
+                                </div>
                             </div>
                         </div>
 

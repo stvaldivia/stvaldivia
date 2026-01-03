@@ -2709,6 +2709,146 @@ def admin_api_services_configure():
         }), 500
 
 
+@bp.route('/admin/api/n8n/config', methods=['GET'])
+def admin_api_n8n_config_get():
+    """API: Obtener configuración de n8n"""
+    if not session.get('admin_logged_in'):
+        return jsonify({'success': False, 'error': 'No autenticado'}), 401
+    
+    try:
+        from app.models.system_config_models import SystemConfig
+        
+        # Obtener configuración desde SystemConfig, con fallback a variables de entorno
+        webhook_url = SystemConfig.get('n8n_webhook_url') or os.environ.get('N8N_WEBHOOK_URL', '')
+        webhook_secret = SystemConfig.get('n8n_webhook_secret') or os.environ.get('N8N_WEBHOOK_SECRET', '')
+        api_key = SystemConfig.get('n8n_api_key') or os.environ.get('N8N_API_KEY', '')
+        
+        # Ocultar valores sensibles en la respuesta
+        webhook_secret_display = webhook_secret[:8] + '...' if webhook_secret and len(webhook_secret) > 8 else (webhook_secret if webhook_secret else '')
+        api_key_display = api_key[:8] + '...' if api_key and len(api_key) > 8 else (api_key if api_key else '')
+        
+        return jsonify({
+            'success': True,
+            'config': {
+                'webhook_url': webhook_url,
+                'webhook_secret': webhook_secret_display,
+                'webhook_secret_set': bool(webhook_secret),
+                'api_key': api_key_display,
+                'api_key_set': bool(api_key),
+                'enabled': bool(webhook_url)
+            }
+        })
+    except Exception as e:
+        current_app.logger.error(f"Error obteniendo configuración n8n: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@bp.route('/admin/api/n8n/config', methods=['POST'])
+def admin_api_n8n_config_set():
+    """API: Guardar configuración de n8n"""
+    if not session.get('admin_logged_in'):
+        return jsonify({'success': False, 'error': 'No autenticado'}), 401
+    
+    try:
+        from app.models.system_config_models import SystemConfig
+        from flask import session
+        
+        data = request.get_json()
+        username = session.get('admin_username', 'admin')
+        
+        # Guardar configuración en SystemConfig
+        if 'webhook_url' in data:
+            webhook_url = data.get('webhook_url', '').strip()
+            if webhook_url:
+                SystemConfig.set(
+                    'n8n_webhook_url',
+                    webhook_url,
+                    description='URL del webhook de n8n para recibir eventos',
+                    updated_by=username
+                )
+            else:
+                SystemConfig.delete('n8n_webhook_url')
+        
+        if 'webhook_secret' in data:
+            webhook_secret = data.get('webhook_secret', '').strip()
+            if webhook_secret:
+                SystemConfig.set(
+                    'n8n_webhook_secret',
+                    webhook_secret,
+                    description='Secreto para validar firmas de webhooks de n8n',
+                    updated_by=username
+                )
+            else:
+                SystemConfig.delete('n8n_webhook_secret')
+        
+        if 'api_key' in data:
+            api_key = data.get('api_key', '').strip()
+            if api_key:
+                SystemConfig.set(
+                    'n8n_api_key',
+                    api_key,
+                    description='API Key para autenticación con n8n',
+                    updated_by=username
+                )
+            else:
+                SystemConfig.delete('n8n_api_key')
+        
+        # Actualizar también en current_app.config para uso inmediato
+        current_app.config['N8N_WEBHOOK_URL'] = SystemConfig.get('n8n_webhook_url') or os.environ.get('N8N_WEBHOOK_URL')
+        current_app.config['N8N_WEBHOOK_SECRET'] = SystemConfig.get('n8n_webhook_secret') or os.environ.get('N8N_WEBHOOK_SECRET')
+        current_app.config['N8N_API_KEY'] = SystemConfig.get('n8n_api_key') or os.environ.get('N8N_API_KEY')
+        
+        current_app.logger.info(f"Configuración de n8n actualizada por {username}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Configuración de n8n guardada correctamente'
+        })
+    except Exception as e:
+        current_app.logger.error(f"Error guardando configuración n8n: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@bp.route('/admin/api/n8n/test', methods=['POST'])
+def admin_api_n8n_test():
+    """API: Probar conexión con n8n"""
+    if not session.get('admin_logged_in'):
+        return jsonify({'success': False, 'error': 'No autenticado'}), 401
+    
+    try:
+        from app.helpers.n8n_client import send_to_n8n
+        from datetime import datetime
+        
+        # Enviar evento de prueba
+        result = send_to_n8n('test', {
+            'message': 'Prueba de conexión desde panel de control',
+            'timestamp': datetime.utcnow().isoformat()
+        })
+        
+        if result:
+            return jsonify({
+                'success': True,
+                'message': 'Conexión con n8n exitosa'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'No se pudo conectar con n8n. Verifica la URL del webhook.'
+            }), 400
+    except Exception as e:
+        current_app.logger.error(f"Error probando conexión n8n: {e}", exc_info=True)
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 @bp.route('/admin/api/sync/start', methods=['POST'])
 def admin_api_sync_start():
     """API: Iniciar sincronización de datos"""
