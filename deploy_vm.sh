@@ -13,8 +13,27 @@ set -euo pipefail
 echo ">> Entrando a /var/www/stvaldivia"
 cd /var/www/stvaldivia
 
-echo ">> git pull"
-sudo -u deploy git pull
+echo ">> Actualizando código desde GitHub"
+if [ -d .git ]; then
+    sudo -u deploy git pull
+else
+    echo ">> Clonando repositorio (primera vez o no es git repo)"
+    REPO_URL="https://github.com/stvaldivia/stvaldivia.git"
+    TMP_DIR="/tmp/stvaldivia_deploy_$(date +%s)"
+    rm -rf "$TMP_DIR"
+    git clone --depth 1 --branch main "$REPO_URL" "$TMP_DIR"
+    
+    sudo -u deploy rsync -av --delete \
+        --exclude='.git' \
+        --exclude='instance' \
+        --exclude='logs' \
+        --exclude='venv' \
+        --exclude='__pycache__' \
+        --exclude='*.pyc' \
+        "$TMP_DIR/" /var/www/stvaldivia/
+    
+    rm -rf "$TMP_DIR"
+fi
 
 echo ">> pip install"
 sudo -u deploy /var/www/stvaldivia/venv/bin/pip install -r requirements.txt

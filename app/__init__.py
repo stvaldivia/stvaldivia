@@ -549,6 +549,16 @@ def create_app():
     from .routes import bp as routes_bp
     app.register_blueprint(routes_bp, url_prefix=url_prefix)
     
+    # Registrar blueprint de WhatsApp
+    try:
+        from .routes.whatsapp_routes import whatsapp_bp
+        app.register_blueprint(whatsapp_bp)
+        app.logger.info("✅ Blueprint de WhatsApp registrado")
+    except ImportError as e:
+        app.logger.warning(f"⚠️  No se pudo registrar el blueprint de WhatsApp: {e}")
+    except Exception as e:
+        app.logger.error(f"❌ Error al registrar blueprint de WhatsApp: {e}")
+    
     # Blueprint de auditoría de caja SUPERADMIN
     try:
         from app.routes_superadmin_audit import superadmin_audit_bp

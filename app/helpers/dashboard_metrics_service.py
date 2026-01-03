@@ -565,12 +565,12 @@ class DashboardMetricsService:
                 
                 from app.models.delivery_models import Delivery
                 productos_query = db.session.query(
-                    Delivery.product_name,
+                    Delivery.item_name,
                     func.count(Delivery.id).label('cantidad')
                 ).filter(
                     Delivery.timestamp >= opened_dt
                 ).group_by(
-                    Delivery.product_name
+                    Delivery.item_name
                 ).order_by(
                     func.count(Delivery.id).desc()
                 ).limit(5).all()
@@ -585,13 +585,13 @@ class DashboardMetricsService:
                     opened_dt = opened_dt.replace(tzinfo=None)
                 
                 bartenders_query = db.session.query(
-                    Delivery.bartender_name,
+                    Delivery.bartender,
                     func.count(Delivery.id).label('cantidad')
                 ).filter(
                     Delivery.timestamp >= opened_dt,
-                    Delivery.bartender_name.isnot(None)
+                    Delivery.bartender.isnot(None)
                 ).group_by(
-                    Delivery.bartender_name
+                    Delivery.bartender
                 ).order_by(
                     func.count(Delivery.id).desc()
                 ).limit(5).all()
@@ -755,17 +755,16 @@ class DashboardMetricsService:
     def _get_inventario_metrics(self) -> Dict[str, Any]:
         """Obtiene métricas de inventario"""
         try:
-            from app.models.inventory_models import Product, Ingredient, Recipe
-            from app.models.inventory_stock_models import InventoryStock
+            from app.models.product_models import Product
+            from app.models.inventory_stock_models import Ingredient, Recipe, IngredientStock
             
             # Productos totales
             total_productos = Product.query.filter_by(is_active=True).count()
             
-            # Productos con stock bajo
-            stock_bajo = db.session.query(InventoryStock).join(Product).filter(
-                Product.is_active == True,
-                InventoryStock.current_stock <= InventoryStock.min_stock
-            ).count()
+            # Ingredientes con stock bajo
+            # Nota: IngredientStock tiene 'quantity', no 'current_stock' ni 'min_stock'
+            # Por ahora, se deja en 0 o se podría definir un umbral fijo
+            stock_bajo = 0  # TODO: Implementar lógica de stock mínimo si es necesario
             
             # Ingredientes totales
             total_ingredientes = Ingredient.query.filter_by(is_active=True).count()
@@ -801,7 +800,7 @@ class DashboardMetricsService:
     def _get_guardarropia_metrics(self) -> Dict[str, Any]:
         """Obtiene métricas de guardarropía"""
         try:
-            from app.models.guardarropia_models import GuardarropiaTicket
+            from app.models.guardarropia_ticket_models import GuardarropiaTicket
             from app.models.jornada_models import Jornada
             
             fecha_hoy = datetime.now(CHILE_TZ).date()
@@ -812,21 +811,21 @@ class DashboardMetricsService:
                 eliminado_en=None
             ).order_by(Jornada.fecha_jornada.desc()).first()
             
-            # Items depositados hoy
+            # Items depositados hoy (tickets creados hoy con status open/paid/checked_in)
             items_depositados_hoy = GuardarropiaTicket.query.filter(
                 func.date(GuardarropiaTicket.created_at) == fecha_hoy,
-                GuardarropiaTicket.estado == 'depositado'
+                GuardarropiaTicket.status.in_(['open', 'paid', 'checked_in'])
             ).count()
             
-            # Items retirados hoy
+            # Items retirados hoy (tickets con checked_out_at hoy)
             items_retirados_hoy = GuardarropiaTicket.query.filter(
-                func.date(GuardarropiaTicket.updated_at) == fecha_hoy,
-                GuardarropiaTicket.estado == 'retirado'
+                func.date(GuardarropiaTicket.checked_out_at) == fecha_hoy,
+                GuardarropiaTicket.status == 'checked_out'
             ).count()
             
-            # Items pendientes (depositados pero no retirados)
+            # Items pendientes (tickets creados pero no retirados)
             items_pendientes = GuardarropiaTicket.query.filter(
-                GuardarropiaTicket.estado == 'depositado'
+                GuardarropiaTicket.status.in_(['open', 'paid', 'checked_in'])
             ).count()
             
             # Recaudación hoy
@@ -834,7 +833,7 @@ class DashboardMetricsService:
                 func.date(GuardarropiaTicket.created_at) == fecha_hoy
             ).all()
             
-            revenue_hoy = sum(float(t.costo_deposito or 0) for t in tickets_hoy if t.costo_deposito)
+            revenue_hoy = sum(float(t.price or 0) for t in tickets_hoy if t.price)
             
             # Items del turno
             items_turno = 0
