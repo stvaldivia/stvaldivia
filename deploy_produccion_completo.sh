@@ -16,7 +16,8 @@ echo "👤 Usuario: $SSH_USER"
 echo "📦 Repositorio: $REPO_URL"
 echo ""
 
-ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no "$SSH_USER@$VM_IP" << ENDSSH
+# Intentar con agente SSH primero, luego con clave específica
+ssh -o StrictHostKeyChecking=no -o IdentitiesOnly=yes -i "$SSH_KEY" "$SSH_USER@$VM_IP" << ENDSSH
 set -e
 
 echo "📥 Clonando código desde GitHub..."
