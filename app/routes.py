@@ -22,7 +22,7 @@ def admin():
     """Redirigir /admin a /admin/dashboard"""
     # Verificar autenticación
     if not session.get('admin_logged_in'):
-        return redirect(url_for('home.index'))
+        return redirect(url_for('auth.login_admin'))
     
     return redirect(url_for('routes.admin_dashboard'))
 
