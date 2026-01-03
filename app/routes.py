@@ -31,7 +31,7 @@ def admin_dashboard():
     """Dashboard administrativo"""
     # Verificar autenticación
     if not session.get('admin_logged_in'):
-        return redirect(url_for('home.index'))
+        return redirect(url_for('auth.login_admin'))
     
     # Obtener todas las métricas usando el servicio
     try:
