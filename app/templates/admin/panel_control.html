@@ -1577,8 +1577,8 @@
                                 });
                             }
 
-                            // Funciones para configuración de n8n
-                            function openN8nConfigModal() {
+                            // Funciones para configuración de n8n - Asegurar que esté en scope global
+                            window.openN8nConfigModal = function() {
                                 console.log('openN8nConfigModal llamada');
                                 const modal = document.getElementById('n8n-config-modal');
                                 console.log('Modal encontrado:', modal);
@@ -1624,7 +1624,7 @@
                                         console.error('Error cargando configuración n8n:', error);
                                         // El modal ya está visible, solo mostrar error si es necesario
                                     });
-                            }
+                            };
 
                             function closeN8nConfigModal() {
                                 const modal = document.getElementById('n8n-config-modal');
@@ -2105,22 +2105,6 @@
                         </script>
 
                         <script>
-                            // Asegurar que el botón de n8n funcione
-                            document.addEventListener('DOMContentLoaded', function () {
-                                const btnN8n = document.getElementById('btn-configurar-n8n');
-                                if (btnN8n) {
-                                    btnN8n.addEventListener('click', function(e) {
-                                        e.preventDefault();
-                                        if (typeof openN8nConfigModal === 'function') {
-                                            openN8nConfigModal();
-                                        } else {
-                                            console.error('openN8nConfigModal no está definida');
-                                            alert('Error: La función de configuración no está disponible. Por favor, recarga la página.');
-                                        }
-                                    });
-                                }
-                            });
-
                             // Confirmación personalizada para reiniciar servicio
                             document.addEventListener('DOMContentLoaded', function () {
                                 const restartForm = document.getElementById('restart-form');
