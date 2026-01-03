@@ -2151,7 +2151,21 @@
                                         const modal = document.getElementById('n8n-config-modal');
                                         if (modal) {
                                             console.log('Mostrando modal directamente');
+                                            // Asegurar que el modal sea visible
                                             modal.style.display = 'flex';
+                                            modal.style.position = 'fixed';
+                                            modal.style.top = '0';
+                                            modal.style.left = '0';
+                                            modal.style.width = '100%';
+                                            modal.style.height = '100%';
+                                            modal.style.zIndex = '10002';
+                                            modal.style.alignItems = 'center';
+                                            modal.style.justifyContent = 'center';
+                                            console.log('Modal configurado:', {
+                                                display: modal.style.display,
+                                                zIndex: modal.style.zIndex,
+                                                position: modal.style.position
+                                            });
                                             
                                             // Luego intentar cargar la configuración si la función está disponible
                                             if (typeof window.openN8nConfigModal === 'function') {
