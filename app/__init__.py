@@ -775,13 +775,32 @@ def create_app():
     except Exception as e:
         app.logger.error(f"❌ Error al registrar blueprint de API: {e}")
     
+    # Registrar blueprint de n8n webhooks
+    try:
+        from .routes.n8n_routes import n8n_bp
+        app.register_blueprint(n8n_bp)
+        
+        # Eximir APIs de n8n de CSRF si está habilitado (webhooks externos)
+        if csrf:
+            try:
+                csrf.exempt(n8n_bp)
+            except:
+                pass
+        
+        app.logger.info("✅ Blueprint de n8n registrado")
+    except ImportError as e:
+        app.logger.warning(f"⚠️  No se pudo registrar el blueprint de n8n: {e}")
+    except Exception as e:
+        app.logger.error(f"❌ Error al registrar blueprint de n8n: {e}")
+    
     # Registrar blueprint de Instagram webhooks
     try:
         from .routes_instagram import instagram_bp
         app.register_blueprint(instagram_bp, url_prefix=url_prefix)
         app.logger.info("✅ Blueprint de Instagram registrado")
-    except ImportError as e:
-        app.logger.warning(f"⚠️  No se pudo registrar el blueprint de Instagram: {e}")
+    except ImportError:
+        # Si no existe el módulo, continuar sin errores (opcional)
+        pass
     except Exception as e:
         app.logger.error(f"❌ Error al registrar blueprint de Instagram: {e}")
     
@@ -1316,6 +1335,11 @@ def create_app():
     app.config['INSTAGRAM_BUSINESS_ACCOUNT_ID'] = os.environ.get('INSTAGRAM_BUSINESS_ACCOUNT_ID')
     app.config['META_APP_ID'] = os.environ.get('META_APP_ID')
     app.config['META_APP_SECRET'] = os.environ.get('META_APP_SECRET')
+    
+    # Configuración de n8n Integration
+    app.config['N8N_WEBHOOK_URL'] = os.environ.get('N8N_WEBHOOK_URL')
+    app.config['N8N_WEBHOOK_SECRET'] = os.environ.get('N8N_WEBHOOK_SECRET')
+    app.config['N8N_API_KEY'] = os.environ.get('N8N_API_KEY')
 
     # Registrar filtros personalizados de Jinja2
     @app.template_filter('to_datetime')
