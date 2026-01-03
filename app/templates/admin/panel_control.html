@@ -2105,6 +2105,40 @@
                         </script>
 
                         <script>
+                            // Configurar botón de n8n cuando el DOM esté listo
+                            document.addEventListener('DOMContentLoaded', function () {
+                                const btnN8n = document.getElementById('btn-configurar-n8n');
+                                if (btnN8n) {
+                                    btnN8n.addEventListener('click', function(e) {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        console.log('Botón n8n clickeado');
+                                        
+                                        // Intentar llamar a la función
+                                        if (typeof window.openN8nConfigModal === 'function') {
+                                            console.log('Llamando a window.openN8nConfigModal');
+                                            window.openN8nConfigModal();
+                                        } else if (typeof openN8nConfigModal === 'function') {
+                                            console.log('Llamando a openN8nConfigModal');
+                                            openN8nConfigModal();
+                                        } else {
+                                            console.error('openN8nConfigModal no está disponible');
+                                            // Intentar mostrar el modal directamente
+                                            const modal = document.getElementById('n8n-config-modal');
+                                            if (modal) {
+                                                console.log('Mostrando modal directamente');
+                                                modal.style.display = 'flex';
+                                            } else {
+                                                alert('Error: No se pudo encontrar el modal. Por favor, recarga la página.');
+                                            }
+                                        }
+                                    });
+                                    console.log('Event listener agregado al botón n8n');
+                                } else {
+                                    console.error('Botón btn-configurar-n8n no encontrado');
+                                }
+                            });
+
                             // Confirmación personalizada para reiniciar servicio
                             document.addEventListener('DOMContentLoaded', function () {
                                 const restartForm = document.getElementById('restart-form');
