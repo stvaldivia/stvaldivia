@@ -3,7 +3,7 @@ Rutas para recibir y procesar webhooks de WhatsApp
 """
 from flask import Blueprint, request, jsonify, current_app
 from app.helpers.exception_handler import handle_exceptions
-from app.application.services.whatsapp_agent_service import WhatsAppAgentService
+from app.application.services.unified_social_agent_service import UnifiedSocialAgentService
 import logging
 
 logger = logging.getLogger(__name__)
@@ -61,7 +61,7 @@ def whatsapp_webhook():
 
 def _handle_whatsapp_cloud_webhook(data: dict) -> tuple:
     """Procesa webhook de WhatsApp Cloud API"""
-    agent_service = WhatsAppAgentService()
+    agent_service = UnifiedSocialAgentService()
     
     for entry in data.get('entry', []):
         for change in entry.get('changes', []):
@@ -82,8 +82,9 @@ def _handle_whatsapp_cloud_webhook(data: dict) -> tuple:
                             
                             logger.info(f"Mensaje recibido de WhatsApp: {from_number} - {message_text[:50]}")
                             
-                            result = agent_service.process_incoming_message(
-                                from_number=from_number,
+                            result = agent_service.process_message(
+                                platform='whatsapp',
+                                sender_id=from_number,
                                 message=message_text,
                                 message_id=message_id
                             )
@@ -103,7 +104,7 @@ def _handle_whatsapp_cloud_webhook(data: dict) -> tuple:
 
 def _handle_twilio_webhook(data: dict) -> tuple:
     """Procesa webhook de Twilio"""
-    agent_service = WhatsAppAgentService()
+    agent_service = UnifiedSocialAgentService()
     
     from_number = data.get('From', '').replace('whatsapp:', '')
     message_text = data.get('Body', '')
@@ -112,8 +113,9 @@ def _handle_twilio_webhook(data: dict) -> tuple:
     if from_number and message_text:
         logger.info(f"Mensaje recibido de WhatsApp (Twilio): {from_number} - {message_text[:50]}")
         
-        result = agent_service.process_incoming_message(
-            from_number=from_number,
+        result = agent_service.process_message(
+            platform='whatsapp',
+            sender_id=from_number,
             message=message_text,
             message_id=message_sid
         )
@@ -128,7 +130,7 @@ def _handle_twilio_webhook(data: dict) -> tuple:
 
 def _handle_generic_webhook(data: dict) -> tuple:
     """Procesa webhook en formato genérico"""
-    agent_service = WhatsAppAgentService()
+    agent_service = UnifiedSocialAgentService()
     
     from_number = data.get('from') or data.get('from_number') or data.get('phone')
     message_text = data.get('message') or data.get('text') or data.get('body')
@@ -137,8 +139,9 @@ def _handle_generic_webhook(data: dict) -> tuple:
     if from_number and message_text:
         logger.info(f"Mensaje recibido de WhatsApp (genérico): {from_number} - {message_text[:50]}")
         
-        result = agent_service.process_incoming_message(
-            from_number=from_number,
+        result = agent_service.process_message(
+            platform='whatsapp',
+            sender_id=from_number,
             message=message_text,
             message_id=message_id
         )
@@ -164,7 +167,7 @@ def refresh_knowledge():
         return jsonify({'error': 'Unauthorized'}), 401
     
     try:
-        agent_service = WhatsAppAgentService()
+        agent_service = UnifiedSocialAgentService()
         agent_service.refresh_knowledge_base()
         
         return jsonify({

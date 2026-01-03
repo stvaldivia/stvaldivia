@@ -779,6 +779,21 @@ def create_app():
     try:
         from .routes_instagram import instagram_bp
         app.register_blueprint(instagram_bp, url_prefix=url_prefix)
+        app.logger.info("✅ Blueprint de Instagram registrado")
+    except ImportError as e:
+        app.logger.warning(f"⚠️  No se pudo registrar el blueprint de Instagram: {e}")
+    except Exception as e:
+        app.logger.error(f"❌ Error al registrar blueprint de Instagram: {e}")
+    
+    # Registrar blueprint de Facebook webhooks
+    try:
+        from .routes.facebook_routes import facebook_bp
+        app.register_blueprint(facebook_bp, url_prefix=url_prefix)
+        app.logger.info("✅ Blueprint de Facebook registrado")
+    except ImportError as e:
+        app.logger.warning(f"⚠️  No se pudo registrar el blueprint de Facebook: {e}")
+    except Exception as e:
+        app.logger.error(f"❌ Error al registrar blueprint de Facebook: {e}")
     except ImportError:
         # Si no existe el módulo, continuar sin errores (opcional)
         pass

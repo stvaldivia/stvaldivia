@@ -7,9 +7,7 @@ import hashlib
 import json
 from datetime import datetime
 
-from app.application.services.service_factory import get_social_media_service
-from app.application.dto.social_media_dto import SocialMediaMessage, GenerateResponseRequest
-from app.infrastructure.repositories.social_media_repository import CsvSocialMediaRepository
+from app.application.services.unified_social_agent_service import UnifiedSocialAgentService
 
 instagram_bp = Blueprint('instagram', __name__, url_prefix='/webhook')
 
@@ -121,20 +119,24 @@ def instagram_webhook():
                     }
                 )
                 
-                # Guardar mensaje y generar respuesta
-                service = get_social_media_service()
-                response = service.process_message(
-                    instagram_message,
-                    generate_response=True,
-                    tone='amigable'
+                # Procesar mensaje con el agente unificado
+                agent_service = UnifiedSocialAgentService()
+                result = agent_service.process_message(
+                    platform='instagram',
+                    sender_id=sender_id,
+                    message=message_text,
+                    message_id=message_id,
+                    metadata={
+                        'instagram_sender_id': sender_id,
+                        'instagram_message_id': message.get('mid'),
+                        'webhook_entry': entry.get('id')
+                    }
                 )
                 
-                # Enviar respuesta a Instagram
-                if response:
-                    send_instagram_message(sender_id, response.response_text)
+                if result.get('success'):
                     current_app.logger.info(f"Respuesta enviada a Instagram user {sender_id}")
                 else:
-                    current_app.logger.warning(f"No se pudo generar respuesta para {sender_id}")
+                    current_app.logger.warning(f"No se pudo enviar respuesta para {sender_id}: {result.get('error')}")
         
         # Meta espera un 200 OK
         return jsonify({'status': 'ok'}), 200
@@ -212,25 +214,25 @@ def instagram_test():
             timestamp=datetime.now()
         )
         
-        # Procesar mensaje
-        service = get_social_media_service()
-        response = service.process_message(
-            test_message,
-            generate_response=True,
-            tone='amigable'
+        # Procesar mensaje con el agente unificado
+        agent_service = UnifiedSocialAgentService()
+        result = agent_service.process_message(
+            platform='instagram',
+            sender_id=sender_id,
+            message=message_text
         )
         
-        if response:
+        if result.get('success'):
             return jsonify({
                 'status': 'success',
                 'original_message': message_text,
-                'response': response.response_text,
+                'response': result.get('response'),
                 'sender_id': sender_id
             }), 200
         else:
             return jsonify({
                 'status': 'error',
-                'message': 'No se pudo generar la respuesta'
+                'message': result.get('error', 'No se pudo generar la respuesta')
             }), 500
             
     except Exception as e:
