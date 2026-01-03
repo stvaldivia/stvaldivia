@@ -714,6 +714,36 @@
                                         api_key: apiKey
                                     })
                                 })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        messageDiv.style.display = 'block';
+                                        messageDiv.style.background = 'rgba(76, 175, 80, 0.2)';
+                                        messageDiv.style.border = '1px solid rgba(76, 175, 80, 0.5)';
+                                        messageDiv.style.color = '#4caf50';
+                                        messageDiv.textContent = '✅ Configuración guardada correctamente';
+                                    } else {
+                                        messageDiv.style.display = 'block';
+                                        messageDiv.style.background = 'rgba(244, 67, 54, 0.2)';
+                                        messageDiv.style.border = '1px solid rgba(244, 67, 54, 0.5)';
+                                        messageDiv.style.color = '#f44336';
+                                        messageDiv.textContent = '❌ Error: ' + (data.error || 'Error desconocido');
+                                    }
+                                    submitBtn.textContent = originalText;
+                                    submitBtn.disabled = false;
+                                })
+                                .catch(error => {
+                                    console.error('Error:', error);
+                                    messageDiv.style.display = 'block';
+                                    messageDiv.style.background = 'rgba(244, 67, 54, 0.2)';
+                                    messageDiv.style.border = '1px solid rgba(244, 67, 54, 0.5)';
+                                    messageDiv.style.color = '#f44336';
+                                    messageDiv.textContent = '❌ Error de conexión: ' + (error.message || 'No se pudo conectar con el servidor');
+                                    submitBtn.textContent = originalText;
+                                    submitBtn.disabled = false;
+                                });
+                            }
+
                             document.addEventListener('click', function (event) {
                                 const modal = document.getElementById('api-config-modal');
                                 if (modal && event.target === modal) {
@@ -2104,7 +2134,7 @@
                                     closeServiceConfigModal();
                                 }
                             });
-                        }
+                            }
                         </script>
 
                         <script>
