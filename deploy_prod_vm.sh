@@ -57,6 +57,16 @@ else
     echo \"[VM] Código actualizado desde GitHub\"
 fi
 
+# Asegurar que wsgi.py existe (crítico para Gunicorn)
+if [ ! -f \"$APP_DIR/wsgi.py\" ]; then
+    echo \"[VM] ⚠️ wsgi.py no encontrado, creándolo...\"
+    sudo -u deploy bash -c \"cat > $APP_DIR/wsgi.py << 'EOF'
+from app import create_app
+application = create_app()
+EOF\"
+    echo \"[VM] ✅ wsgi.py creado\"
+fi
+
 echo \"[VM] Instalar/actualizar deps:\"
 sudo -u deploy \"$VENV/bin/pip\" install -r requirements.txt
 
