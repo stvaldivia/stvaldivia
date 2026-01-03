@@ -2147,23 +2147,52 @@
                                         e.stopPropagation();
                                         console.log('Botón n8n clickeado');
                                         
-                                        // Intentar llamar a la función
-                                        if (typeof window.openN8nConfigModal === 'function') {
-                                            console.log('Llamando a window.openN8nConfigModal');
-                                            window.openN8nConfigModal();
-                                        } else if (typeof openN8nConfigModal === 'function') {
-                                            console.log('Llamando a openN8nConfigModal');
-                                            openN8nConfigModal();
-                                        } else {
-                                            console.error('openN8nConfigModal no está disponible');
-                                            // Intentar mostrar el modal directamente
-                                            const modal = document.getElementById('n8n-config-modal');
-                                            if (modal) {
-                                                console.log('Mostrando modal directamente');
-                                                modal.style.display = 'flex';
+                                        // Intentar mostrar el modal directamente primero
+                                        const modal = document.getElementById('n8n-config-modal');
+                                        if (modal) {
+                                            console.log('Mostrando modal directamente');
+                                            modal.style.display = 'flex';
+                                            
+                                            // Luego intentar cargar la configuración si la función está disponible
+                                            if (typeof window.openN8nConfigModal === 'function') {
+                                                console.log('Función disponible, cargando configuración');
+                                                // La función ya muestra el modal, pero como ya lo mostramos, solo cargamos la config
+                                                fetch('/admin/api/n8n/config')
+                                                    .then(response => {
+                                                        if (!response.ok) {
+                                                            throw new Error('Error en la respuesta del servidor');
+                                                        }
+                                                        return response.json();
+                                                    })
+                                                    .then(data => {
+                                                        console.log('Configuración cargada:', data);
+                                                        const urlInput = document.getElementById('n8n-webhook-url');
+                                                        const secretInput = document.getElementById('n8n-webhook-secret');
+                                                        const apiKeyInput = document.getElementById('n8n-api-key');
+                                                        
+                                                        if (data.success && data.config) {
+                                                            if (urlInput) {
+                                                                urlInput.value = data.config.webhook_url || '';
+                                                            }
+                                                            if (secretInput && data.config.webhook_secret_set) {
+                                                                secretInput.value = '';
+                                                                secretInput.placeholder = '*** Configurado (dejar vacío para mantener)';
+                                                            }
+                                                            if (apiKeyInput && data.config.api_key_set) {
+                                                                apiKeyInput.value = '';
+                                                                apiKeyInput.placeholder = '*** Configurado (dejar vacío para mantener)';
+                                                            }
+                                                        }
+                                                    })
+                                                    .catch(error => {
+                                                        console.error('Error cargando configuración n8n:', error);
+                                                    });
                                             } else {
-                                                alert('Error: No se pudo encontrar el modal. Por favor, recarga la página.');
+                                                console.log('Función no disponible, solo mostrando modal');
                                             }
+                                        } else {
+                                            console.error('Modal n8n-config-modal no encontrado');
+                                            alert('Error: No se pudo encontrar el modal. Por favor, recarga la página.');
                                         }
                                     });
                                     console.log('Event listener agregado al botón n8n');
