@@ -283,6 +283,14 @@ def create_app():
     
     # GetNet Web Checkout - Configuración adicional
     app.config['GETNET_DEMO_MODE'] = os.environ.get('GETNET_DEMO_MODE', 'false').lower() in ('1', 'true', 'yes')
+
+    # KLAP Checkout - Configuración adicional
+    app.config['KLAP_API_BASE_URL'] = os.environ.get('KLAP_API_BASE_URL')
+    app.config['KLAP_CHECKOUT_CREATE_URL'] = os.environ.get('KLAP_CHECKOUT_CREATE_URL')
+    app.config['KLAP_CHECKOUT_STATUS_URL'] = os.environ.get('KLAP_CHECKOUT_STATUS_URL')
+    app.config['KLAP_API_KEY'] = os.environ.get('KLAP_API_KEY')
+    app.config['KLAP_API_KEY_HEADER'] = os.environ.get('KLAP_API_KEY_HEADER', 'Authorization')
+    app.config['KLAP_DEMO_MODE'] = os.environ.get('KLAP_DEMO_MODE', 'false').lower() in ('1', 'true', 'yes')
     
     # Payment Agent API Key
     app.config['AGENT_API_KEY'] = os.environ.get('AGENT_API_KEY')
